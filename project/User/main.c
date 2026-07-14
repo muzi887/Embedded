@@ -1,38 +1,19 @@
 #include "stm32f10x.h"                  // Device header
-# include "Delay.h"
+#include "Delay.h"
+#include "PWM.h"
+#include "IC.h"
 
 int main(void)
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+	PWM_Init();
+	IC_Init();
 	
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
-
+	PWM_SetPrescaler(720 - 1);		// Freq = 72M / (PSC + 1) / 100
+	PWM_SetCompare1(50);					// Duty = CCR / 100 	// ARR + 1 = 100
+	
 	while(1)
 	{
-//		GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_RESET);
-//		Delay_ms(500);
-//		GPIO_WriteBit(GPIOC, GPIO_Pin_0, Bit_SET);
-//		Delay_ms(500);
 		
-		GPIO_Write(GPIOA, ~0x0001);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0002);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0004);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0008);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0010);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0020);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0040);
-		Delay_ms(500);
-		GPIO_Write(GPIOA, ~0x0080);
-		Delay_ms(500);
 	}
 }
+
