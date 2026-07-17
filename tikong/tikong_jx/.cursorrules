@@ -1,0 +1,132 @@
+# Cursor 开发规则文件
+# 为 Cursor AI 提供项目上下文和开发规范
+
+## 项目概述
+本仓库是 **梯控 / 门禁访问控制** 固件的江协风格工程：`tikong_jx`。
+对照旧工程为旁路的 `tikong/tikong`；本目录为江协骨架重建结果（业务逻辑同源，目录已重组）。
+
+| 项 | 说明 |
+| --- | --- |
+| MCU | STM32F407VET6（Cortex-M4） |
+| IDE | Keil MDK-ARM；工程文件 `User/tikong.uvprojx` |
+| 运行模型 | 裸机轮询 + 中断/DMA（无 RTOS） |
+
+主要能力：
+- 多路串口：USART1 调试、USART2 RS485 梯控、USART3 4G/云、UART4/5 读头
+- JSON 协议（cJSON）、SHA1 验签
+- EEPROM 持久化、黑名单、限层 / 楼层控制
+- RTC 抽象（当前芯片实现为 DS1302，经 `Hardware/Time/RTC.*`）
+- 4G MQTT 物模型与可选 AT 配网序列
+
+## 目录结构（权威）
+
+```text
+User/           入口 main、board_init、app_run、中断、Keil 工程
+App/
+  Pass/         通行：qr_comm、cmd、data_handler
+  Cloud/        云端：g4g_comm、Live_data*、uart3_at_sequence
+  Store/        存储业务：blackList
+  Link/         通道轮询：pc_comm、rs485_comm、app_comm.h
+Hardware/
+  Serial/       usart1/2/3、uart4/5（仅驱动，不含 *Process 业务）
+  Storage/      iic、eeprom、24cxx
+  Time/         RTC 抽象、ds1302
+  Board/        HC595、ext_io、timer、floor_ctrl、malloc、led、rly、wdg
+  Modem/        4G 模组驱动
+System/         delay、sys
+Middlewares/    cJSON、sha1
+Library/        STM32 标准外设库（原 FWLIB）
+Start/          启动文件 + CMSIS + system_stm32f4xx
+docs/           说明文档（非编译）；主题域索引见 docs/README.md
+```
+
+## Git 约束（硬性）
+- **本工程会话与日常改动：完全不进行任何 git 操作**（含 status / diff / add / commit / push / checkout / reset / stash 等）。
+- 用户未在当次消息中明确要求时，禁止执行任何 git 命令；即使用户说「提交」以外的含糊措辞，也先确认再动。
+
+## 依赖方向（硬约束）
+- `User` → `App`、`Hardware`、`System`
+- `App` → `Hardware`、`Middlewares`、`System`（经 Serial 头缓冲）
+- `Hardware` → `System`、`Library`（按需）
+- `System` → `Library`
+- `Middlewares` 不依赖 `App`
+- **`Hardware/Serial` 不得依赖 `App`**；业务只通过 UART 缓冲与 `RX_Complete` 取数
+
+旧路径对照（勿再按旧名找文件）：
+- `USER/` → `User/`；`FWLIB/` → `Library/`；`CORE/` → `Start/`
+- `SYSTEM/usart` → `Hardware/Serial/`；`SYSTEM/delay|sys` → `System/`
+- `drivers/` + `board/` → `Hardware/{Storage,Time,Board,Modem}`
+- `app/comm` + `app/utils` → `App/{Pass,Cloud,Link}`；`third_party/` → `Middlewares/`
+
+## 代码规范
+
+### C 语言规范
+- 使用标准 C99 语法
+- 函数命名：驼峰命名法（如 `parseSerialData`）
+- 变量命名：小写下划线分隔（如 `received_data_len`）
+- 宏定义：全大写（如 `MAX_RECEIVE_LEN`）
+- 头文件保护：使用 `#ifndef` / `#define` / `#endif`
+
+### 代码风格
+- 使用 4 个空格缩进（不使用 Tab）
+- 函数之间空一行
+- 复杂逻辑添加注释说明
+- 关键变量和函数添加注释
+- 修改时与现有文件风格保持一致；只改任务相关代码
+
+### 文件组织约定
+- 新增业务放在对应 `App/*` 子目录，不塞回 `Hardware/Serial`
+- 片外器件驱动放 `Hardware/`，板级编排放 `User/board_init.*`
+- 主循环业务入口在 `User/app_run.*` 与各 `*Process` / `*_comm` 中
+
+## 开发注意事项
+
+### 内存管理
+- 注意栈溢出风险，避免大数组定义在栈上
+- 使用动态内存分配时注意内存泄漏（见 `Hardware/Board/malloc.*`）
+- 缓冲区大小要合理，避免溢出
+
+### 串口通信
+- 注意数据接收缓冲区的边界检查
+- 使用状态机 / 空闲中断 + DMA 定帧处理收包
+- 注意数据包完整性与校验（验签、JSON 解析失败路径）
+
+### 中断处理
+- 中断服务函数保持简短
+- 避免在中断中调用阻塞函数
+- 使用标志位与主循环通信
+
+### 错误处理
+- 函数返回值检查
+- 指针使用前检查 NULL
+- 数组访问前检查边界
+
+## 常用 API（示意）
+
+### 延时
+- `delay_ms` / `delay_us`（`System/delay`）
+
+### EEPROM
+- `EEPROM_Read` / `EEPROM_Write`（`Hardware/Storage`）
+
+### 时间
+- 经 `RTC_*` / `Get_CurrentTime` 等抽象接口，不要绕过直接散落操作芯片
+
+### JSON / 安全
+- cJSON 解析与生成；SHA1 验签（`Middlewares/`）
+
+### 看门狗
+- `IWDG_Init` / `IWDG_Feed`（`Hardware/Board/wdg.*`）
+
+## 调试建议
+- 优先 USART1 `printf` 串口打印
+- 注意编译警告与 Keil map 内存占用
+- 用 Keil + J-Link 断点调试
+- 改串口/DMA/中断路径时对照 `docs/serial/uart4-dma-rx.md` 等专文
+
+## AI 辅助开发提示
+- 改代码前先确认文件落在正确分层；不要把业务写进 `Hardware/Serial`
+- 新增功能需考虑 RAM/Flash 与实时性
+- 文档索引以 `docs/README.md` 为准；文内旧路径以本仓库实际目录为准
+- 不要擅自大范围重构；需要重构时先对齐 `docs/superpowers/specs/` 设计说明
+- **禁止任何 git 操作**（见上文「Git 约束」）
