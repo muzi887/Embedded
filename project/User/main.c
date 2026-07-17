@@ -1,19 +1,38 @@
 #include "stm32f10x.h"                  // Device header
 #include "Delay.h"
-#include "PWM.h"
-#include "IC.h"
+#include "Serial.h"
+
+uint8_t RxData;
 
 int main(void)
 {
-	PWM_Init();
-	IC_Init();
+	Serial_Init();
 	
-	PWM_SetPrescaler(720 - 1);		// Freq = 72M / (PSC + 1) / 100
-	PWM_SetCompare1(50);					// Duty = CCR / 100 	// ARR + 1 = 100
+	Serial_SendByte(0x41);
+	
+	uint8_t  MyArray[] = {0x42, 0x43, 0x44, 0x45};
+	Serial_SendArray (MyArray, 4);
+	
+	Serial_SendString("Hello World!\r\n");
+	
+	Serial_SendNumber(12345, 5);
+	
+	printf("Num=%d\r\n", 666);
+	
+	char String[100];
+	sprintf(String, "Num=%d\r\n", 666);
+	Serial_SendString(String);
+	
+	Serial_Printf("Num=%d\r\n", 666);
+	// Serial_Printf("你好世界！");  // --no-multibyte-chars
 	
 	while(1)
 	{
-		
+		if(Serial_RxFlag == 1)
+		{
+			RxData = Serial_GetRxData();
+			Serial_SendByte(RxData);
+		}
 	}
 }
 

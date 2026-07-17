@@ -106,6 +106,8 @@ flowchart TB
 
 **记忆**：外设不亮/不工作，先查 **时钟是否打开**、引脚是否复用对。
 
+晶振与 HSE/LSE 详见：[STM32-晶振说明.md](./STM32-晶振说明.md)。
+
 ---
 
 ### 4.2 GPIO（通用输入输出）
@@ -191,7 +193,9 @@ STM32 USART RX ◄── 模组 TX
 GND 共地
 ```
 
-**本项目角色**：`printf` 调试；Wi-Fi/4G **MQTT 上云** 的 AT 或透传通道；**BLE 模组 UART** 近场配置。详见 [MCU与UART说明.md](../DeviceAccess/Modbus/MCU与UART说明.md)。
+**本项目角色**：`printf` 调试；Wi-Fi/4G **MQTT 上云** 的 AT 或透传通道；**BLE 模组 UART** 近场配置。
+
+详见专文：[STM32-串口USART说明.md](./STM32-串口USART说明.md)（电平、时序、数据包与状态机）；设备侧角色见 [MCU与UART说明.md](../DeviceAccess/Modbus/MCU与UART说明.md)。
 
 ---
 
@@ -206,6 +210,8 @@ GND 共地
 | **套件** | **OLED SSD1306**（地址常 **0x3C** 或 0x3D） |
 
 **记忆**：I2C 适合 **短距、少线、多芯片**（屏、温湿度、RTC）；速度低于 SPI。
+
+详见专文：[STM32-I2C说明.md](./STM32-I2C说明.md)（I2C1/I2C2、发收字节、当前/指定地址读写与多字节、Sr）。
 
 ---
 
@@ -282,6 +288,8 @@ GND 共地
 | **常见组合** | ADC 连续采样 → DMA → 缓冲区；UART RX → DMA 环形缓冲 |
 | **模式** | Normal（一次）、Circular（循环，适合连续采集） |
 | **学习阶段** | 长期规划阶段 2～3；短期班可不写 DMA |
+
+详见专文：[STM32-DMA说明.md](./STM32-DMA说明.md)（方向与模式、F1/F4 差异、USART + IDLE、NDTR 算长度）。
 
 ---
 

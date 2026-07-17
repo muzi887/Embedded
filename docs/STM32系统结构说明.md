@@ -16,7 +16,7 @@
 下图是 **STM32（以 F1 系列 / Cortex-M3 为代表）的系统结构**：  
 **CPU 内核** 通过 **三条总线** 取指令、读数据，经 **总线矩阵** 访问 **Flash、SRAM** 和挂在 **AHB / APB** 上的 **外设**；**DMA** 可在不经 CPU 的情况下搬运数据。
 
-![STM32系统结构框图](./attachments/stm32-system-architecture.png)
+![[attachments/stm32-system-architecture.png]]
 
 **记忆口诀**：**ICode 取指令，DCode 读常量，System 跑外设；矩阵做调度，APB 挂串口定时器。**
 
@@ -142,7 +142,7 @@ Cortex-M3├── DCode ──► Flash（只读数据）
                  CPU 可去做别的事
 ```
 
-详见 [STM32外设说明.md](./STM32外设说明.md) §6.3。
+详见 [STM32外设说明.md](./STM32外设说明.md) §6.3；专文：[STM32-DMA说明.md](./STM32-DMA说明.md)。
 
 ---
 

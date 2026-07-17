@@ -27,7 +27,7 @@
 
 > 那这个就是我们本次的主角——**STM32 最小系统板**了。
 
-![STM32入门套件平铺](./attachments/stm32-kit-flatlay.png)
+![[attachments/stm32-kit-flatlay.png]]
 
 | 图中红圈 | 器件 |
 |----------|------|
@@ -40,7 +40,7 @@
 
 ### 1.2 传感器与执行器套件图
 
-![STM32传感器与执行器套件平铺](./attachments/stm32-sensor-kit-flatlay.png)
+![[attachments/stm32-sensor-kit-flatlay.png]]
 
 | 区域 | 器件 |
 |------|------|
@@ -55,7 +55,7 @@
 
 ### 1.3 组装实验图（联调平台）
 
-![STM32最小系统板+面包板硬件平台](./attachments/stm32-breadboard-platform.png)
+![[attachments/stm32-breadboard-platform.png]]
 
 图中在面包板平台上额外接有 **ST-Link V2**、**蜂鸣器模块** 等，用于烧录调试与告警实验（平铺图中未必全部出现，属正常扩展件）。
 
@@ -127,7 +127,7 @@
 
 ### 3.1 STM32 最小系统板（蓝 pill）
 
-![STM32F103C8T6蓝pill板载元器件](./attachments/stm32-blue-pill-board.png)
+![[attachments/stm32-blue-pill-board.png]]
 
 | 项 | 说明 |
 |----|------|
@@ -183,6 +183,8 @@
 | 3.3V | 3.3V（可选） |
 
 **记忆**：ST-Link 管 **「写进去、查得到」**；与后面 **USB-TTL 串口打印** 是两条独立链路。
+
+JTAG / SWD 概念对照见 [STM32-JTAG与SWD说明.md](./STM32-JTAG与SWD说明.md)。
 
 ---
 

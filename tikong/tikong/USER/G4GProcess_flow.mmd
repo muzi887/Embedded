@@ -1,0 +1,17 @@
+flowchart TB
+  Start([G4GProcess Start]) --> CheckRX{USART3_RX_Complete?}
+  CheckRX -- No --> End([Return])
+  CheckRX -- Yes --> EnsureNull[确保字符串以 '\\0' 结尾]
+  EnsureNull --> PrintRaw[打印原始接收数据]
+  PrintRaw --> Parse["调用 parseSerialData((char*)USART3_RX_BUF)"]
+  Parse --> ClearFlags[清零接收状态：USART3_RX_Complete=0; USART3_RX_CNT=0]
+  ClearFlags --> End([Return to 主循环])
+
+  subgraph 细节
+    direction LR
+    EnsureNull -->|若 USART3_RX_CNT < USART3_REC_LEN| NullTerminate["USART3_RX_BUF[USART3_RX_CNT]='\\0'"]
+    EnsureNull -->|否则| Truncate["USART3_RX_BUF[USART3_REC_LEN-1]='\\0'"]
+  end
+
+  style Start fill:#f9f,stroke:#333,stroke-width:1px
+  style End fill:#ff9,stroke:#333,stroke-width:1px

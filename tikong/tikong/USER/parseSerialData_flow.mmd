@@ -1,0 +1,78 @@
+flowchart TB
+  Start([parseSerialData 开始]) --> Receive[接收输入字符串]
+  Receive --> Trim[预处理：去首尾空白/长度校验]
+  Trim --> TryJSON{是否为 JSON 格式?}
+
+  TryJSON -- Yes --> ParseJSON[调用 cJSON_Parse]
+  ParseJSON --> JSON_ok{解析成功?}
+  JSON_ok -- No --> LogFail[记录解析错误 & 返回错误 ACK]
+  LogFail --> End([结束])
+
+  JSON_ok -- Yes --> ExtractCmd[从 JSON 中提取命令字段（如 cmd/type）]
+  ExtractCmd --> CmdSwitch{命令类型判断}
+
+  %% RS485/梯控指令
+  CmdSwitch -->|rs485| parse_rs485_json[parse_rs485_json]
+  parse_rs485_json --> rs485_steps
+  rs485_steps["校验字段 -> 构建 RS485 帧 -> 添加校验 -> 发送 RS485 -> 记录/上报"] --> Reply1[必要时构造 First_Reply / Four_Reply]
+  Reply1 --> End
+
+  %% 黑名单相关
+  CmdSwitch -->|add_blacklist| parse_addblack_json[parse_addblack_json]
+  parse_addblack_json --> add_steps
+  add_steps["字段校验 -> 权限/签名验证 -> 更新内存黑名单 -> EEPROM 持久化 -> 构建上报 JSON并发送"] --> End
+
+  CmdSwitch -->|del_blacklist| parse_delblack_json[parse_delblack_json]
+  parse_delblack_json --> del_steps
+  del_steps["字段校验 -> 权限/签名验证 -> 从内存删除 -> EEPROM 同步 -> 构建上报 JSON并发送"] --> End
+
+  %% 拉取/同步黑名单
+  CmdSwitch -->|tiqu_blacklist| parse_tiqublack_json[parse_tiqublack_json]
+  parse_tiqublack_json --> tiqu_steps
+  tiqu_steps["生成黑名单查询/同步请求 -> 发送到云/本地处理 -> 更新/回应"] --> End
+
+  %% 时间/运行态上报
+  CmdSwitch -->|uptime| parse_uptime_json[parse_uptime_json]
+  parse_uptime_json --> uptime_steps
+  uptime_steps["读取 DS3231 -> 格式化时间/ts -> 构建回执 JSON -> USART3_SendData 发送"] --> End
+
+  %% 公钥/密钥管理
+  CmdSwitch -->|upgongyao| parse_upgongyao_json[parse_upgongyao_json]
+  parse_upgongyao_json --> gongyao_steps
+  gongyao_steps["字段校验 -> 验证凭证/签名 -> SetDevicePublicKey 或 VerifyDeviceCredentials -> EEPROM 写入/读取 -> 回复/上报"] --> End
+
+  %% 非 JSON 或特殊前缀
+  TryJSON -- No --> CheckPrefix{是否为自定义前缀或数字前缀?}
+  CheckPrefix -- Yes --> PrefixHandler[按前缀解析（如 '1,' '2,' 等）]
+  PrefixHandler --> PrefixDispatch
+  PrefixDispatch -->|访客二维码上行| HandleCvj[调用 QR 解析或本地命令处理]
+  HandleCvj --> End
+  PrefixDispatch -->|其他| HandleOther[执行相应命令逻辑并上报]
+  HandleOther --> End
+
+  CheckPrefix -- No --> UnknownFormat[记录未知格式并返回错误 ACK]
+  UnknownFormat --> End
+
+  %% 共同步骤：权限/签名验证
+  subgraph SignVerify [签名/权限校验流程]
+    direction TB
+    SV1[提取待签名字符串或字段] --> SV2[计算哈希（sha1_hash）]
+    SV2 --> SV3[VerifySignature 比对签名]
+    SV3 -- OK --> SV_OK[继续执行]
+    SV3 -- Fail --> SV_FAIL[拒绝并上报失败]
+    SV_FAIL --> End
+  end
+
+  %% 共同回复通路
+  subgraph ReplyPath [构建回复/上报]
+    direction TB
+    BuildReport[构建 JSON 报文或回执] --> SendUSART[通过 USART3_SendData 发送]
+    BuildReport --> OrRS485[或通过 RS485_SendData 转发]
+    SendUSART --> End
+    OrRS485 --> End
+  end
+
+  style Start fill:#f2f8ff,stroke:#036,stroke-width:1px
+  style End fill:#fffbe6,stroke:#b57f00,stroke-width:1px
+  classDef service fill:#e6ffef,stroke:#0a7f3b
+  class parse_rs485_json,parse_addblack_json,parse_delblack_json,parse_tiqublack_json,parse_uptime_json,parse_upgongyao_json service

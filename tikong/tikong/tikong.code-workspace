@@ -1,0 +1,14 @@
+{
+    "folders": [
+        {
+            "name": "tikong",
+            "path": "."
+        }
+    ],
+    "settings": {},
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools"
+        ]
+    }
+}

@@ -1,0 +1,48 @@
+# Git 忽略文件配置
+
+# 编译输出文件
+OBJ/
+*.o
+*.d
+*.crf
+*.lst
+*.map
+*.hex
+*.bin
+*.elf
+*.axf
+
+# Keil MDK 项目文件（个人配置）
+*.uvguix.*
+*.uvoptx
+*.dbgconf
+*.scvd
+*.ini
+*.log
+
+# 临时文件和备份文件
+*.tmp
+*.swp
+*~
+*.orig
+*.bak
+*_副本.*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE 配置文件
+.vscode/
+.idea/
+*.suo
+*.user
+*.sdf
+*.opensdf
+
+# 文档和日志
+JLinkLog.txt
+
+# 批处理脚本输出
+*.exe

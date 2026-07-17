@@ -1,0 +1,3 @@
+﻿# AT reference — firmware uses k_cmds[] in uart3_at_sequence.c
+AT
+AT+CSQ

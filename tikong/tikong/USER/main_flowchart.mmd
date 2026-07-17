@@ -1,0 +1,74 @@
+flowchart TB
+  Start([启动]) --> Init[初始化硬件与外设]
+  Init --> NVIC[配置中断优先级]
+  Init --> Delay[延时子系统初始化]
+  Init --> UARTs[初始化串口：PC/RS485/4G/QR]
+  Init --> I2C[初始化I2C（RTC/EEPROM）]
+  Init --> Timers[TIM3/TIM4 初始化]
+  Init --> ReadKey[从 EEPROM 读取公钥/配置信息]
+  Init --> LoadBlacklist[加载黑名单到内存]
+  Init --> MainLoop[进入主循环]
+
+  subgraph 主循环
+    direction TB
+    MainLoop --> PCProcess[PCProcess: 处理PC调试串口]
+    PCProcess --> MainLoop
+    MainLoop --> Rs485Process[Rs485Process: 处理RS485回执/转发]
+    Rs485Process --> MainLoop
+    MainLoop --> G4GProcess[G4GProcess: 处理4G上报/下发]
+    G4GProcess --> MainLoop
+    MainLoop --> QRProcess[QRProcess: 处理二维码输入]
+    QRProcess --> MainLoop
+  end
+
+  subgraph QR流程
+    direction TB
+    QRProcess --> Extract[提取有效数据]
+    Extract --> IsCvj{是否CVJ格式}
+    IsCvj -- 否 --> NonCvj[非访客指令：报警/上报]
+    NonCvj --> MainLoop
+
+    IsCvj -- 是 --> CmdDetect[识别命令类型（1..6）]
+    CmdDetect -->|1| DoCmd1[DoCmd1: 新增黑名单]
+    CmdDetect -->|2| DoCmd2[DoCmd2: 删除黑名单]
+    CmdDetect -->|3| DoCmd3[DoCmd3: 访问/放行（梯控）]
+    CmdDetect -->|4| DoCmd4[DoCmd4: 更新公钥]
+    CmdDetect -->|5| DoCmd5[DoCmd5: 更新时间]
+    CmdDetect -->|6| DoCmd6[DoCmd6: 清空黑名单]
+
+    DoCmd1 --> BuildJson1[构建待签名数据]
+    DoCmd2 --> BuildJson1
+    DoCmd3 --> BuildJson3[构建放行签名数据]
+    DoCmd4 --> ParseAndAuth[解析凭证并验证账号密码]
+    DoCmd5 --> ParseAndAuth
+    DoCmd6 --> ParseAndAuth
+
+    BuildJson1 --> Sha1[计算 SHA1]
+    BuildJson3 --> Sha1
+    Sha1 --> VerifySig{签名验证通过?}
+    VerifySig -- 否 --> Reject[拒绝：蜂鸣/上报失败]
+    Reject --> MainLoop
+    VerifySig -- 是 --> ExecCmd[执行命令（更新黑名单/发送梯控帧/写入公钥/设置RTC）]
+    ExecCmd --> Report[事件上报（通过4G）]
+    Report --> MainLoop
+
+    DoCmd3 --> CheckBlacklist[黑名单校验]
+    CheckBlacklist -- 在黑名单 --> Reject
+    CheckBlacklist -- 非黑名单 --> CheckPeriod[有效期校验]
+    CheckPeriod -- 过期 --> Reject
+    CheckPeriod -- 有效 --> BuildFrame[构造梯控帧并发送RS485]
+    BuildFrame --> RS485Send[发送 RS485]
+    RS485Send --> Report
+  end
+
+  subgraph 定时/异步
+    direction TB
+    TIM3[TIM3 ISR] --> m_cnt[计数 m_cnt/h_cnt]
+    m_cnt -->|20s后| NetTimeFlag[设置网络时间同步标志]
+    NetTimeFlag --> MainLoop
+    TIM4[TIM4 ISR] --> BeepCtrl["蜂鸣器节奏控制 (BeepNum/beepout)"]
+  end
+
+  %% 结束
+  Report --> End([继续循环])
+  MainLoop --> End

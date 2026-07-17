@@ -1,0 +1,29 @@
+@startuml
+start
+:系统上电/重启;
+:初始化外设与数据;
+while (主循环) is (true)
+  fork
+    :PCProcess() - 处理串口1;
+  fork again
+    :Rs485Process() - 处理RS485;
+  fork again
+    :G4GProcess() - 处理4G收发;
+  fork again
+    :QRProcess() - 处理二维码;
+  end fork
+endwhile
+stop
+
+' QRProcess 细节
+
+note right
+QRProcess:
+ - 复制接收数据
+ - ExtractValidData_Bytes -> valid_data
+ - IsCvjFormat ?
+ - 若是 -> 根据 Cmd 分发 DoCmd1..DoCmd6
+ - 否 -> 上报失败
+end note
+
+@enduml

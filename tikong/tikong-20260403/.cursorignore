@@ -1,0 +1,55 @@
+# Cursor 忽略文件配置
+# 这些文件和目录将被 Cursor AI 忽略，不会用于代码分析和建议
+
+# 编译输出文件
+OBJ/
+*.o
+*.d
+*.crf
+*.lst
+*.map
+*.hex
+*.bin
+*.elf
+*.axf
+
+# Keil MDK 项目文件
+*.uvguix.*
+*.uvoptx
+*.uvprojx
+*.dbgconf
+*.scvd
+*.ini
+*.log
+*.bak
+*.orig
+
+# 临时文件和备份文件
+*.tmp
+*.swp
+*~
+*.orig
+*.bak
+*_副本.*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE 配置文件
+.vscode/*
+!.vscode/c_cpp_properties.json
+.idea/
+*.suo
+*.user
+*.sdf
+*.opensdf
+
+# 文档和日志
+JLinkLog.txt
+*.txt
+README/
+
+# 批处理脚本（通常不需要 AI 分析）
+*.bat
