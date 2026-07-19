@@ -49,7 +49,7 @@ static void USART1_DMA_Init(void)
 }
 
 // USART1初始化
-void uart_init(u32 bound)
+void uart1_init(u32 bound)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     USART_InitTypeDef USART_InitStructure;

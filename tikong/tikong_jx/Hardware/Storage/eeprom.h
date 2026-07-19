@@ -50,6 +50,7 @@ void EEPROM_ReadBuffer(uint16_t eeaddress, uint8_t *buffer, uint16_t length, con
 void WriteKey(const char *key_value,int addr,int len);
 /** 写入 len 字节二进制（可含 0x00）；data 为 NULL 时将该地址起的 len 字节清零 */
 void WriteRawBytes(const uint8_t *data, int addr, int len);
+/** 从 EEPROM 装载设备/MQTT/限层等到全局变量（board_init 调用） */
 void ReadKey(void);
 /** 将 ReadKey 所读 EEPROM 字段全部清零，并调用 ReadKey 刷新内存与应用解析状态 */
 void EEPROM_ClearAllParams(void);

@@ -411,19 +411,26 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	pwd_Reply(ts, ts, pwd4_value, g_result);
 }
 
+/**
+ * QRProcessUart5 — 读头 2（UART5）通行业务轮询
+ *
+ * 由 app_poll() 调用。驱动 DMA/IDLE 置 UART5_RX_Complete 后：
+ *  1) 将 UART5_RX_BUF 追加到 uart5_rx_accum
+ *  2) 对齐到 '{'，凑齐完整 "{...}" 帧后再解析
+ *  3) 切片 type / data / uid（搜键名须带引号，避免 data 内容误匹配）
+ *  4) type 为 '0'/'1' → CommContrl(..., 5)；'2' → 密码处理
+ * 说明见 docs/pass/qr-process-uart45.md
+ */
 void QRProcessUart5(void)
 {
 	int i;
 
 	if (UART5_RX_Complete)
 	{
-		// RtcChip_TimestampMillisToStr(ts, sizeof(ts));
-		// 			 g_result.code = 200;
-		// 			 g_result.msg = "permission verify success";
-		//              qr_Reply(ts, ts, g_result,"{\\\"type\\\":\\\"qr_permission_verify_result\\\",\\\"data\\\":\\\"success\\\"}");
-
+		/* 追加本帧 DMA 缓冲到累积区（可跨多次 IDLE 拼包） */
 		for (i = 0; i < UART5_RX_CNT && uart5_rx_accum_len < UART5_RX_ACCUM_MAX; i++)
 			uart5_rx_accum[uart5_rx_accum_len++] = UART5_RX_BUF[i];
+		/* 丢掉 '{' 之前的噪声 */
 		for (i = 0; i < (int)uart5_rx_accum_len; i++)
 		{
 			if (uart5_rx_accum[i] == '{')
@@ -435,23 +442,24 @@ void QRProcessUart5(void)
 			memmove(uart5_rx_accum, uart5_rx_accum + i, keep);
 			uart5_rx_accum_len = keep;
 		}
+		/* 首 '{' 且末 '}' 才视为完整 JSON 对象帧 */
 		if (uart5_rx_accum_len >= 2u &&
 			uart5_rx_accum[0] == '{' &&
 			uart5_rx_accum[uart5_rx_accum_len - 1u] == '}')
 		{
-			/* 缓冲区为完整花括号帧，在此处理 uart5_rx_accum[0..uart5_rx_accum_len-1] */
 			int itype = uart5_find_sub(uart5_rx_accum, uart5_rx_accum_len, "\"type\"");
 			int idata = uart5_find_sub(uart5_rx_accum, uart5_rx_accum_len, "\"data\"");
-			/* 必须用 JSON 键 "\"uid\""，勿仅用 uid：否则 data 内十六进制若含 uid 会提前截断/拉长切片 */
+			/* 须搜 "\"uid\""，勿仅用 uid，以免 data 内十六进制子串误匹配 */
 			int iuid = uart5_find_sub(uart5_rx_accum, uart5_rx_accum_len, "\"uid\"");
-			//-------------ALL DATA--------------------
+
 			printf("Received UART5 data: ");
 			for (i = 0; i < uart5_rx_accum_len; i++)
 			{
 				printf("%c", uart5_rx_accum[i]);
 			}
 			printf("\r\n");
-			//---------------------------------
+
+			/* --- 切 type --- */
 			uart5_type_slice_len = 0;
 			if (itype >= 0 && idata >= 0 && idata >= 2)
 			{
@@ -471,24 +479,18 @@ void QRProcessUart5(void)
 						uart5_type_slice[n] = '\0';
 				}
 			}
-			//-------------TYPE--------------------
 			memset(order_type_uart5, 0, sizeof(order_type_uart5));
 			for (i = 0; i < uart5_type_slice_len && i < (int)sizeof(order_type_uart5) - 1; i++)
 			{
 				printf("type-->%c\r\n", uart5_type_slice[i]);
 				order_type_uart5[i] = uart5_type_slice[i];
 			}
-			//--------------DATA-------------------
+			/* --- 切 data（值位于 "data": 与 ,"uid" 之间） --- */
 			uart5_data_slice_len = 0;
 			if (idata >= 0 && iuid >= 2)
 			{
-				/* idata 为 "\"data\"" 的起始引号：跳过 \"data\"\": 共 8 字到 data 字符串值 */
+				/* idata 指向 "\"data\"" 起始引号：+8 跳到值；cut_end=iuid-2 不含结尾引号与逗号 */
 				u16 cut_start = (u16)idata + 8u;
-				/*
-				 * iuid 为 "\"uid\"" 的起始引号（紧跟 data 值后面的 ," 这两字之后）。
-				 * JSON 片段： ...060","uid"  → data 值应在第一个 \" 处结束（不含该引号及逗号）。
-				 * 故 exclusive cut_end = iuid - 2（与同帧旧算法里 iuid 指字母 u 时用 iuid-3 等价）。
-				 */
 				u16 cut_end = (u16)iuid - 2u;
 
 				if (cut_start < cut_end && cut_end <= uart5_rx_accum_len)
@@ -508,7 +510,7 @@ void QRProcessUart5(void)
 				printf("%c", uart5_data_slice[i]);
 			}
 			printf("\r\n");
-			//--------------UID-------------------
+			/* --- 切 uid --- */
 			card_Number_uart5[0] = '\0';
 			if (iuid >= 0)
 			{
@@ -553,18 +555,17 @@ void QRProcessUart5(void)
 				s_received_len_uart5 = (uart5_data_slice_len < MAX_RECEIVE_LEN - 1) ? uart5_data_slice_len : (MAX_RECEIVE_LEN - 1);
 				memcpy(s_received_uart5, uart5_data_slice, s_received_len_uart5);
 				s_received_uart5[s_received_len_uart5] = '\0';
-				// 1、二维码，0、NFC
+				/* type: '1' 二维码 / '0' NFC → 命令分发；'2' 密码 */
 				if (uart5_type_slice_len == 1 && (uart5_type_slice[0] == '1' || uart5_type_slice[0] == '0'))
 				{
 					CommContrl(s_received_uart5, order_type_uart5, card_Number_uart5, 5);
 				}
-				// 2、密码
 				else if (uart5_type_slice_len == 1 && uart5_type_slice[0] == '2')
 				{
 					qr_handle_password_input(s_received_uart5, 5);
 				}
 			}
-			// 处理完成后，重置累积缓冲区和切片状态，以准备下一帧数据的接收和处理
+			/* 完整帧已处理：清空累积与切片，准备下一帧 */
 			uart5_rx_accum_len = 0;
 			uart5_data_slice_len = 0;
 			uart5_type_slice_len = 0;
@@ -573,6 +574,7 @@ void QRProcessUart5(void)
 			memset(uart5_data_slice, 0, sizeof(uart5_data_slice));
 		}
 
+		/* 无论是否凑齐完整帧，都清驱动标志，允许收下一截 */
 		UART5_RX_Complete = 0;
 		UART5_RX_CNT = 0;
 
@@ -580,19 +582,22 @@ void QRProcessUart5(void)
 	}
 }
 
+/**
+ * QRProcessUart4 — 读头 1（UART4）通行业务轮询
+ *
+ * 逻辑与 QRProcessUart5 对称，独立缓冲 uart4_*；CommContrl / 密码端口号为 4。
+ * 说明见 docs/pass/qr-process-uart45.md
+ */
 void QRProcessUart4(void)
 {
 	int i;
 
 	if (UART4_RX_Complete)
 	{
-		// RtcChip_TimestampMillisToStr(ts, sizeof(ts));
-		// 			 g_result.code = 200;
-		// 			 g_result.msg = "permission verify success";
-		//              qr_Reply(ts, ts, g_result,"{\\\"type\\\":\\\"qr_permission_verify_result\\\",\\\"data\\\":\\\"success\\\"}");
-
+		/* 追加本帧 DMA 缓冲到累积区（可跨多次 IDLE 拼包） */
 		for (i = 0; i < UART4_RX_CNT && uart4_rx_accum_len < UART4_RX_ACCUM_MAX; i++)
 			uart4_rx_accum[uart4_rx_accum_len++] = UART4_RX_BUF[i];
+		/* 丢掉 '{' 之前的噪声 */
 		for (i = 0; i < (int)uart4_rx_accum_len; i++)
 		{
 			if (uart4_rx_accum[i] == '{')
@@ -604,23 +609,24 @@ void QRProcessUart4(void)
 			memmove(uart4_rx_accum, uart4_rx_accum + i, keep);
 			uart4_rx_accum_len = keep;
 		}
+		/* 首 '{' 且末 '}' 才视为完整 JSON 对象帧 */
 		if (uart4_rx_accum_len >= 2u &&
 			uart4_rx_accum[0] == '{' &&
 			uart4_rx_accum[uart4_rx_accum_len - 1u] == '}')
 		{
-			/* 缓冲区为完整花括号帧，在此处理 uart4_rx_accum[0..uart4_rx_accum_len-1] */
 			int itype = uart4_find_sub(uart4_rx_accum, uart4_rx_accum_len, "\"type\"");
 			int idata = uart4_find_sub(uart4_rx_accum, uart4_rx_accum_len, "\"data\"");
-			/* 必须用 JSON 键 "\"uid\""，勿仅用 uid：否则 data 内十六进制若含 uid 会提前截断/拉长切片 */
+			/* 须搜 "\"uid\""，勿仅用 uid，以免 data 内十六进制子串误匹配 */
 			int iuid = uart4_find_sub(uart4_rx_accum, uart4_rx_accum_len, "\"uid\"");
-			//-------------ALL DATA--------------------
+
 			printf("Received UART4 data: ");
 			for (i = 0; i < uart4_rx_accum_len; i++)
 			{
 				printf("%c", uart4_rx_accum[i]);
 			}
 			printf("\r\n");
-			//---------------------------------
+
+			/* --- 切 type --- */
 			uart4_type_slice_len = 0;
 			if (itype >= 0 && idata >= 0 && idata >= 2)
 			{
@@ -640,24 +646,18 @@ void QRProcessUart4(void)
 						uart4_type_slice[n] = '\0';
 				}
 			}
-			//-------------TYPE--------------------
 			memset(order_type_uart4, 0, sizeof(order_type_uart4));
 			for (i = 0; i < uart4_type_slice_len && i < (int)sizeof(order_type_uart4) - 1; i++)
 			{
 				printf("type-->%c\r\n", uart4_type_slice[i]);
 				order_type_uart4[i] = uart4_type_slice[i];
 			}
-			//--------------DATA-------------------
+			/* --- 切 data（值位于 "data": 与 ,"uid" 之间） --- */
 			uart4_data_slice_len = 0;
 			if (idata >= 0 && iuid >= 2)
 			{
-				/* idata 为 "\"data\"" 的起始引号：跳过 \"data\"\": 共 8 字到 data 字符串值 */
+				/* idata 指向 "\"data\"" 起始引号：+8 跳到值；cut_end=iuid-2 不含结尾引号与逗号 */
 				u16 cut_start = (u16)idata + 8u;
-				/*
-				 * iuid 为 "\"uid\"" 的起始引号（紧跟 data 值后面的 ," 这两字之后）。
-				 * JSON 片段： ...060","uid"  → data 值应在第一个 \" 处结束（不含该引号及逗号）。
-				 * 故 exclusive cut_end = iuid - 2（与同帧旧算法里 iuid 指字母 u 时用 iuid-3 等价）。
-				 */
 				u16 cut_end = (u16)iuid - 2u;
 
 				if (cut_start < cut_end && cut_end <= uart4_rx_accum_len)
@@ -677,7 +677,7 @@ void QRProcessUart4(void)
 				printf("%c", uart4_data_slice[i]);
 			}
 			printf("\r\n");
-			//--------------UID-------------------
+			/* --- 切 uid --- */
 			card_Number_uart4[0] = '\0';
 			if (iuid >= 0)
 			{
@@ -722,18 +722,17 @@ void QRProcessUart4(void)
 				s_received_len_uart4 = (uart4_data_slice_len < MAX_RECEIVE_LEN - 1) ? uart4_data_slice_len : (MAX_RECEIVE_LEN - 1);
 				memcpy(s_received_uart4, uart4_data_slice, s_received_len_uart4);
 				s_received_uart4[s_received_len_uart4] = '\0';
-				// 1、二维码，0、NFC
+				/* type: '1' 二维码 / '0' NFC → 命令分发；'2' 密码 */
 				if (uart4_type_slice_len == 1 && (uart4_type_slice[0] == '1' || uart4_type_slice[0] == '0'))
 				{
 					CommContrl(s_received_uart4, order_type_uart4, card_Number_uart4, 4);
 				}
-				// 2、密码
 				else if (uart4_type_slice_len == 1 && uart4_type_slice[0] == '2')
 				{
 					qr_handle_password_input(s_received_uart4, 4);
 				}
 			}
-			// 处理完成后，重置累积缓冲区和切片状态，以准备下一帧数据的接收和处理
+			/* 完整帧已处理：清空累积与切片，准备下一帧 */
 			uart4_rx_accum_len = 0;
 			uart4_data_slice_len = 0;
 			uart4_type_slice_len = 0;
@@ -742,6 +741,7 @@ void QRProcessUart4(void)
 			memset(uart4_data_slice, 0, sizeof(uart4_data_slice));
 		}
 
+		/* 无论是否凑齐完整帧，都清驱动标志，允许收下一截 */
 		UART4_RX_Complete = 0;
 		UART4_RX_CNT = 0;
 

@@ -9,15 +9,15 @@ static const uint8_t month_days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 3
 //???????
 void RtcChip_SetTime(RTC_Time *time) 
 {
-	u8 buf[7];
-	buf[0] = dec_to_bcd(time->second);
-  buf[1] = dec_to_bcd(time->minute);
-  buf[2] = dec_to_bcd(time->hour);
-  buf[3] = dec_to_bcd(time->date);
-  buf[4] = dec_to_bcd(time->month);
-  buf[5] = dec_to_bcd(time->dayOfWeek);
-  buf[6] = dec_to_bcd(time->year);
-	ds1302_settime(buf);
+    u8 buf[7];
+    buf[0] = dec_to_bcd(time->second);
+    buf[1] = dec_to_bcd(time->minute);
+    buf[2] = dec_to_bcd(time->hour);
+    buf[3] = dec_to_bcd(time->date);
+    buf[4] = dec_to_bcd(time->month);
+    buf[5] = dec_to_bcd(time->dayOfWeek);
+    buf[6] = dec_to_bcd(time->year);
+    ds1302_settime(buf);
 }
 
 //??????
@@ -26,13 +26,13 @@ void RtcChip_GetTime(RTC_Time *time)
 	u8 buf[7];
 	ds1302_gettime(buf);	
 	time->second 		= buf[0];
-  time->minute 		= buf[1];
-  time->hour      = buf[2];
-  time->date      = buf[3];
-  time->month     = buf[4];
-  time->dayOfWeek = buf[5];
-  time->year      = buf[6];
-  printf("RTC get time: 20%02d-%02d-%02d %02d:%02d:%02d\r\n",
+    time->minute 		= buf[1];
+    time->hour      = buf[2];
+    time->date      = buf[3];
+    time->month     = buf[4];
+    time->dayOfWeek = buf[5];
+    time->year      = buf[6];
+    printf("RTC get time: 20%02d-%02d-%02d %02d:%02d:%02d\r\n",
            time->year, time->month, time->date,
            time->hour, time->minute, time->second);
 }

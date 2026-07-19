@@ -17,7 +17,7 @@ docs/
 ├── README.md          ← 本索引
 ├── overview/          跨模块：总览、入门、清单、主流程图
 ├── pass/              通行（对齐 App/Pass；专文待补）
-├── cloud/             云（对齐 App/Cloud；专文待补）
+├── cloud/             云（对齐 App/Cloud；含 4g/ 资料导读）
 ├── store/             存储 / EEPROM
 ├── serial/            串口通路
 ├── setup/             工程搭建、Keil、目录重构说明
@@ -34,7 +34,9 @@ docs/
 | [onboarding-f103.md](./overview/onboarding-f103.md) | 对照 F103 基础的接手规划 |
 | [source-inventory.md](./overview/source-inventory.md) | 源码职责清单（填表） |
 | [inventory-template.md](./overview/inventory-template.md) | 清单方法与空模板 |
-| [main-flowchart.mmd](./overview/main-flowchart.mmd) | 主程序流程图（Mermaid） |
+| [main-flowchart.mmd](./overview/main-flowchart.mmd) | 主程序流程图（Mermaid，部分节点偏旧） |
+| [flows/app-poll-flow.md](./overview/flows/app-poll-flow.md) | `app_poll()`：日常四路轮询与 AT 互斥 |
+| [flows/directory-tree.md](./overview/flows/directory-tree.md) | 工程目录树（按文件作用） |
 | `开发主要问题.doc` | 开发问题备忘（二进制） |
 | `梯控门禁网关V2_20260429(2).docx` | 产品/网关说明（二进制） |
 
@@ -42,13 +44,30 @@ docs/
 
 ## pass/ — 通行
 
-暂无独立专文。源码见 `App/Pass/`（`qr_comm`、`cmd`、`data_handler`）。
+| 文件 | 说明 |
+| --- | --- |
+| [qr-process-uart45.md](./pass/qr-process-uart45.md) | `QRProcessUart4` / `QRProcessUart5`：读头轮询、JSON 切片、进 `CommContrl` |
+| [memcpy-memset.md](./pass/memcpy-memset.md) | `memcpy` / `memset`：标准库用法与读头路径中的作用 |
+| [commcontrl-permission-chain.md](./pass/commcontrl-permission-chain.md) | `CommContrl` 调用条件；与 `Cmd_Permission` → `ProcessElevator` 关系 |
+| [password-4digit-auth.md](./pass/password-4digit-auth.md) | 四位口令固件校验：摘要、拆位、按设备类型授权 |
+
+其它源码见 `App/Pass/`（`qr_comm`、`cmd`、`data_handler`）。
 
 ---
 
 ## cloud/ — 云
 
-暂无独立专文。源码见 `App/Cloud/`（`g4g_comm`、`Live_data*`、`uart3_at_sequence`）。
+| 文件 | 说明 |
+| --- | --- |
+| [parseSerialData-case101.md](./cloud/parseSerialData-case101.md) | `parseSerialData`：`数字,JSON`；以 case 101 RS485 透传追本地动作+回执 |
+| [thing-model-v2.md](./cloud/thing-model-v2.md) | 网关 V2 物模型：事件/服务表格 + 固件对照 |
+| [thing-model-v2.json](./cloud/thing-model-v2.json) | 网关 V2 物模型完整 JSON |
+| [4g/pdf-reading-order.md](./cloud/4g/pdf-reading-order.md) | 阶段 D：本目录 PDF/资料阅读顺序与源码对照 |
+| [4g/source-map.md](./cloud/4g/source-map.md) | 阶段 D：从 `main` 分叉对照 4G 源码（配网路 / JSON 路） |
+| [4g/at-config-flow.md](./cloud/4g/at-config-flow.md) | 4G AT 配网整流程：触发、状态机、19 条命令、EEPROM/复位 |
+| [4g/foolproof-header.md](./cloud/4g/foolproof-header.md) | 说明书「双排插针防呆设计」含义（装配防错，非 AT） |
+
+源码见 `App/Cloud/`（`g4g_comm`、`Live_data*`、`uart3_at_sequence`）；模组驱动见 `Hardware/Modem/`。
 
 ---
 
@@ -56,7 +75,8 @@ docs/
 
 | 文件 | 说明 |
 | --- | --- |
-| [eeprom.md](./store/eeprom.md) | 外挂 EEPROM：地址布局、黑名单/公钥、驱动 API |
+| [storage-logic.md](./store/storage-logic.md) | 阶段 E：上电装载、黑名单/配置/RTC/限层回写逻辑 |
+| [eeprom.md](./store/eeprom.md) | 外挂 EEPROM：AT24C32 地址布局、驱动 API |
 
 ---
 

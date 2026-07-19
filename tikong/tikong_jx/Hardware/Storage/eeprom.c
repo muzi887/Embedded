@@ -154,6 +154,14 @@ void EEPROM_ClearAllParams(void)
   ReadKey();
 }
 
+/**
+ * 上电从 EEPROM 装载设备配置到全局变量（不止公钥）。
+ * 调用点：board_init() 在 AT24C32_I2C_Init() 之后。
+ * 内容：设备 id/口令/类型/编号/公钥/模式/漂移时间、MQTT 四元组、
+ *       限层位图（FloorCtrl_SetLimit）与限层截止时间；
+ *       读完 mode 后 ParseDeviceModeRlyTimes() 解析继电器吸合时长。
+ * 未写过的文本区首字节 0xFF 视为空（见 EEPROM_ReadTextField）。
+ */
 void ReadKey(void)
 {
   printf("eeprom Reading keys...\r\n");

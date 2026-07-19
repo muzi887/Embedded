@@ -21,7 +21,7 @@ void board_init(void)
 	delay_init(168);
 	delay_ms(500);
 	Led_Init();
-	uart_init(115200);    //pc
+	uart1_init(115200);    //pc
 	
 	RS485_Init(9600);     //uart2
 	uart3_init(115200);   //4g
@@ -43,7 +43,7 @@ void board_init(void)
 	
 	
 	delay_ms(10);
-    AT24C32_I2C_Init();
+  AT24C32_I2C_Init();
 	ReadKey();
 	//(void)ParseDeviceModeRlyTimes(); /* g_device_mode → rly_1_time / rly_2_time */
 

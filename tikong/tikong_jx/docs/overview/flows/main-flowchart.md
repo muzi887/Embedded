@@ -1,3 +1,4 @@
+```mermaid
 flowchart TB
   Start([启动]) --> Init[初始化硬件与外设]
   Init --> NVIC[配置中断优先级]
@@ -72,3 +73,4 @@ flowchart TB
   %% 结束
   Report --> End([继续循环])
   MainLoop --> End
+```

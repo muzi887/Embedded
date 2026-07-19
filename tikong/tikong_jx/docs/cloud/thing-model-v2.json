@@ -1,0 +1,964 @@
+{
+  "properties": [],
+  "events": [
+    {
+      "productId": "30",
+      "key": "card_unvarnished_transmission",
+      "name": "刷卡透传",
+      "eventType": "info",
+      "description": "将读取的的刷卡信息透传给平台",
+      "outputData": [
+        {
+          "key": "cardData",
+          "name": "卡片数据",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 4096
+            }
+          }
+        },
+        {
+          "key": "cardNumber",
+          "name": "卡号(物理卡号)",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          }
+        },
+        {
+          "key": "cardTime",
+          "name": "刷卡时间",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 32
+            }
+          }
+        },
+        {
+          "key": "handleResult",
+          "name": "处理结果",
+          "dataType": {
+            "type": "struct",
+            "specifications": [
+              {
+                "key": "code",
+                "name": "编码",
+                "dataType": {
+                  "type": "enum",
+                  "specifications": {
+                    "200": "放行",
+                    "400": "参数错误",
+                    "401": "无权限"
+                  }
+                }
+              },
+              {
+                "key": "msg",
+                "name": "消息内容",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              },
+              {
+                "key": "error",
+                "name": "错误",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 128
+                  }
+                }
+              },
+              {
+                "key": "errorDescription",
+                "name": "错误描述",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "functionType": "事件"
+    },
+    {
+      "productId": "30",
+      "key": "password_unvarnished_transmission",
+      "name": "密码透传",
+      "eventType": "info",
+      "description": "将读取到的密码信息透传给平台",
+      "outputData": [
+        {
+          "key": "handleResult",
+          "name": "处理结果",
+          "dataType": {
+            "type": "struct",
+            "specifications": [
+              {
+                "key": "code",
+                "name": "编码",
+                "dataType": {
+                  "type": "enum",
+                  "specifications": {
+                    "200": "放行",
+                    "401": "无权限"
+                  }
+                }
+              },
+              {
+                "key": "msg",
+                "name": "消息内容",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              },
+              {
+                "key": "error",
+                "name": "错误",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 128
+                  }
+                }
+              },
+              {
+                "key": "errorDescription",
+                "name": "错误描述",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "key": "passwordData",
+          "name": "密码数据",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 32
+            }
+          }
+        },
+        {
+          "key": "passwordTime",
+          "name": "密码时间",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 32
+            }
+          }
+        }
+      ],
+      "functionType": "事件"
+    },
+    {
+      "productId": "30",
+      "key": "qr_code_unvarnished_transmission",
+      "name": "二维码透传",
+      "eventType": "info",
+      "description": "将二维码的识别结果上报给平台，无论是否能解析成功。",
+      "outputData": [
+        {
+          "key": "handleResult",
+          "name": "处理结果",
+          "dataType": {
+            "type": "struct",
+            "specifications": [
+              {
+                "key": "code",
+                "name": "编码",
+                "dataType": {
+                  "type": "enum",
+                  "specifications": {
+                    "200": "放行",
+                    "400": "参数错误",
+                    "401": "无权限"
+                  }
+                }
+              },
+              {
+                "key": "msg",
+                "name": "消息内容",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              },
+              {
+                "key": "error",
+                "name": "错误",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 128
+                  }
+                }
+              },
+              {
+                "key": "errorDescription",
+                "name": "错误描述",
+                "dataType": {
+                  "type": "text",
+                  "specifications": {
+                    "maxLength": 256
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "key": "qrCodeData",
+          "name": "二维码数据",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 4096
+            }
+          }
+        },
+        {
+          "key": "qrCodeTime",
+          "name": "二维码识别时间",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 32
+            }
+          }
+        }
+      ],
+      "functionType": "事件"
+    }
+  ],
+  "services": [
+    {
+      "productId": "30",
+      "key": "blacklist_add",
+      "name": "黑名单新增",
+      "callType": "SYNC",
+      "description": "向设备增加黑名单信息",
+      "inputData": [
+        {
+          "key": "blacklist",
+          "name": "要添加的黑名信息",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 4096,
+              "item": {
+                "type": "struct",
+                "specifications": [
+                  {
+                    "key": "cardNumber",
+                    "name": "卡号",
+                    "dataType": {
+                      "type": "text",
+                      "specifications": {
+                        "maxLength": 10
+                      }
+                    }
+                  },
+                  {
+                    "key": "type",
+                    "name": "类型",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "1": "二维码",
+                        "2": "卡片"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paraOrder": "0"
+        }
+      ],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "200": "成功"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "blacklist_delete",
+      "name": "黑名单删除",
+      "callType": "SYNC",
+      "description": "删除设备中的黑名单信息",
+      "inputData": [
+        {
+          "key": "blacklist",
+          "name": "要删除的黑名信息",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 4096,
+              "item": {
+                "type": "struct",
+                "specifications": [
+                  {
+                    "key": "cardNumber",
+                    "name": "卡号",
+                    "dataType": {
+                      "type": "text",
+                      "specifications": {
+                        "maxLength": 10
+                      }
+                    }
+                  },
+                  {
+                    "key": "type",
+                    "name": "类型",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "1": "二维码",
+                        "2": "卡片"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paraOrder": "0"
+        }
+      ],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "200": "删除成功"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "blacklist_get",
+      "name": "获取黑名单信息",
+      "callType": "SYNC",
+      "description": "获取设备的黑名单信息",
+      "inputData": [],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "200": "获取成功"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        },
+        {
+          "key": "data",
+          "name": "附加数据（黑名单信息）",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 4096,
+              "item": {
+                "type": "struct",
+                "specifications": [
+                  {
+                    "key": "cardNumber",
+                    "name": "卡号",
+                    "dataType": {
+                      "type": "text",
+                      "specifications": {
+                        "maxLength": 10
+                      }
+                    }
+                  },
+                  {
+                    "key": "type",
+                    "name": "类型",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "1": "二维码",
+                        "2": "卡片"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paraOrder": "4"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "call_elevator",
+      "name": "呼梯",
+      "callType": "SYNC",
+      "description": "远程呼叫电梯",
+      "inputData": [
+        {
+          "key": "floorRelayNumbers",
+          "name": "楼层继电器编号",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 40,
+              "item": {
+                "type": "int32"
+              }
+            }
+          },
+          "paraOrder": "0"
+        }
+      ],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "200": "成功",
+              "400": "参数错误",
+              "500": "设备错误"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "device_config",
+      "name": "设备配置",
+      "callType": "SYNC",
+      "description": "配置设备的基本信息",
+      "inputData": [
+        {
+          "key": "deviceType",
+          "name": "设备类型",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "1": "大门门禁",
+              "2": "单元门禁",
+              "3": "单元电梯"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "deviceCode",
+          "name": "设备编码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "seedPassword",
+          "name": "种子密码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "deviceTime",
+          "name": "设备时间",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 16
+            }
+          },
+          "paraOrder": "3"
+        },
+        {
+          "key": "doorConfig",
+          "name": "门禁配置",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 2,
+              "item": {
+                "type": "struct",
+                "specifications": [
+                  {
+                    "key": "relayNumber",
+                    "name": "继电器编号",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "0": "0号继电器",
+                        "1": "1号继电器"
+                      }
+                    }
+                  },
+                  {
+                    "key": "defaultStatus",
+                    "name": "默认状态",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "0": "默认常开",
+                        "1": "默认常闭"
+                      }
+                    }
+                  },
+                  {
+                    "key": "defaultEnableTime",
+                    "name": "默认使能时间",
+                    "dataType": {
+                      "type": "int32",
+                      "specifications": {
+                        "min": null,
+                        "max": null,
+                        "stepSize": null,
+                        "unit": "s"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paraOrder": "4"
+        }
+      ],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "get_device_info",
+      "name": "设备信息获取",
+      "callType": "SYNC",
+      "description": "获取设备的基本信息",
+      "inputData": [],
+      "outputData": [
+        {
+          "key": "deviceAccount",
+          "name": "设备账号",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "devicePassword",
+          "name": "设备密码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "deviceType",
+          "name": "设备类型",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "1": "大门门禁",
+              "2": "单元门禁",
+              "3": "单元电梯"
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "deviceCode",
+          "name": "设备编码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "3"
+        },
+        {
+          "key": "seedPassword",
+          "name": "种子密码",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 64
+            }
+          },
+          "paraOrder": "4"
+        },
+        {
+          "key": "deviceTime",
+          "name": "设备时间",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 16
+            }
+          },
+          "paraOrder": "5"
+        },
+        {
+          "key": "doorConfig",
+          "name": "门禁配置",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 2,
+              "item": {
+                "type": "struct",
+                "specifications": [
+                  {
+                    "key": "relayNumber",
+                    "name": "继电器编号",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "0": "0号继电器",
+                        "1": "1号继电器"
+                      }
+                    }
+                  },
+                  {
+                    "key": "defaultStatus",
+                    "name": "默认状态",
+                    "dataType": {
+                      "type": "enum",
+                      "specifications": {
+                        "0": "默认常开",
+                        "1": "默认常闭"
+                      }
+                    }
+                  },
+                  {
+                    "key": "defaultEnableTime",
+                    "name": "默认使能时间",
+                    "dataType": {
+                      "type": "int32",
+                      "specifications": {
+                        "min": "",
+                        "max": null,
+                        "stepSize": null,
+                        "unit": "s"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "paraOrder": "6"
+        }
+      ],
+      "functionType": "服务"
+    },
+    {
+      "productId": "30",
+      "key": "open_door",
+      "name": "开门",
+      "callType": "SYNC",
+      "description": "远程开门",
+      "inputData": [
+        {
+          "key": "doorRelayNumbers",
+          "name": "门禁继电器",
+          "dataType": {
+            "type": "array",
+            "specifications": {
+              "size": 2,
+              "item": {
+                "type": "int32"
+              }
+            }
+          },
+          "paraOrder": "0"
+        }
+      ],
+      "outputData": [
+        {
+          "key": "code",
+          "name": "编码",
+          "dataType": {
+            "type": "enum",
+            "specifications": {
+              "200": "成功",
+              "400": "参数错误",
+              "500": "设备错误"
+            }
+          },
+          "paraOrder": "0"
+        },
+        {
+          "key": "msg",
+          "name": "消息内容",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "1"
+        },
+        {
+          "key": "error",
+          "name": "错误",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 128
+            }
+          },
+          "paraOrder": "2"
+        },
+        {
+          "key": "errorDescription",
+          "name": "错误描述",
+          "dataType": {
+            "type": "text",
+            "specifications": {
+              "maxLength": 256
+            }
+          },
+          "paraOrder": "3"
+        }
+      ],
+      "functionType": "服务"
+    }
+  ]
+}
