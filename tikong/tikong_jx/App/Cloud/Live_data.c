@@ -243,7 +243,7 @@ uint8_t call_readsetting_Reply(const char *messageId, const char *requestId, con
   const char *rts = (requestTimestamp && requestTimestamp[0]) ? requestTimestamp : "0";
   // ParseDeviceModeRlyTimes();
   RtcChip_GetTime(&currentTime2);
-  MakeTimestamp14FromDS3231(&currentTime2, device_time14);
+  MakeTimestamp14(&currentTime2, device_time14);
   (void)snprintf(json_str, sizeof(json_str),
                    "3,{"
                    "\"messageId\":%s,"
@@ -279,7 +279,7 @@ void card_Reply(const char *messageId, const char *requestTimestamp, CmdResult r
   const char *eerror = result.error ? result.error : "";
 
   RtcChip_GetTime(&now);
-  MakeTimestamp14FromDS3231(&now, out14);
+  MakeTimestamp14(&now, out14);
   snprintf(json_str, sizeof(json_str),
 					 "2,{"
 					 "\"messageId\": %s,"
@@ -319,7 +319,7 @@ void pwd_Reply(const char *messageId, const char *requestTimestamp, int password
   const char *emsg = result.msg ? result.msg : "";
   const char *eerror = result.error ? result.error : "";
   RtcChip_GetTime(&now);
-  MakeTimestamp14FromDS3231(&now, out14);
+  MakeTimestamp14(&now, out14);
   snprintf(json_str, sizeof(json_str),
 					 "2,{"
 					 "\"messageId\": %s,"
@@ -357,7 +357,7 @@ void qr_Reply(const char *messageId, const char *requestTimestamp, CmdResult res
   const char *eerror = result.error ? result.error : "";
 
   RtcChip_GetTime(&now);
-  MakeTimestamp14FromDS3231(&now, out14);
+  MakeTimestamp14(&now, out14);
   snprintf(json_str, sizeof(json_str),
 					 "2,{"
 					 "\"messageId\": %s,"

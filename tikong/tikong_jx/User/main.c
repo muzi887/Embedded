@@ -75,7 +75,7 @@ int main(void)
 				now = Get_CurrentTime();
 				if (parseYMDHMS(g_floors_limit_time, &limit_tm) == 0)
 				{
-					MakeTimestamp14FromDS3231(&now, now14);
+					MakeTimestamp14(&now, now14);
 
 					printf("current time111: %s\r\n", now14);
 					printf("floors limit time: %s\r\n", g_floors_limit_time);

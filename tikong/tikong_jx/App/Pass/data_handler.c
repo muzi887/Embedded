@@ -509,7 +509,7 @@ int VerifySignature(const char *sha1_hexstr, const char *valid_data)
 }
 
 /* ===== 将 RTC_Time 组装为 14 位时间戳 YYYYMMDDhhmmss ===== */
-void MakeTimestamp14FromDS3231(const RTC_Time *t, char out14[15])
+void MakeTimestamp14(const RTC_Time *t, char out14[15])
 {
   int fullYear;
   if (!t || !out14)
@@ -588,7 +588,7 @@ int CheckValidPeriod_WithNow(const char *valid_data, const RTC_Time *now)
   adjust_begin_time(begin14);
   /* 当前时间转 14 位 */
   printf("Adjusted begin time-2: %s\n", begin14);
-  MakeTimestamp14FromDS3231(now, now14);
+  MakeTimestamp14(now, now14);
 
   /* 直接用字典序比较：YYYYMMDDhhmmss 天然可用 strcmp */
   if (strcmp(begin14, now14) <= 0 && strcmp(now14, end14) <= 0)

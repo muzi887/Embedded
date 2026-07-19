@@ -60,7 +60,7 @@ void app_init(void)
 		return;
 
 	RtcChip_GetTime(&currentTime);
-	MakeTimestamp14FromDS3231(&currentTime, now14);
+	MakeTimestamp14(&currentTime, now14);
 
 	printf("current time: %s\r\n", now14);
 	printf("floors limit time: %s\r\n", g_floors_limit_time);

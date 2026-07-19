@@ -67,5 +67,5 @@ int IsSingleFloor(const uint8_t floors[7]);
 void adjust_begin_time(char *begin14);
 void Get_newTime(char *time, int minute, int act);
 char toLowerHex(char c);
-void MakeTimestamp14FromDS3231(const RTC_Time *t, char out14[15]);
+void MakeTimestamp14(const RTC_Time *t, char out14[15]);
 #endif

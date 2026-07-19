@@ -442,7 +442,7 @@ static int Cmd_Set_OpenLimit(char received_data[])
 	Refresh_CurrentTime();
 	now = Get_CurrentTime();
 
-	MakeTimestamp14FromDS3231(&now, now14);
+	MakeTimestamp14(&now, now14);
 
 	printf("current time: %s\r\n", now14);
 	printf("floors limit time: %s\r\n", recv_floors_limit_time);
@@ -989,7 +989,7 @@ static void Cmd_Permission_CheckTimeWindow(void)
 
 	Refresh_CurrentTime();
 	ct = Get_CurrentTime();
-	MakeTimestamp14FromDS3231(&ct, now14);
+	MakeTimestamp14(&ct, now14);
 	drift_min = atoi(g_device_drift_time);
 	Get_newTime(recv_arg_begin, drift_min, 0);
 	Get_newTime(recv_arg_end, drift_min, 1);
