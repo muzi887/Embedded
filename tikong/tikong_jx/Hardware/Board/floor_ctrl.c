@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-/* 梯控授权 5 字节位图状态（本模块私有） */
+/* 梯控授权 5 字节位图状态（本模块私有）（40 / 8 = 5） */
 static u8 s_elevator_tail5[5];
 static u8 s_elevator_tail5_mixed[5];
 static u8 s_elevator_tail5_limit[5];

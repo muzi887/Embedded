@@ -576,7 +576,7 @@ int parse_uptime_json(cJSON *root)
         time.tm_sec = second;
 
         currentTime.dayOfWeek = time.tm_wday == 0 ? 7 : time.tm_wday; // tm_wday 0=Sunday, 1=Monday, ..., 6=Saturday
-        // 调用 DS3231_SetTime 设置时间
+        // 调用 DS1302_SetTime 设置时间
         RtcChip_SetTime(&currentTime);
         delay_ms(100);
         RtcChip_GetTime(&currentTime);

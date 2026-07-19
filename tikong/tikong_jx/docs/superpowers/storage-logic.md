@@ -222,7 +222,7 @@ DS1302 ←→ RtcChip_GetTime / SetTime
 
 ---
 
-## 十一、已知缺口（读代码时别踩）
+## 十一、已知缺口
 
 - `eeprom.md` 与本文分工：流程看本文，地址/API 看 `eeprom.md`（以 `eeprom.h` 为准）。
 - `EEPROM_WritePage` 在头文件声明，现实现可能未提供；黑名单多为按字节写。

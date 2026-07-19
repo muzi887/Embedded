@@ -49,7 +49,12 @@ docs/
 | [qr-process-uart45.md](./pass/qr-process-uart45.md) | `QRProcessUart4` / `QRProcessUart5`：读头轮询、JSON 切片、进 `CommContrl` |
 | [memcpy-memset.md](./pass/memcpy-memset.md) | `memcpy` / `memset`：标准库用法与读头路径中的作用 |
 | [commcontrl-permission-chain.md](./pass/commcontrl-permission-chain.md) | `CommContrl` 调用条件；与 `Cmd_Permission` → `ProcessElevator` 关系 |
-| [password-4digit-auth.md](./pass/password-4digit-auth.md) | 四位口令固件校验：摘要、拆位、按设备类型授权 |
+| [password-4digit-auth.md](./pass/password-4digit-auth.md) | 四位口令固件校验：概念、时间槽、摘要、拆位与授权 |
+| [password-4digit-collision.md](./pass/password-4digit-collision.md) | 四位口令重复/碰撞：平台源串与模运算空间局限 |
+| [password-4digit-unacceptable.md](./pass/password-4digit-unacceptable.md) | 梯控场景下不可接受的口令重复（越权呼层、跨设备等） |
+| [password-4digit-remediation.md](./pass/password-4digit-remediation.md) | 针对不可接受问题的解决思路（配置优先 / 改算法） |
+| [password-4digit-design-prompt.md](./pass/password-4digit-design-prompt.md) | 四位访客密码加密方案：发给 AI 的优化设计 Prompt |
+| [sha1-hash.md](./pass/sha1-hash.md) | `sha1_hash`：API、SHA-1 步骤与 `Middlewares/sha1` 对照 |
 
 其它源码见 `App/Pass/`（`qr_comm`、`cmd`、`data_handler`）。
 

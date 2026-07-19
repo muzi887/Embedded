@@ -6,6 +6,6 @@
 
 void QRProcessUart5(void);
 void QRProcessUart4(void);
-void ds3231_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm);
+void ds1302_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm);
 
 #endif

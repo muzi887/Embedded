@@ -85,7 +85,7 @@ static int uart4_find_sub(const u8 *buf, u16 len, const char *needle)
 }
 
 /* currentTime 按小时平移（dh 可为负），日月年自动进位；分秒与星期不变 */
-static int ds3231_days_in_month(int full_year, int month)
+static int ds1302_days_in_month(int full_year, int month)
 {
 	static const int md[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int d;
@@ -103,8 +103,8 @@ static int ds3231_days_in_month(int full_year, int month)
 }
 
 
-/* 按分钟平移（dm 为正则加、负则减），时分日期自动进位；秒与星期沿用 in（与 ds3231_shift_hours 一致） */
-void ds3231_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm)
+/* 按分钟平移（dm 为正则加、负则减），时分日期自动进位；秒与星期沿用 in（与 ds1302_shift_hours 一致） */
+void ds1302_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm)
 {
 	int y = 2000 + (int)in->year;
 	int mo = (int)in->month;
@@ -135,7 +135,7 @@ void ds3231_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm)
 				mo = 12;
 				y--;
 			}
-			da = ds3231_days_in_month(y, mo);
+			da = ds1302_days_in_month(y, mo);
 		}
 	}
 	while (ho >= 24)
@@ -143,7 +143,7 @@ void ds3231_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm)
 		ho -= 24;
 		da++;
 		{
-			int dim = ds3231_days_in_month(y, mo);
+			int dim = ds1302_days_in_month(y, mo);
 			if (da > dim)
 			{
 				da = 1;
@@ -170,7 +170,7 @@ void ds3231_shift_minutes(RTC_Time *out, const RTC_Time *in, int dm)
 	out->dayOfWeek = in->dayOfWeek;
 }
 
-/* 由 DS3231_Time 生成 "YYYYMMDDhh" 字符串（内部静态缓冲，勿嵌套多次调用依赖其值） */
+/* 由 DS1302_Time 生成 "YYYYMMDDhh" 字符串（内部静态缓冲，勿嵌套多次调用依赖其值） */
 static char *creatYMDHM(const RTC_Time *currenttim)
 {
 	static char ymdh_buf[13];
@@ -239,7 +239,7 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	char auth_src[100];
 	char auth_dic_hash[100];
 	char auth_hash_left10[11];
-	int auth_hash_ascii_sum = 0;
+	int auth_hash_ascii_sum1 = 0;
 	int auth_hash_ascii_sum2 = 0;
 	int auth_hash_ascii_sum3 = 0;
 	char ts[20];
@@ -289,16 +289,16 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 			   drift_min, 2000 + (int)ct.year, (int)ct.month, (int)ct.date,
 			   (int)ct.hour, (int)ct.minute, (int)ct.second);
 		// 再生成提前和错后的时间
-		ds3231_shift_minutes(&ct_ahead, &ct, -drift_min);
+		ds1302_shift_minutes(&ct_ahead, &ct, -drift_min);
 		printf("current time ahead by drift: %04d%02d%02d%02d%02d%02d\r\n",
 			   2000 + (int)ct_ahead.year, (int)ct_ahead.month, (int)ct_ahead.date,
 			   (int)ct_ahead.hour, (int)ct_ahead.minute, (int)ct_ahead.second);
-		ds3231_shift_minutes(&ct_behind, &ct, drift_min);
+		ds1302_shift_minutes(&ct_behind, &ct, drift_min);
 		printf("current time behind by drift: %04d%02d%02d%02d%02d%02d\r\n",
 			   2000 + (int)ct_behind.year, (int)ct_behind.month, (int)ct_behind.date,
 			   (int)ct_behind.hour, (int)ct_behind.minute, (int)ct_behind.second);
 
-		auth_hash_ascii_sum = qr_build_password_auth_digest(&ct,
+		auth_hash_ascii_sum1 = qr_build_password_auth_digest(&ct,
 															now_ymdh, (unsigned)sizeof(now_ymdh),
 															auth_src, (unsigned)sizeof(auth_src),
 															auth_dic_hash,
@@ -316,11 +316,11 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	}
 
 	printf("=======================================\r\n");
-	printf("auth_hash_ascii_sum: %d\r\n", auth_hash_ascii_sum % 10);
+	printf("auth_hash_ascii_sum1: %d\r\n", auth_hash_ascii_sum1 % 10);
 	printf("auth_hash_ascii_sum2: %d\r\n", auth_hash_ascii_sum2 % 10);
 	printf("auth_hash_ascii_sum3: %d\r\n", auth_hash_ascii_sum3 % 10);
 	printf("gate num: %d\r\n", pwd4_value / 1000);
-	printf("auth_hash_ascii_sum: %d\r\n", auth_hash_ascii_sum % 25);
+	printf("auth_hash_ascii_sum1: %d\r\n", auth_hash_ascii_sum1 % 25);
 	printf("auth_hash_ascii_sum2: %d\r\n", auth_hash_ascii_sum2 % 25);
 	printf("auth_hash_ascii_sum3: %d\r\n", auth_hash_ascii_sum3 % 25);
 	printf("unit num: %d\r\n", (pwd4_value % 1000) / 40);
@@ -329,7 +329,7 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	/* 园区门 */
 	if (strcmp(g_device_type, "1") == 0)
 	{
-		if (auth_hash_ascii_sum % 10 == pwd4_value / 1000 || auth_hash_ascii_sum2 % 10 == pwd4_value / 1000 || auth_hash_ascii_sum3 % 10 == pwd4_value / 1000)
+		if (auth_hash_ascii_sum1 % 10 == pwd4_value / 1000 || auth_hash_ascii_sum2 % 10 == pwd4_value / 1000 || auth_hash_ascii_sum3 % 10 == pwd4_value / 1000)
 		{
 			if (uart_port == 4)
 			{
@@ -357,7 +357,7 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	/* 楼门禁 */
 	else if (strcmp(g_device_type, "2") == 0)
 	{
-		if (auth_hash_ascii_sum % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum2 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum3 % 25 == (pwd4_value % 1000) / 40)
+		if (auth_hash_ascii_sum1 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum2 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum3 % 25 == (pwd4_value % 1000) / 40)
 		{
 			if (uart_port == 4)
 			{
@@ -385,16 +385,16 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
 	/* 电梯,解析出的楼层数与app的有差异，原因是app的楼层起点不为1 */
 	else if (strcmp(g_device_type, "3") == 0)
 	{
-		if (auth_hash_ascii_sum % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum2 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum3 % 25 == (pwd4_value % 1000) / 40)
+		if (auth_hash_ascii_sum1 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum2 % 25 == (pwd4_value % 1000) / 40 || auth_hash_ascii_sum3 % 25 == (pwd4_value % 1000) / 40)
 		{
 			printf("password correct for unit control ---elevator is authorize \r\n");
 			printf("elevator num :%d\r\n", pwd4_value % 40);
 			g_result.msg = "password correct for elevator control---elevator is authorize";
 			g_result.code = 200;
 			FloorCtrl_GetLimit(elevator_limit5);
-			//TODO 如果改为人工按键，会错误，因为常开的开启与关闭会影响安建，这个问题后面解决
+			// TODO：如果改为人工按键，会错误，因为常开的开启与关闭会影响按键，这个问题后面解决
 			Floor_AuthCheck_limit_off(elevator_limit5);
-			//Floor_DirectGo(pwd4_value % 40);
+			// Floor_DirectGo(pwd4_value % 40);
 			Floor_CallOne(pwd4_value % 40);
 			Floor_AuthCheck_limit(elevator_limit5);
 			Bsp_SetBeep(1);
@@ -418,8 +418,7 @@ static void qr_handle_password_input(const char *s_received_data, int uart_port)
  *  1) 将 UART5_RX_BUF 追加到 uart5_rx_accum
  *  2) 对齐到 '{'，凑齐完整 "{...}" 帧后再解析
  *  3) 切片 type / data / uid（搜键名须带引号，避免 data 内容误匹配）
- *  4) type 为 '0'/'1' → CommContrl(..., 5)；'2' → 密码处理
- * 说明见 docs/pass/qr-process-uart45.md
+ *  4) type 为 '0'/'1' → CommContrl(..., 5)；'2' → 密码处理d
  */
 void QRProcessUart5(void)
 {
@@ -586,7 +585,6 @@ void QRProcessUart5(void)
  * QRProcessUart4 — 读头 1（UART4）通行业务轮询
  *
  * 逻辑与 QRProcessUart5 对称，独立缓冲 uart4_*；CommContrl / 密码端口号为 4。
- * 说明见 docs/pass/qr-process-uart45.md
  */
 void QRProcessUart4(void)
 {
