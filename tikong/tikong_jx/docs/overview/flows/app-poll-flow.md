@@ -68,7 +68,7 @@ app_poll()
   ├─② QRProcessUart5()     App/Pass/qr_comm.c
   │     if (UART5_RX_Complete)
   │       拼 "{...}" → type/data/uid
-  │       type 0/1 → CommContrl(..., 5)
+  │       type 0/1 → CommControl(..., 5)
   │       type 2   → 密码处理
   │
   ├─③ QRProcessUart4()     同上，端口 4
@@ -113,12 +113,12 @@ app_poll()
 ```text
 时间 →
   PCProcess      无帧：几乎立即返回；有帧：打印后清标志
-  QRProcessUart5 无帧：返回；有完整 JSON：可能进 CommContrl（较长）
+  QRProcessUart5 无帧：返回；有完整 JSON：可能进 CommControl（较长）
   QRProcessUart4 同上
   G4GProcess     无帧：返回；有 JSON：parseSerialData（可能较长）
 ```
 
-注意：某一路业务处理较久时，本轮后面几路会延后；看门狗在 `main` 每圈开头喂狗。断点调试过久仍可能触发 IWDG 复位。
+注意：某一路业务处理较久时，本轮后面几路会延后；看门狗在 `main` 每圈开头喂狗。断点调试过久仍可能触发 IWDG 复位。详见 [watchdog-iwdg.md](../watchdog-iwdg.md)。
 
 ---
 

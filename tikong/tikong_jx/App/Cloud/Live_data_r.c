@@ -50,7 +50,7 @@ char productKey_1[32];
 char requestId_1[8];
 long long requestTimestamp_1;
 
-/////////////////////////2.replay//////////////
+/////////////////////////2.reply//////////////
 char code_1[8];       // 状态码，如"200"
 char msg_1[64];       // 消息内容，如"操作成功"
 char messageId_1[32]; // 消息ID，如"1755139316330"

@@ -107,7 +107,7 @@ void UART4_IRQHandler(void)
 }
 
 /* ����len���ֽ� */
-void USART4_SendData(char *buf, uint16_t len)
+void UART4_SendData(char *buf, uint16_t len)
 {
 	uint16_t t;
 

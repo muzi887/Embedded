@@ -55,7 +55,7 @@ s_received_uart4[s_received_len_uart4] = '\0';
 | 缓冲 | 角色 |
 | --- | --- |
 | `uart4_data_slice` | JSON 里切出的 `data` 字段（按长度的字节片） |
-| `s_received_uart4` | 传给 `CommContrl` / 密码处理的业务字符串 |
+| `s_received_uart4` | 传给 `CommControl` / 密码处理的业务字符串 |
 
 为何不用 `strcpy`：
 
@@ -108,4 +108,4 @@ memset(uart4_data_slice, 0, sizeof(uart4_data_slice));
 
 - **`memcpy`** = “从 A 复制 n 字节到 B”  
 - **`memset`** = “把一块内存刷成同一个字节值（常刷 0）”  
-- 在读头路径里：前者把 `data` **交给** `CommContrl`，后者在帧结束后 **打扫** 临时缓冲。
+- 在读头路径里：前者把 `data` **交给** `CommControl`，后者在帧结束后 **打扫** 临时缓冲。

@@ -12,5 +12,5 @@ extern u8 UART4_RX_Complete;  // ������ɱ�־
 void uart4_init(u32 bound);
 void UART4_DMA_ReInit(void); // DMA���³�ʼ������
 /* ����len���ֽ� */
-void USART4_SendData(char *buf, uint16_t len);
+void UART4_SendData(char *buf, uint16_t len);
 #endif

@@ -34,7 +34,7 @@
                             │ USART3 @ 115200（4G 模块）
 ┌───────────────────────────▼─────────────────────────────────┐
 │  STM32F407 主控                                              │
-│  · 读头 JSON → CommContrl（设置 / 权限 / 校时 / 限层等）      │
+│  · 读头 JSON → CommControl（设置 / 权限 / 校时 / 限层等）      │
 │  · SHA1 验签 / 黑名单 / RTC 有效期 / 限层                    │
 │  · JSON 上报与服务回执；可选 4G AT 配网序列                   │
 └─┬───────────┬───────────┬───────────┬───────────────────────┘
@@ -85,7 +85,7 @@
 
 ### 4.1 读头命令（本地主路径）
 
-读头数据经 **UART4 或 UART5** 累积为 `{...}` JSON 帧，解析后调用 `CommContrl`（`App/Pass/cmd.c`）。CSV 载荷首字符为命令号（以源码为准）：
+读头数据经 **UART4 或 UART5** 累积为 `{...}` JSON 帧，解析后调用 `CommControl`（`App/Pass/cmd.c`）。CSV 载荷首字符为命令号（以源码为准）：
 
 | 命令字 | 功能 | 说明 |
 | --- | --- | --- |
@@ -154,7 +154,7 @@ G4GProcess();       // USART3 云端（App/Cloud/g4g_comm.c）
 
 ```text
 读头通行：
-  UART4/5 → QRProcessUart* → CommContrl(cmd '2')
+  UART4/5 → QRProcessUart* → CommControl(cmd '2')
     → 验签/黑名单/时间窗 → Gate|Unit|Elevator → 本地动作 / RS485 → 上报(USART3)
 
 云端指令：

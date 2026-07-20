@@ -54,7 +54,7 @@ tikong_jx/
 ├── App/
 │   ├── Pass/                          # 通行主路径
 │   │   ├── qr_comm.c / qr_comm.h      # 读头轮询：QRProcessUart4 / Uart5
-│   │   ├── cmd.c / cmd.h              # CommContrl 与设置/权限/校时/限层等命令
+│   │   ├── cmd.c / cmd.h              # CommControl 与设置/权限/校时/限层等命令
 │   │   └── data_handler.c / data_handler.h # 验签、密钥、设备参数等数据处理
 │   ├── Cloud/                         # 云端 / 4G 业务
 │   │   ├── g4g_comm.c                 # G4GProcess：USART3 收包入口

@@ -12,7 +12,7 @@
 
 ## 一、一句话目标
 
-在约 **1～2 周业余（或 5～7 个工作日）** 内：能编译烧录 F407 工程 → 对照已有串口/I2C 知识看懂多路 USART + DMA → 跟通 **扫码/刷卡通行（`CommContrl` / 权限命令）** 与 **4G/云端一条服务** → 知道黑名单 / 验签 / RTC / 限层落在哪。
+在约 **1～2 周业余（或 5～7 个工作日）** 内：能编译烧录 F407 工程 → 对照已有串口/I2C 知识看懂多路 USART + DMA → 跟通 **扫码/刷卡通行（`CommControl` / 权限命令）** 与 **4G/云端一条服务** → 知道黑名单 / 验签 / RTC / 限层落在哪。
 
 ```text
 你现在的底座（F103 学习）
@@ -28,7 +28,7 @@
 | 目录                                   | 职责                                                        |
 | ------------------------------------ | --------------------------------------------------------- |
 | `Hardware/Serial/`                   | 串口驱动：初始化、DMA、ISR、缓冲；**不含**业务 `*Process`                   |
-| `App/Pass/`                          | 通行：`QRProcessUart4/5`、`CommContrl` / `cmd`、`data_handler` |
+| `App/Pass/`                          | 通行：`QRProcessUart4/5`、`CommControl` / `cmd`、`data_handler` |
 | `App/Cloud/`                         | 云端：`G4GProcess`、`Live_data_r`、`uart3_at_sequence`         |
 | `App/Store/`                         | 黑名单业务                                                     |
 | `App/Link/`                          | `PCProcess`、RS485 通道相关                                    |
@@ -64,7 +64,7 @@
 | ------------------------- | ------------------------------------------------------------- | ------ |
 | **F103 → F407**           | Cortex-M4、168 MHz、引脚与 RCC 不同；SPL API 名字相近                     | 阶段 A   |
 | **多路 USART + DMA + 空闲中断** | 入门常轮询 RXNE；这里驱动与业务拆开：缓冲在 `Hardware/Serial`，`*Process` 在 `App` | 阶段 A～B |
-| **业务协议**                  | 读头 JSON 帧 → `CommContrl`；按设备类型走门禁/单元/梯控权限                     | 阶段 C   |
+| **业务协议**                  | 读头 JSON 帧 → `CommControl`；按设备类型走门禁/单元/梯控权限                     | 阶段 C   |
 | **云端 JSON / MQTT / 物模型** | 经 4G 模组透传；`G4GProcess` → `parseSerialData`；平台侧 TSL 见 `thing-model-v2` | 阶段 D   |
 | **SHA1 验签、黑名单、口令、限层**     | 安全与 EEPROM 持久化；另有楼层限时逻辑                                       | 阶段 E   |
 
@@ -91,7 +91,7 @@
 | ----------- | ----- | -------------------------- | --------------------------------------------------------- |
 | **A** 迁移热身  | 1～2 天 | F4 工程能编、能下、能打日志            | Keil 全编译通过；USART1 有 `printf`                              |
 | **B** 骨架    | 1 天   | 说清五路串口分工与主循环               | 口述：谁收读头 / 谁发 485 / 谁连云 / 谁打日志；能指到 `app_poll`              |
-| **C** 通行主路径 | 1～2 天 | 权限命令跟到执行点                  | 能画：`QRProcessUart4/5` → `CommContrl` → `Cmd_Permission_`* |
+| **C** 通行主路径 | 1～2 天 | 权限命令跟到执行点                  | 能画：`QRProcessUart4/5` → `CommControl` → `Cmd_Permission_`* |
 | **D** 云端路径  | 1～2 天 | `G4GProcess` → 一条服务        | 能指到物模型 key / `parseSerialData` 分支与回执发送点                  |
 | **E** 存储与联调 | 1～2 天 | 黑名单 / RTC / 密钥 / 限层 + 最小联调 | 通行或黑名单任一条跑通（含日志）                                          |
 
@@ -163,7 +163,7 @@ G4GProcess();      // USART3 4G / 云
 1. 路径：
   - `QRProcessUart4` / `QRProcessUart5`（`App/Pass/qr_comm.c`）
   - 累积 JSON 花括号帧 → 解析字段
-  - 调用 `CommContrl(...)`（`App/Pass/cmd.c`）
+  - 调用 `CommControl(...)`（`App/Pass/cmd.c`）
 2. 权限校验链（梯控设备类型时，理解顺序即可）：
 
 ```text
@@ -209,7 +209,7 @@ G4GProcess();      // USART3 4G / 云
 
 流程总览（上电装载 / 回写触发 / 限层到期）：
 
-→ **[storage-logic.md](../store/storage-logic.md)**
+→ **[storage-logic.md](../superpowers/storage-logic.md)**；黑名单专文：[blacklist-logic.md](../store/blacklist-logic.md)
 
 建议步骤：
 
@@ -217,7 +217,7 @@ G4GProcess();      // USART3 4G / 云
   - EEPROM：`Hardware/Storage/eeprom.c`（上电 `ReadKey`、`loadDataFromEEPROM`）
   - 时间：`Hardware/Time/RTC.c` 的 `RtcChip_GetTime` / `RtcChip_SetTime`（芯片驱动 `ds1302.c`）
   - 通行有效期依赖 RTC：时间不准 → 权限失败
-2. **黑名单**：`App/Store/blackList.c` + 上电 `loadDataFromEEPROM`（运行时查 RAM）
+2. **黑名单**：`App/Store/blackList.c` + 上电 `loadDataFromEEPROM`（运行时查 RAM）。专文：[blacklist-logic.md](../store/blacklist-logic.md)
 3. **密钥/口令**：`ReadKey`、公钥与账号密码（`App/Pass/data_handler` / EEPROM）；含 MQTT 的配置经 AT 成功后再写（`Cmd_Setting_OnAtSequenceDone`）
 4. **限层**：`Hardware/Board/floor_ctrl.c` + `app_init` 应用 / `main` 到期清除
 5. **联调清单（任选完成）**：
@@ -235,6 +235,7 @@ G4GProcess();      // USART3 4G / 云
 1. overview/project-overview.md
 2. 仓库根 .cursorrules（分层与依赖）
 3. 本文 §二（基础 ↔ 缺口）
+3b. overview/embedded-coding-style.md（通用嵌入式习惯；可选）
 
 【对照已学专文（按需翻）】
 4. Embedded/docs/STM32-串口USART说明.md
@@ -262,13 +263,13 @@ G4GProcess();      // USART3 4G / 云
 | 想搞清楚…     | 先打开                                                                   |
 | --------- | --------------------------------------------------------------------- |
 | 上电与主循环    | `User/main.c` → `board_init.c` → `app_run.c`                          |
-| 读头业务      | `App/Pass/qr_comm.c` → `App/Pass/cmd.c`（`CommContrl`）                 |
+| 读头业务      | `App/Pass/qr_comm.c` → `App/Pass/cmd.c`（`CommControl`）                 |
 | 云端业务      | `App/Cloud/g4g_comm.c` → `App/Cloud/Live_data_r.c`（`parseSerialData`） |
 | 物模型 TSL    | `docs/cloud/thing-model-v2.md` / `thing-model-v2.json`               |
 | 4G AT 配网  | `App/Cloud/uart3_at_sequence.c`、`Hardware/Modem/4G.c`；导读见 `docs/cloud/4g/` |
 | 验签 / 数据处理 | `App/Pass/data_handler.c`、`Middlewares/sha1.c`                        |
-| 黑名单       | `App/Store/blackList.c`、`Hardware/Storage/eeprom.c`                   |
-| 存储全链路    | `docs/store/storage-logic.md`                                         |
+| 黑名单       | `App/Store/blackList.c`；流程见 `docs/store/blacklist-logic.md`         |
+| 存储全链路    | `docs/superpowers/storage-logic.md`                                   |
 | 时间        | `Hardware/Time/RTC.c`、`Hardware/Time/ds1302.c`                        |
 | 限层        | `Hardware/Board/floor_ctrl.c`                                         |
 | RS485 驱动  | `Hardware/Serial/usart2.c`                                            |
@@ -299,7 +300,7 @@ G4GProcess();      // USART3 4G / 云
 - **RS485**：发送前拉高/拉低 **PA1** 方向脚，发完再切回接收。
 - **验签 / 口令**：权限与黑名单相关命令依赖公钥或本地账号密码——联调前确认 EEPROM 已有凭证（`ReadKey` 等）。
 - **有效期** 依赖 RTC（`RtcChip_`*）：校时优先于纠结业务逻辑。
-- **看门狗**：主循环有 `IWDG_Feed`；调试断点过久可能复位。
+- **看门狗**：主循环有 `IWDG_Feed`；调试断点过久可能复位。详见 [watchdog-iwdg.md](./watchdog-iwdg.md)。
 - F407 引脚与蓝 pill **不要混着对丝印**；以本板原理图 / [project-overview.md](./project-overview.md) 串口表为准。
 - 文档路径一律以 **本仓库实际目录** 与 `.cursorrules` 为准；旧工程 `tikong/tikong` 仅作对照。
 

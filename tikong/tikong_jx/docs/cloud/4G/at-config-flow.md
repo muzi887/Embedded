@@ -30,7 +30,7 @@
 读头 JSON type=0/1, data 以 '1' 开头（设置）
         │
         ▼
-QRProcessUart4/5 → CommContrl → Cmd_Setting
+QRProcessUart4/5 → CommControl → Cmd_Setting
         │
         ├─ CSV 仅 9 列：简化写 EEPROM，不启 AT，返回
         │
@@ -61,8 +61,8 @@ main while(1)
 | 条件 | 说明 |
 | --- | --- |
 | `QRProcessUart*` 凑齐 `{...}` | 见 [qr-process-uart45.md](../../pass/qr-process-uart45.md) |
-| JSON `type` 为 `'0'`/`'1'` | 才会进 `CommContrl` |
-| `data[0] == '1'` | `CommContrl` 调 `Cmd_Setting` |
+| JSON `type` 为 `'0'`/`'1'` | 才会进 `CommControl` |
+| `data[0] == '1'` | `CommControl` 调 `Cmd_Setting` |
 
 ### 3.2 `Cmd_Setting` 内
 

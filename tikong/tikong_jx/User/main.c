@@ -7,7 +7,8 @@
 #include "main.h"
 #include "timer.h"
 #include "floor_ctrl.h"
-#include "data_handler.h"
+#include "pass_setting.h"
+#include "pass_crypto.h"
 #include "4g.h"
 #include "wdg.h"
 

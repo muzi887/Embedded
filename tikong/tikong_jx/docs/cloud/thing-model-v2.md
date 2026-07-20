@@ -27,7 +27,7 @@
 | `qr_code_unvarnished_transmission`  | 二维码透传 | `qr_Reply`                  |
 
 
-触发多在读头路径：`QRProcessUart*` → `CommContrl` / 密码处理 → 上述 Reply，经 USART3 上报。
+触发多在读头路径：`QRProcessUart*` → `CommControl` / 密码处理 → 上述 Reply，经 USART3 上报。
 
 ### 1.2 服务（平台 → 设备，同步调用）
 

@@ -1,5 +1,6 @@
 #include "uart3_at_sequence.h"
 #include "data_handler.h"
+#include "pass_setting.h"
 #include "usart3.h"
 #include "timer.h"
 #include <stdarg.h>

@@ -193,12 +193,12 @@ First_Reply(messageId, requestId_1, requestTimestamp_1)
 
 ---
 
-## 六、和读头 `CommContrl` 路径对比
+## 六、和读头 `CommControl` 路径对比
 
 
 |     | 云 case 101                       | 读头通行                            |
 | --- | -------------------------------- | ------------------------------- |
-| 入口  | `G4GProcess` → `parseSerialData` | `QRProcessUart`* → `CommContrl` |
+| 入口  | `G4GProcess` → `parseSerialData` | `QRProcessUart`* → `CommControl` |
 | 载荷  | `数字,JSON`                        | 读头 JSON 的 `data` CSV            |
 | 本地  | Hex → `RS485_SendData`           | 验签/权限/楼层等                       |
 | 回云  | `First_Reply`（USART3）            | 权限路径里另有上报（如扫码/刷卡回复）             |

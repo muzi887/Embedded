@@ -8,8 +8,6 @@
 #include "rly.h"
 #include "data_handler.h"
 
-
-
 u8 led_flag = 0;
 u8 updateflag = 0;
 u8 gettimeflag = 0;

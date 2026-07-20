@@ -4,7 +4,7 @@
 
 > **范围**：固件如何校验读头送来的 4 位数字口令（不含 App 如何生成）。  
 > **入口**：读头 JSON `type == '2'` → `qr_handle_password_input`，见 [qr-process-uart45.md](./qr-process-uart45.md)  
-> **源码**：`App/Pass/qr_comm.c`（`qr_handle_password_input`、`qr_build_password_auth_digest`、`creatYMDHM`、`ds1302_shift_minutes`）  
+> **源码**：`App/Pass/qr_comm.c`（`qr_handle_password_input`、`qr_build_password_auth_digest`、`create_ymdhm`、`ds1302_shift_minutes`）  
 > **上报**：`pwd_Reply`（`App/Cloud/Live_data.c`）  
 > **重复/碰撞局限**：[password-4digit-collision.md](./password-4digit-collision.md)  
 > **场景下不可接受的重复**：[password-4digit-unacceptable.md](./password-4digit-unacceptable.md)
@@ -168,7 +168,7 @@ pwd4_value = d0*1000 + d1*100 + d2*10 + d3
    例：14:20:00 / 14:30:00 / 14:40:00
 
 ④ 格式化成时间串（无秒）
-   creatYMDHM → YYYYMMDDhhmm（12 字符）
+   create_ymdhm → YYYYMMDDhhmm（12 字符）
    例：202607191420 / 202607191430 / 202607191440
 ```
 
@@ -191,7 +191,7 @@ pwd4_value = d0*1000 + d1*100 + d2*10 + d3
 
 USART1 关键字：`before/after ... minute mod`、`ahead/behind by drift`、`current time ymdh:`。
 
-`creatYMDHM` 使用**静态缓冲**，不要嵌套调用后仍拿旧指针当结果。
+`create_ymdhm` 使用**静态缓冲**，不要嵌套调用后仍拿旧指针当结果。
 
 ---
 
@@ -200,7 +200,7 @@ USART1 关键字：`before/after ... minute mod`、`ahead/behind by drift`、`cu
 函数：`qr_build_password_auth_digest`。对某个槽时刻 `t`：
 
 ```text
-now_ymdh = creatYMDHM(t)                              // YYYYMMDDhhmm
+now_ymdh = create_ymdhm(t)                              // YYYYMMDDhhmm
 auth_src = "{g_device_code},{g_device_public_Key},{now_ymdh}"
 auth_dic_hash = sha1_hash(auth_src) 再转小写          // 40 hex
 auth_hash_left10 = 前 10 个字符
@@ -299,7 +299,7 @@ pwd_Reply(ts, ts, pwd4_value, g_result)
 | 主流程 | `qr_handle_password_input` |
 | 对齐 | `Rtc_Time_ZeroSecondsMinuteMod`（[RTC.c](../../Hardware/Time/RTC.c)） |
 | ±D 分钟 | `ds1302_shift_minutes` |
-| 时间串 | `creatYMDHM` |
+| 时间串 | `create_ymdhm` |
 | 摘要 | `qr_build_password_auth_digest` |
 | 拆位调试打印 | `gate num` / `unit num` / `elevator num` |
 | type 1/2/3 分支 | `qr_handle_password_input` 后半 |

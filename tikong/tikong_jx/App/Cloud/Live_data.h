@@ -6,7 +6,7 @@
 #include "usart1.h"   
 #include "usart3.h"
 #include "eeprom.h"
-#include "RTC.h"    // 对应头文件
+#include "rtc.h"    
 
 void GetNetTime(void);
 
@@ -46,7 +46,7 @@ extern char key_1[32];
 extern char productKey_1[32];
 extern char requestId_1[8];
 extern long long requestTimestamp_1;
- /////////////////////////2.replay//////////////
+ /////////////////////////2.reply//////////////
 extern char code_1[8];           // 状态码，如"200"
 extern char msg_1[64];           // 消息内容，如"操作成功"  
 extern char messageId_1[32];     // 消息ID，如"1755139316330"

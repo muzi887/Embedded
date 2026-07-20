@@ -1,13 +1,15 @@
 #include "app_run.h"
 #include "app_comm.h"
-#include "RTC.h"
+#include "rtc.h"
+#include "rtc_util.h"
 #include "eeprom.h"
 #include "blackList.h"
 #include "qr_comm.h"
 #include "cmd.h"
 #include "floor_ctrl.h"
 #include <stdio.h>
-#include "data_handler.h"
+#include "pass_setting.h"
+#include "pass_crypto.h"
 
 static RTC_Time currentTime;
 //static RTC_Time currentTime_ahead, currentTime_behind;
@@ -29,8 +31,8 @@ void Refresh_CurrentTime(void)
 void Get_TimeWithDrift(int drift_min, RTC_Time *ahead, RTC_Time *behind)
 {
   if (!ahead || !behind) return;
-  ds3231_shift_minutes(ahead, &currentTime, -drift_min);
-  ds3231_shift_minutes(behind, &currentTime, drift_min);
+  ds1302_shift_minutes(ahead, &currentTime, -drift_min);
+  ds1302_shift_minutes(behind, &currentTime, drift_min);
 }
 
 void app_init(void)

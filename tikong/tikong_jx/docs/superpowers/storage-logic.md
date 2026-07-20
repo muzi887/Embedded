@@ -5,7 +5,7 @@
 > **对齐**：[onboarding-f103.md](../overview/onboarding-f103.md) 阶段 E  
 > **地址/API 细节**：[eeprom.md](./eeprom.md)（芯片、布局、驱动 API）  
 > **AT 成功后再写 EEPROM**：[at-config-flow.md](../cloud/4g/at-config-flow.md)  
-> **通行验签 / 口令漂移**：[commcontrl-permission-chain.md](../pass/commcontrl-permission-chain.md)、[password-4digit-auth.md](../pass/password-4digit-auth.md)
+> **通行验签 / 口令漂移**：[CommControl-permission-chain.md](../pass/CommControl-permission-chain.md)、[password-4digit-auth.md](../pass/password-4digit-auth.md)
 
 目标：弄清 **什么掉电还在、上电怎么装进 RAM、业务何时回写**。  
 实现以固件为准；芯片布局权威源：`Hardware/Storage/eeprom.h`。
@@ -100,7 +100,7 @@ main 循环
 **入口（当前有效）**
 
 - 云端：`parseSerialData` **case 105** 增、**106** 删（`Live_data_r.c` → `parse_addblack_json` / `parse_delblack_json`）。
-- 读头 `CommContrl` 的黑名单命令路径在现码中 **未真正接通**（有 `BlackUserListAdd/Del` 等实现，但业务入口不可达）——联调增删以云端为准。
+- 读头 `CommControl` 的黑名单命令路径在现码中 **未真正接通**（有 `BlackUserListAdd/Del` 等实现，但业务入口不可达）——联调增删以云端为准。
 
 ---
 

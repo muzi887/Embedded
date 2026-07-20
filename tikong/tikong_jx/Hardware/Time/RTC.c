@@ -1,4 +1,4 @@
-#include "RTC.h"
+#include "rtc.h"
 #include <stdbool.h>
 #include "ds1302.h"
 #include <stdio.h>

@@ -5,7 +5,7 @@
 > **源码**：`App/Pass/qr_comm.c`（声明见 `qr_comm.h`）  
 > **调用**：`User/app_run.c` → `app_poll()`  
 > **驱动侧收包**：`Hardware/Serial/uart4.*` / `uart5.*`（DMA + 空闲定帧）  
-> **相关**：[uart4-dma-rx.md](../serial/uart4-dma-rx.md)（UART4 驱动路径）；通行命令见 `App/Pass/cmd.c` 的 `CommContrl`
+> **相关**：[uart4-dma-rx.md](../serial/uart4-dma-rx.md)（UART4 驱动路径）；通行命令见 `App/Pass/cmd.c` 的 `CommControl`
 
 ---
 
@@ -35,7 +35,7 @@ app_poll()
     ├─ QRProcessUart5()   ← 先轮询 UART5
     └─ QRProcessUart4()   ← 再轮询 UART4
             │
-            ├─ type 为 '0' 或 '1' → CommContrl(..., uart_port)
+            ├─ type 为 '0' 或 '1' → CommControl(..., uart_port)
             └─ type 为 '2'       → qr_handle_password_input(..., uart_port)
 ```
 
@@ -92,7 +92,7 @@ USART1 会 `printf` 整帧与 `type`/`data`，便于串口联调。
 
 | `type` | 动作 |
 | --- | --- |
-| `'0'` 或 `'1'`（单字符） | `CommContrl(data, order_type, uid, 4 或 5)` — 设置/权限等命令 |
+| `'0'` 或 `'1'`（单字符） | `CommControl(data, order_type, uid, 4 或 5)` — 设置/权限等命令 |
 | `'2'`（单字符） | `qr_handle_password_input(data, 4 或 5)` — 密码输入；算法见 [password-4digit-auth.md](./password-4digit-auth.md) |
 
 最后一个参数 `uart_port`（4 或 5）用于区分回复/日志走哪路读头。
@@ -113,7 +113,7 @@ USART1 会 `printf` 整帧与 `type`/`data`，便于串口联调。
 ```
 
 - `type`：`"0"` / `"1"` / `"2"`  
-- `data`：字符串，内部常为逗号分隔命令载荷（首字符常为命令号，见 `CommContrl`）  
+- `data`：字符串，内部常为逗号分隔命令载荷（首字符常为命令号，见 `CommControl`）  
 - `uid`：可带引号的字符串或数字串  
 
 解析是 **按偏移切字节**，不是完整 JSON 库；键顺序或额外空格异常时可能导致切错。联调时优先用 USART1 打印的 `Received UARTx data` 对照。
@@ -127,7 +127,7 @@ USART1 会 `printf` 整帧与 `type`/`data`，便于串口联调。
 | 函数名 | `QRProcessUart4` | `QRProcessUart5` |
 | 驱动变量 | `UART4_*` | `UART5_*` |
 | 累积 / 切片静态区 | `uart4_*` | `uart5_*` |
-| `CommContrl` / 密码第 4 参 | `4` | `5` |
+| `CommControl` / 密码第 4 参 | `4` | `5` |
 | `app_poll` 调用顺序 | 后调用 | **先**调用 |
 
 无其它业务差异；改算法时两处通常要同步改。
@@ -137,7 +137,7 @@ USART1 会 `printf` 整帧与 `type`/`data`，便于串口联调。
 ## 六、和驱动文档怎么配合读
 
 1. 先看 [uart4-dma-rx.md](../serial/uart4-dma-rx.md)：字节如何进 `UART4_RX_BUF`、何时置 `RX_Complete`。  
-2. 再看本文：主循环如何消费该标志并进 `CommContrl`。  
+2. 再看本文：主循环如何消费该标志并进 `CommControl`。  
 3. UART5 驱动路径与 UART4 同类，业务侧即 `QRProcessUart5`。
 
 ---
@@ -146,5 +146,5 @@ USART1 会 `printf` 整帧与 `type`/`data`，便于串口联调。
 
 - 波特率 **9600**；线接错口时另一路函数永远看不到 `RX_Complete`。  
 - 若 `main` 正跑 4G AT 序列，不会进 `app_poll`，两函数都不会被调用。  
-- 帧必须以 `{` 开头、以 `}` 结尾；中间被拆包可靠累积缓冲拼接，但末字节不是 `}` 时不会进 `CommContrl`。  
+- 帧必须以 `{` 开头、以 `}` 结尾；中间被拆包可靠累积缓冲拼接，但末字节不是 `}` 时不会进 `CommControl`。  
 - 看门狗在主循环喂狗；本函数内若打印极长、阻塞过久需注意（一般 JSON 帧较短）。

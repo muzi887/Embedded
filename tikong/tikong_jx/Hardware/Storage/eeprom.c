@@ -1,5 +1,6 @@
 #include "eeprom.h"
 #include "data_handler.h"
+#include "pass_setting.h"
 #include "floor_ctrl.h"
 
 /* 写入区间须落在 [0, AT24C32_CAPACITY_BYTES) */

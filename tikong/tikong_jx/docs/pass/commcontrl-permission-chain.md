@@ -1,11 +1,11 @@
-# CommContrl 调用条件与权限调用链
+# CommControl 调用条件与权限调用链
 
 更新时间：2026-07-18
 
-> **源码**：`App/Pass/qr_comm.c`（调用方）、`App/Pass/cmd.c`（`CommContrl` / `Cmd_Permission` / `Process*`）  
+> **源码**：`App/Pass/qr_comm.c`（调用方）、`App/Pass/cmd.c`（`CommControl` / `Cmd_Permission` / `Process*`）  
 > **相关**：[qr-process-uart45.md](./qr-process-uart45.md)（读头如何进到本链）
 
-本文整理：何时调用 `CommContrl`，以及它与 `Cmd_Permission` → `Cmd_Permission_ProcessElevator` 的关系。
+本文整理：何时调用 `CommControl`，以及它与 `Cmd_Permission` → `Cmd_Permission_ProcessElevator` 的关系。
 
 ---
 
@@ -19,7 +19,7 @@ QRProcessUart4 / QRProcessUart5
     │ 凑齐 "{...}"，切出 type / data / uid
     │ type 为 '0' 或 '1'（NFC / 二维码）
     ▼
-CommContrl(data, order_type, uid, uart_port)     ← 读头命令总入口
+CommControl(data, order_type, uid, uart_port)     ← 读头命令总入口
     │ 仅当 data[0] == '2'（权限 CSV）
     ▼
 Cmd_Permission(...)                              ← 权限专用：拆 9 列 CSV，按设备类型分支
@@ -31,11 +31,11 @@ Cmd_Permission_ProcessElevator(...)              ← 梯控权限实现
     （验签 → 黑名单 → 时间窗 → 楼层/RS485 等）
 ```
 
-要点：**`CommContrl` 不是只做权限**；**`ProcessElevator` 也不是每次通行都会走到**。
+要点：**`CommControl` 不是只做权限**；**`ProcessElevator` 也不是每次通行都会走到**。
 
 ---
 
-## 二、调用 `CommContrl(...)` 的条件
+## 二、调用 `CommControl(...)` 的条件
 
 工程内 **仅** 在 `QRProcessUart4` / `QRProcessUart5` 中调用（见 `qr_comm.c`）。
 
@@ -56,10 +56,10 @@ Cmd_Permission_ProcessElevator(...)              ← 梯控权限实现
 此时调用：
 
 ```c
-CommContrl(s_received_uart*, order_type_uart*, card_Number_uart*, 4或5);
+CommControl(s_received_uart*, order_type_uart*, card_Number_uart*, 4或5);
 ```
 
-### 2.3 不调用 `CommContrl` 的常见情况
+### 2.3 不调用 `CommControl` 的常见情况
 
 | 情况 | 实际走向 |
 | --- | --- |
@@ -69,17 +69,17 @@ CommContrl(s_received_uart*, order_type_uart*, card_Number_uart*, 4或5);
 
 ---
 
-## 三、`CommContrl` 与权限链的关系
+## 三、`CommControl` 与权限链的关系
 
 它们是 **一层包一层**，不是并列关系。
 
 | 函数 | 角色 |
 | --- | --- |
-| **`CommContrl`** | 读头命令总入口：看 CSV **`data[0]`** 分命令（设置 / 权限 / 校时 / 限层…） |
+| **`CommControl`** | 读头命令总入口：看 CSV **`data[0]`** 分命令（设置 / 权限 / 校时 / 限层…） |
 | **`Cmd_Permission`** | 权限专用：要求 **9 列** CSV；再按 **`g_device_type`** 选 Gate / Unit / Elevator |
 | **`Cmd_Permission_ProcessElevator`** | **梯控**那一支的具体实现（与 Gate、Unit 是兄弟函数） |
 
-### 3.1 `CommContrl` 内按首字符分支（摘要）
+### 3.1 `CommControl` 内按首字符分支（摘要）
 
 | `data[0]` | 含义 | 下一步 |
 | --- | --- | --- |
@@ -116,11 +116,11 @@ CommContrl(s_received_uart*, order_type_uart*, card_Number_uart*, 4或5);
 
 须 **同时** 满足：
 
-1. 读头 JSON 的 `type` 为 `'0'` 或 `'1'` → 才会调 `CommContrl`  
+1. 读头 JSON 的 `type` 为 `'0'` 或 `'1'` → 才会调 `CommControl`  
 2. `data` 首字符为 `'2'` → 才会进 `Cmd_Permission`  
 3. 本机 `g_device_type` **不是** 院门禁（含 `'1'`）也不是楼门禁（含 `'2'`）→ 才会进 `ProcessElevator`
 
-因此：扫码成功进了 `CommContrl`，仍可能只做设置（`'1'`）或校时（`'6'`），**不一定**进权限；进了权限，若设备配成院/楼门禁，也 **不会** 进 Elevator。
+因此：扫码成功进了 `CommControl`，仍可能只做设置（`'1'`）或校时（`'6'`），**不一定**进权限；进了权限，若设备配成院/楼门禁，也 **不会** 进 Elevator。
 
 ---
 
@@ -133,7 +133,7 @@ CommContrl(s_received_uart*, order_type_uart*, card_Number_uart*, 4或5);
 | `card_number_meta` | 字段 `uid` | 刷卡回复等 |
 | `uart_port` | 固定 `4` 或 `5` | 区分读头口（Gate/Unit 等会用到） |
 
-注意：`CommContrl` 入口处对 `order_type_meta` / `card_number_meta` 有 `(void)` 忽略；真正用于回复是在 **`Cmd_Permission` 末尾**。
+注意：`CommControl` 入口处对 `order_type_meta` / `card_number_meta` 有 `(void)` 忽略；真正用于回复是在 **`Cmd_Permission` 末尾**。
 
 ---
 

@@ -37,6 +37,12 @@ docs/
 | [main-flowchart.mmd](./overview/main-flowchart.mmd) | 主程序流程图（Mermaid，部分节点偏旧） |
 | [flows/app-poll-flow.md](./overview/flows/app-poll-flow.md) | `app_poll()`：日常四路轮询与 AT 互斥 |
 | [flows/directory-tree.md](./overview/flows/directory-tree.md) | 工程目录树（按文件作用） |
+| [naming-conventions.md](./overview/naming-conventions.md) | 命名规则与有问题命名清单 |
+| [embedded-coding-style.md](./overview/embedded-coding-style.md) | 通用嵌入式编程风格（裸机/分层/中断/内存）；文末对照本工程 |
+| [watchdog-iwdg.md](./overview/watchdog-iwdg.md) | 本工程独立看门狗 IWDG：超时、喂狗点、调试注意 |
+| [interrupt-service.md](./overview/interrupt-service.md) | 中断服务：短 ISR 原则与本工程各向量职责 |
+| [optimization-directions.md](./overview/optimization-directions.md) | 优化方向：逻辑清晰度与过长文件拆分 |
+| [pass-split-migrate-list.md](./overview/pass-split-migrate-list.md) | Pass 拆分：迁出了什么 → 变成了什么 |
 | `开发主要问题.doc` | 开发问题备忘（二进制） |
 | `梯控门禁网关V2_20260429(2).docx` | 产品/网关说明（二进制） |
 
@@ -46,9 +52,9 @@ docs/
 
 | 文件 | 说明 |
 | --- | --- |
-| [qr-process-uart45.md](./pass/qr-process-uart45.md) | `QRProcessUart4` / `QRProcessUart5`：读头轮询、JSON 切片、进 `CommContrl` |
+| [qr-process-uart45.md](./pass/qr-process-uart45.md) | `QRProcessUart4` / `QRProcessUart5`：读头轮询、JSON 切片、进 `CommControl` |
 | [memcpy-memset.md](./pass/memcpy-memset.md) | `memcpy` / `memset`：标准库用法与读头路径中的作用 |
-| [commcontrl-permission-chain.md](./pass/commcontrl-permission-chain.md) | `CommContrl` 调用条件；与 `Cmd_Permission` → `ProcessElevator` 关系 |
+| [commcontrol-permission-chain.md](./pass/commcontrol-permission-chain.md) | `CommControl` 调用条件；与 `Cmd_Permission` → `ProcessElevator` 关系 |
 | [password-4digit-auth.md](./pass/password-4digit-auth.md) | 四位口令固件校验：概念、时间槽、摘要、拆位与授权 |
 | [password-4digit-collision.md](./pass/password-4digit-collision.md) | 四位口令重复/碰撞：平台源串与模运算空间局限 |
 | [password-4digit-unacceptable.md](./pass/password-4digit-unacceptable.md) | 梯控场景下不可接受的口令重复（越权呼层、跨设备等） |
@@ -80,7 +86,8 @@ docs/
 
 | 文件 | 说明 |
 | --- | --- |
-| [storage-logic.md](./store/storage-logic.md) | 阶段 E：上电装载、黑名单/配置/RTC/限层回写逻辑 |
+| [storage-logic.md](./superpowers/storage-logic.md) | 阶段 E：上电装载、黑名单/配置/RTC/限层回写逻辑 |
+| [blacklist-logic.md](./store/blacklist-logic.md) | 黑名单：RAM/EEPROM、通行检查、云端 case、读头死路径与待做 |
 | [eeprom.md](./store/eeprom.md) | 外挂 EEPROM：AT24C32 地址布局、驱动 API |
 
 ---

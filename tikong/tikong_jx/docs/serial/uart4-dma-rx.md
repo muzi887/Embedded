@@ -21,7 +21,7 @@ UART4（读头 1）采用 **DMA 搬字节 + USART 空闲中断（IDLE）定帧**
 
 1. 字节由 **DMA1 Stream2** 写入 `UART4_RX_BUF`（CPU 不逐字节进中断）
 2. 一帧发完、线空闲约 1 字节时间 → `UART4_IRQHandler`（`USART_IT_IDLE`）置 `UART4_RX_Complete` / `UART4_RX_CNT`，并 `UART4_DMA_ReInit()`
-3. 主循环 `app_poll()` → `QRProcessUart4()` 轮询该标志，再拼 JSON / 进 `CommContrl`
+3. 主循环 `app_poll()` → `QRProcessUart4()` 轮询该标志，再拼 JSON / 进 `CommControl`
 
 **本工程不定帧、不处理 DMA 收满（TC）中断。** 扫码帧远小于 512 字节缓冲，仅靠 IDLE 即可。
 
@@ -34,7 +34,7 @@ UART4（读头 1）采用 **DMA 搬字节 + USART 空闲中断（IDLE）定帧**
 | 外设 | **UART4**，仅接收（`USART_Mode_Rx`） |
 | 引脚 | **PC10** TX 复用、**PC11** RX 复用（`GPIO_AF_UART4`） |
 | 波特率 | `uart4_init(9600)`（`User/board_init.c`） |
-| 用途 | 读头 1 → `QRProcessUart4` → `CommContrl` 等 |
+| 用途 | 读头 1 → `QRProcessUart4` → `CommControl` 等 |
 | DMA | **DMA1 Stream2 / Channel4**，外设 `UART4->DR` → 内存 `UART4_RX_BUF` |
 | 缓冲 | `UART4_REC_LEN = 512`，`__align(4)` |
 | 定帧 | **仅 IDLE**（`USART_IT_IDLE`） |
@@ -74,7 +74,7 @@ UART4（读头 1）采用 **DMA 搬字节 + USART 空闲中断（IDLE）定帧**
         │
         └─ if (UART4_RX_Complete)
               追加到 uart4_rx_accum，凑齐 "{...}"
-              切 type/data/uid → CommContrl 或密码处理
+              切 type/data/uid → CommControl 或密码处理
               清 Complete / CNT
 ```
 
@@ -146,7 +146,7 @@ QRProcessUart5();
 QRProcessUart4();
 ```
 
-业务侧见 [qr-process-uart45.md](../pass/qr-process-uart45.md)：见 `UART4_RX_Complete` → 累积 → 完整 `{...}` → `CommContrl` / 密码。
+业务侧见 [qr-process-uart45.md](../pass/qr-process-uart45.md)：见 `UART4_RX_Complete` → 累积 → 完整 `{...}` → `CommControl` / 密码。
 
 处理顺序：
 
@@ -192,7 +192,7 @@ main:                                         稍后 QRProcessUart4 看到 Compl
 2. **有字节但业务不跑**：`app_poll` 是否在跑（是否卡在 4G AT 序列）；是否看 `UART4_RX_Complete`；`QRProcessUart4` 是否被调用。
 3. **长度不对**：IDLE 清法是否偶发丢标志；与 USART3「先 SR 后 DR」对比。
 4. **第二帧起丢失**：`UART4_DMA_ReInit` 是否每次 IDLE 都执行；Normal 模式忘重开则 DMA 停死。
-5. **帧不完整 / 进不了 CommContrl**：业务侧要求累积后以 `{` 开头、以 `}` 结尾，见 [qr-process-uart45.md](../pass/qr-process-uart45.md)。
+5. **帧不完整 / 进不了 CommControl**：业务侧要求累积后以 `{` 开头、以 `}` 结尾，见 [qr-process-uart45.md](../pass/qr-process-uart45.md)。
 
 ---
 
@@ -207,4 +207,4 @@ main:                                         稍后 QRProcessUart4 看到 Compl
 | `QRProcessUart4` | `App/Pass/qr_comm.c`：主循环消费一帧 |
 | `User/board_init.c` | `uart4_init(9600)` |
 | `User/app_run.c` | `app_poll` 调用 `QRProcessUart4` |
-| `App/Pass/cmd.c` | `CommContrl` 等命令 |
+| `App/Pass/cmd.c` | `CommControl` 等命令 |

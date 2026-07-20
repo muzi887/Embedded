@@ -2,13 +2,16 @@
 #include "blackList.h"
 #include <stdio.h>
 #include "data_handler.h"
-#include "RTC.h"
+#include "pass_crypto.h"
+#include "rtc.h"
 #include "app_config.h"
 
 /* qrCodeData / cardData 可容纳完整权限串（≤MAX_RECEIVE_LEN）+ JSON 包头与 handleResult 字段 */
 #define QR_REPLY_JSON_CAPACITY (MAX_RECEIVE_LEN + 512)
 
 RTC_Time currentTime2; // 存放时间结构体
+
+CmdResult g_result;
 
 // rs485 透传回执
 uint8_t First_Reply(long long rxmessageId, const char *rxrequestId, long long rxrequestTimestamp)
