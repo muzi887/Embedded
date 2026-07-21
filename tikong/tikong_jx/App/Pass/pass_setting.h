@@ -23,7 +23,6 @@ int Cmd_Set_Time(char received_data[]);
 int Cmd_Set_OpenLimit(char received_data[]);
 void copy_field_snap(char *dst, size_t dst_sz, const char *src);
 int qr_hex_char_to_nibble(char c);
-void qr_split_s_received_by_comma(const char *src);
 int parseYMDHMS(const char *s, RTC_Time *t);
 
 #endif

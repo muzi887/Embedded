@@ -63,7 +63,7 @@ int main(void)
 			if (check_limit_time_flag)
 			{
 				RTC_Time now;
-				RTC_Time limit_tm; /* parse limit string only; must not overwrite now */
+				RTC_Time  ; /* parse limit string only; must not overwrite now */
 				check_limit_time_flag = 0;
 				//在1分钟内超3次链接4g，直接复位
 				if (online_count > 3)

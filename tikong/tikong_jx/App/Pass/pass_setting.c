@@ -7,19 +7,14 @@
 #include "floor_ctrl.h"
 #include "rly.h"
 #include "timer.h"
+#include "pass_csv.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#define QR_RECV_CSV_MAX 16
-/* 含 NUL：单列最多 QR_RECV_CSV_FIELD-1 字符。梯控权限列可达 64+ 字符；MQTT 等最长 64 */
-#define QR_RECV_CSV_FIELD 128
 /* data 段为 CSV：固定 8 个逗号，即 9 列 */
 #define QR_RECV_CSV_COMMA_N 8u
 #define QR_RECV_CSV_COL_N (QR_RECV_CSV_COMMA_N + 1u)
-
-static char s_recv_csv_field[QR_RECV_CSV_MAX][QR_RECV_CSV_FIELD];
-static int s_recv_csv_count;
 
 static char *recv_device_id;		  // 设备账号
 static char *recv_device_password;	  // 设备密码
@@ -212,7 +207,7 @@ int Cmd_Set_Time(char received_data[])
 	printf("recv_sys_time: %s\r\n", recv_sys_time);
 	// printf("recv_drift_time: %s\r\n", recv_drift_time);
 
-	/* 验签：将最后一个逗号后的字段替换为固定值后计算 SHA1 前10位 */
+	/* 验签：将最后一个逗号后的字段替换为设备密钥后计算 SHA1 前10位 */
 	last_comma = strrchr(received_data, ',');
 	if (!last_comma)
 		return -2;
@@ -461,45 +456,6 @@ int qr_hex_char_to_nibble(char c)
 	if (c >= 'A' && c <= 'F')
 		return c - 'A' + 10;
 	return -1;
-}
-
-void qr_split_s_received_by_comma(const char *src)
-{
-	const char *p;
-	const char *end;
-	int fi;
-
-	s_recv_csv_count = 0;
-	if (!src)
-		return;
-	p = src;
-	for (fi = 0; fi < QR_RECV_CSV_MAX && *p; fi++)
-	{
-		int j = 0;
-		while (*p && *p != ',' && j < QR_RECV_CSV_FIELD - 1)
-			s_recv_csv_field[fi][j++] = *p++;
-		s_recv_csv_field[fi][j] = '\0';
-		/* 本列未遇逗号但缓冲已满：跳过后续字符直至逗号，避免同一物理列被拆成多列 */
-		if (*p && *p != ',')
-		{
-			printf("qr csv: field %d truncated (max %d chars)\r\n", fi, QR_RECV_CSV_FIELD - 1);
-			while (*p && *p != ',')
-				p++;
-		}
-		s_recv_csv_count++;
-		if (*p == ',')
-			p++;
-	}
-
-	/* 尾部为 ',' 时，补一个空字段（例如 "a,b," => 3 列） */
-	end = src;
-	while (*end)
-		end++;
-	if (end > src && *(end - 1) == ',' && s_recv_csv_count < QR_RECV_CSV_MAX)
-	{
-		s_recv_csv_field[s_recv_csv_count][0] = '\0';
-		s_recv_csv_count++;
-	}
 }
 
 /* recv_sys_time: 14 位数字 YYYYMMDDhhmmss -> RTC_Time；0 成功，-1 失败 */

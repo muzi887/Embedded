@@ -20,6 +20,7 @@ docs/
 ├── cloud/             云（对齐 App/Cloud；含 4g/ 资料导读）
 ├── store/             存储 / EEPROM
 ├── serial/            串口通路
+├── hardware/          板级硬件（Board / 驱动说明）
 ├── setup/             工程搭建、Keil、目录重构说明
 ├── superpowers/       AI 规格与实施计划
 ```
@@ -39,7 +40,7 @@ docs/
 | [flows/directory-tree.md](./overview/flows/directory-tree.md) | 工程目录树（按文件作用） |
 | [naming-conventions.md](./overview/naming-conventions.md) | 命名规则与有问题命名清单 |
 | [embedded-coding-style.md](./overview/embedded-coding-style.md) | 通用嵌入式编程风格（裸机/分层/中断/内存）；文末对照本工程 |
-| [watchdog-iwdg.md](./overview/watchdog-iwdg.md) | 本工程独立看门狗 IWDG：超时、喂狗点、调试注意 |
+| [watchdog-iwdg.md](./hardware/board/watchdog-iwdg.md) | 本工程独立看门狗 IWDG：超时、喂狗点、调试注意 |
 | [interrupt-service.md](./overview/interrupt-service.md) | 中断服务：短 ISR 原则与本工程各向量职责 |
 | [optimization-directions.md](./overview/optimization-directions.md) | 优化方向：逻辑清晰度与过长文件拆分 |
 | [pass-split-migrate-list.md](./overview/pass-split-migrate-list.md) | Pass 拆分：迁出了什么 → 变成了什么 |
@@ -54,6 +55,7 @@ docs/
 | --- | --- |
 | [qr-process-uart45.md](./pass/qr-process-uart45.md) | `QRProcessUart4` / `QRProcessUart5`：读头轮询、JSON 切片、进 `CommControl` |
 | [memcpy-memset.md](./pass/memcpy-memset.md) | `memcpy` / `memset`：标准库用法与读头路径中的作用 |
+| [strrchr.md](./pass/strrchr.md) | `strrchr` / `strncmp`：末逗号换密钥与签名前 10 位比对 |
 | [commcontrol-permission-chain.md](./pass/commcontrol-permission-chain.md) | `CommControl` 调用条件；与 `Cmd_Permission` → `ProcessElevator` 关系 |
 | [password-4digit-auth.md](./pass/password-4digit-auth.md) | 四位口令固件校验：概念、时间槽、摘要、拆位与授权 |
 | [password-4digit-collision.md](./pass/password-4digit-collision.md) | 四位口令重复/碰撞：平台源串与模运算空间局限 |
@@ -61,6 +63,7 @@ docs/
 | [password-4digit-remediation.md](./pass/password-4digit-remediation.md) | 针对不可接受问题的解决思路（配置优先 / 改算法） |
 | [password-4digit-design-prompt.md](./pass/password-4digit-design-prompt.md) | 四位访客密码加密方案：发给 AI 的优化设计 Prompt |
 | [sha1-hash.md](./pass/sha1-hash.md) | `sha1_hash`：API、SHA-1 步骤与 `Middlewares/sha1` 对照 |
+| [cmd-set-time.md](./pass/cmd-set-time.md) | `Cmd_Set_Time`：自算签名/二维码、设备验签流程与源码对照 |
 
 其它源码见 `App/Pass/`（`qr_comm`、`cmd`、`data_handler`）。
 
@@ -87,7 +90,7 @@ docs/
 | 文件 | 说明 |
 | --- | --- |
 | [storage-logic.md](./superpowers/storage-logic.md) | 阶段 E：上电装载、黑名单/配置/RTC/限层回写逻辑 |
-| [blacklist-logic.md](./store/blacklist-logic.md) | 黑名单：RAM/EEPROM、通行检查、云端 case、读头死路径与待做 |
+| [blacklist.md](./store/blacklist.md) | 黑名单：存储 / 通行检查 / 云端 case / 死路径 / 待完善 |
 | [eeprom.md](./store/eeprom.md) | 外挂 EEPROM：AT24C32 地址布局、驱动 API |
 
 ---
@@ -97,6 +100,15 @@ docs/
 | 文件 | 说明 |
 | --- | --- |
 | [uart4-dma-rx.md](./serial/uart4-dma-rx.md) | UART4：DMA + IDLE 定帧 → `QRProcessUart4` |
+
+---
+
+## hardware/ — 板级硬件
+
+| 文件 | 说明 |
+| --- | --- |
+| [board/hc595-ext-io.md](./hardware/board/hc595-ext-io.md) | 74HC595 / `ext_io`：级联移位、40 路楼层 IO、与 `floor_ctrl` |
+| [board/watchdog-iwdg.md](./hardware/board/watchdog-iwdg.md) | IWDG：超时、喂狗点、调试注意 |
 
 ---
 

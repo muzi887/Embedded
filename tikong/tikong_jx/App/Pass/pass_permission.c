@@ -11,19 +11,14 @@
 #include "rly.h"
 #include "timer.h"
 #include "Live_data.h"
+#include "pass_csv.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#define QR_RECV_CSV_MAX 16
-/* 含 NUL：单列最多 QR_RECV_CSV_FIELD-1 字符。梯控权限列可达 64+ 字符；MQTT 等最长 64 */
-#define QR_RECV_CSV_FIELD 128
 /* data 段为 CSV：固定 8 个逗号，即 9 列 */
 #define QR_RECV_CSV_COMMA_N 8u
 #define QR_RECV_CSV_COL_N (QR_RECV_CSV_COMMA_N + 1u)
-
-static char s_recv_csv_field[QR_RECV_CSV_MAX][QR_RECV_CSV_FIELD];
-static int s_recv_csv_count;
 
 /* static char *recv_cmd; */
 static char *recv_arg_id;		  // 卡号
@@ -454,7 +449,7 @@ static void Cmd_Permission_CheckBlacklist(void)
 	g_result.code = 200;
 }
 
-/* 时间检验：按 EEPROM 配置的漂移分钟放宽有效区间；0 在有效期内，-4 不在（依赖已解析的 recv_arg_begin/end） */
+/* 时间窗检验：按 EEPROM 配置的漂移分钟放宽有效区间；0 在有效期内，-4 不在（依赖已解析的 recv_arg_begin/end） */
 static void Cmd_Permission_CheckTimeWindow(void)
 {
 	int drift_min;
@@ -482,6 +477,7 @@ static void Cmd_Permission_CheckTimeWindow(void)
 	g_result.code = 200;
 }
 
+/* 权限二维码/刷卡通行总入口 */
 int Cmd_Permission(char received_data[], const char order_type_meta[8], const char card_number_meta[32], int uart_port)
 {
 	int k;

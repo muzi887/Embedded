@@ -6,7 +6,7 @@
 void PCProcess(void);
 void Rs485Process(void);
 void G4GProcess(void);
-void QRProcess(void);
-void QRProcessUart4(void);
+// void QRProcessUart5(void);
+// void QRProcessUart4(void);
 
 #endif

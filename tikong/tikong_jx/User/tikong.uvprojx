@@ -705,14 +705,24 @@
               <FilePath>..\Hardware\Time\ds1302.h</FilePath>
             </File>
             <File>
-              <FileName>RTC.c</FileName>
+              <FileName>rtc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardware\Time\RTC.c</FilePath>
+              <FilePath>..\Hardware\Time\rtc.c</FilePath>
             </File>
             <File>
-              <FileName>RTC.h</FileName>
+              <FileName>rtc.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\Hardware\Time\RTC.h</FilePath>
+              <FilePath>..\Hardware\Time\rtc.h</FilePath>
+            </File>
+            <File>
+              <FileName>rtc_util.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\Time\rtc_util.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc_util.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\Hardware\Time\rtc_util.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -873,6 +883,56 @@
               <FileName>qr_comm.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\App\Pass\qr_comm.h</FilePath>
+            </File>
+            <File>
+              <FileName>pass_crypto.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Pass\pass_crypto.c</FilePath>
+            </File>
+            <File>
+              <FileName>pass_crypto.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\Pass\pass_crypto.h</FilePath>
+            </File>
+            <File>
+              <FileName>pass_password.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Pass\pass_password.c</FilePath>
+            </File>
+            <File>
+              <FileName>pass_password.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\Pass\pass_password.h</FilePath>
+            </File>
+            <File>
+              <FileName>pass_permission.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Pass\pass_permission.c</FilePath>
+            </File>
+            <File>
+              <FileName>pass_permission.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\Pass\pass_permission.h</FilePath>
+            </File>
+            <File>
+              <FileName>pass_setting.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Pass\pass_setting.c</FilePath>
+            </File>
+            <File>
+              <FileName>pass_setting.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\Pass\pass_setting.h</FilePath>
+            </File>
+            <File>
+              <FileName>pass_csv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Pass\pass_csv.c</FilePath>
+            </File>
+            <File>
+              <FileName>pass_csv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\Pass\pass_csv.h</FilePath>
             </File>
           </Files>
         </Group>

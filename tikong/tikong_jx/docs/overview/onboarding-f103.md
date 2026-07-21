@@ -209,7 +209,7 @@ G4GProcess();      // USART3 4G / 云
 
 流程总览（上电装载 / 回写触发 / 限层到期）：
 
-→ **[storage-logic.md](../superpowers/storage-logic.md)**；黑名单专文：[blacklist-logic.md](../store/blacklist-logic.md)
+→ **[storage-logic.md](../superpowers/storage-logic.md)**；黑名单：[blacklist.md](../store/blacklist.md)
 
 建议步骤：
 
@@ -217,7 +217,7 @@ G4GProcess();      // USART3 4G / 云
   - EEPROM：`Hardware/Storage/eeprom.c`（上电 `ReadKey`、`loadDataFromEEPROM`）
   - 时间：`Hardware/Time/RTC.c` 的 `RtcChip_GetTime` / `RtcChip_SetTime`（芯片驱动 `ds1302.c`）
   - 通行有效期依赖 RTC：时间不准 → 权限失败
-2. **黑名单**：`App/Store/blackList.c` + 上电 `loadDataFromEEPROM`（运行时查 RAM）。专文：[blacklist-logic.md](../store/blacklist-logic.md)
+2. **黑名单**：[blacklist.md](../store/blacklist.md)。源码 `App/Store/blackList.c`，上电 `loadDataFromEEPROM`（运行时查 RAM）。
 3. **密钥/口令**：`ReadKey`、公钥与账号密码（`App/Pass/data_handler` / EEPROM）；含 MQTT 的配置经 AT 成功后再写（`Cmd_Setting_OnAtSequenceDone`）
 4. **限层**：`Hardware/Board/floor_ctrl.c` + `app_init` 应用 / `main` 到期清除
 5. **联调清单（任选完成）**：
@@ -268,7 +268,7 @@ G4GProcess();      // USART3 4G / 云
 | 物模型 TSL    | `docs/cloud/thing-model-v2.md` / `thing-model-v2.json`               |
 | 4G AT 配网  | `App/Cloud/uart3_at_sequence.c`、`Hardware/Modem/4G.c`；导读见 `docs/cloud/4g/` |
 | 验签 / 数据处理 | `App/Pass/data_handler.c`、`Middlewares/sha1.c`                        |
-| 黑名单       | `App/Store/blackList.c`；流程见 `docs/store/blacklist-logic.md`         |
+| 黑名单       | `App/Store/blackList.c`；`docs/store/blacklist.md`                       |
 | 存储全链路    | `docs/superpowers/storage-logic.md`                                   |
 | 时间        | `Hardware/Time/RTC.c`、`Hardware/Time/ds1302.c`                        |
 | 限层        | `Hardware/Board/floor_ctrl.c`                                         |
