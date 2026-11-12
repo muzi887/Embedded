@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1950" height="1240" viewBox="0 0 1950 1240">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1950" height="1240" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">23 条 AT 近场重配置序列</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">BLE 写入参数后设置 uart3_at_sequence_request；该序列实际使用 USART2/4G</text>
+  <line x1="54" y1="106" x2="1896" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="55" y="145" width="360" height="150" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="71" y="176" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">触发</text>
+    <text x="71" y="203"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">BLE 写 MQTT 参数并持久化</text><text x="71" y="228"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">uart3_at_sequence_request_set(1)</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="475" y="145" width="370" height="150" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="491" y="176" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">命令表构建</text>
+    <text x="491" y="203"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">读 EEPROM 的 pk/dk/secret/addr</text><text x="491" y="228"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">host:port → host,port</text><text x="491" y="253"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">生成 23 条命令</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="905" y="145" width="390" height="150" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="921" y="176" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">逐条发送</text>
+    <text x="921" y="203"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">每次 2 s 等待</text><text x="921" y="228"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">成功帧间隔 50 ms</text><text x="921" y="253"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">串口静默 40 ms 作为兜底切帧</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1355" y="145" width="520" height="150" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="1371" y="176" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">结果</text>
+    <text x="1371" y="203"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">23 条全 OK → 保存 key → 模块复位 → MCU 复位</text><text x="1371" y="228"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">非可选命令失败 → 终止序列</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="55" y="355" width="520" height="485" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="71" y="386" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">连接与模式</text>
+    <text x="71" y="413"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">0  usr.cn#AT+CSQ?</text><text x="71" y="438"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">1  AT+WKMOD=MQTT,NOR</text><text x="71" y="463"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">2  AT+MQTTSVR=host,port</text><text x="71" y="488"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">3  AT+MQTTUSER=deviceKey</text><text x="71" y="513"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">4  AT+MQTTPSW=deviceSecret</text><text x="71" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">5  AT+MQTTCID=deviceKey</text><text x="71" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">6  AT+MQTTMOD=1</text><text x="71" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">7  AT+HEARTEN=OFF</text><text x="71" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">21 AT+CACHEN=OFF（可选）</text><text x="71" y="638"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">22 AT+S</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="630" y="355" width="615" height="485" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="646" y="386" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">发布主题槽位 1–8</text>
+    <text x="646" y="413"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">1 /up/sys/online</text><text x="646" y="438"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">2 /up/sys/heartbeat</text><text x="646" y="463"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">3 /up/property/post</text><text x="646" y="488"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">4 /up/event/post</text><text x="646" y="513"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">5 /up/alarm/post</text><text x="646" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">6 /up/service/reply</text><text x="646" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">7 /up/ota/request</text><text x="646" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">8 /up/request/invoke</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1300" y="355" width="575" height="485" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="1316" y="386" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">订阅主题槽位 1–5</text>
+    <text x="1316" y="413"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">1 /down/service/invoke</text><text x="1316" y="438"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">2 /down/config/push</text><text x="1316" y="463"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">3 /down/property/get</text><text x="1316" y="488"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">4 /down/ota/reply</text><text x="1316" y="513"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">5 /down/request/reply</text><text x="1316" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">QoS = 0</text><text x="1316" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">retain = 0</text>
+  </g>
+    <line x1="415" y1="220" x2="475" y2="220" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="845" y1="220" x2="905" y2="220" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1295" y1="220" x2="1355" y2="220" stroke="#a3650b"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <rect x="100" y="970" width="1740" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="115" y="999" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="115" y="1025" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">序列一旦开始，主循环只执行 UART2 AT 状态机和喂狗；电机、LCD、属性、普通 GPRS 都暂停。</text>
+    <rect x="120" y="1090" width="140" height="34" rx="17"
+      fill="#fdeaea" stroke="#a93131" stroke-width="1.5"/>
+    <text x="190" y="1113" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a93131">缺失凭据：序列构建失败</text>
+    <rect x="560" y="1090" width="220" height="34" rx="17"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="670" y="1113" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a3650b">AT+CACHEN=OFF 可失败跳过</text>
+    <rect x="1000" y="1090" width="150" height="34" rx="17"
+      fill="#fdeaea" stroke="#a93131" stroke-width="1.5"/>
+    <text x="1075" y="1113" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a93131">非可选步骤失败无整体重试</text>
+    <rect x="1460" y="1090" width="150" height="34" rx="17"
+      fill="#e4f0fa" stroke="#1c5f95" stroke-width="1.5"/>
+    <text x="1535" y="1113" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1c5f95">成功后 MCU 也会重启</text>
+  </svg>

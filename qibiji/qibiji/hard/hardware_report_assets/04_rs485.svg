@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#84919b"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5f99"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1800" height="1080" fill="#f7f6f1"/>
+  <text x="56" y="58" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1f2933">RS-485 接口与失效偏置</text>
+  <text x="56" y="90" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#59636e">U7 MAX3485ESA 工作于 3.3 V；A/B 通过 CN2 外引，非隔离</text>
+  <line x1="56" y1="108" x2="1744" y2="108" stroke="#84919b" stroke-width="1"/>
+
+    <g filter="url(#shadow)">
+    <rect x="70" y="185" width="300" height="250" rx="12"
+      fill="#e4f0fa" stroke="#1f5f99" stroke-width="2"/>
+    <text x="86" y="216" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">MCU USART4</text>
+    <text x="86" y="241"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PC10 / pin 78: USART4_TX</text><text x="86" y="265"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PC11 / pin 79: USART4_RX</text><text x="86" y="289"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PD6 / pin 87: U4CE</text><text x="86" y="313"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">GPIO 手动收发方向</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="520" y="170" width="370" height="305" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="536" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">U7 MAX3485ESA</text>
+    <text x="536" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">RO pin 1 → USART4_RX</text><text x="536" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">DI pin 4 ← USART4_TX</text><text x="536" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">RE pin 2 + DE pin 3 短接</text><text x="536" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U4CE 经 R98 22 Ω 驱动</text><text x="536" y="322"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">A pin 6 / B pin 7</text><text x="536" y="346"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">3.3 V 供电</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1030" y="170" width="330" height="305" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="1046" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">总线保护与偏置</text>
+    <text x="1046" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">A → R102 47 kΩ → +3.3 V</text><text x="1046" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">B → R44 47 kΩ → GND</text><text x="1046" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">A–B: R97 1 kΩ</text><text x="1046" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">A/B 各经 22 Ω 串阻</text><text x="1046" y="322"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Z6/Z9: SMBJ6.8CA 到地</text><text x="1046" y="346"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Z8: A–B 差模 TVS</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1470" y="170" width="255" height="305" rx="12"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="2"/>
+    <text x="1486" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">CN2 外部</text>
+    <text x="1486" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">1  GND</text><text x="1486" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">2  B1</text><text x="1486" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">3  A1</text><text x="1486" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">4  V01 12 V</text><text x="1486" y="322"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">3.81 mm 4-pin</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="520" y="620" width="960" height="250" rx="12"
+      fill="#ffffff" stroke="#84919b" stroke-width="2"/>
+    <text x="536" y="651" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">总线行为</text>
+    <text x="536" y="676"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">空闲默认偏置目标：A 高、B 低；R97 同时加载总线。</text><text x="536" y="700"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">DE=HIGH 且 RE=HIGH：发送；DE=LOW 且 RE=LOW：接收。</text><text x="536" y="724"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U4CE 没有外部下拉；MCU 复位期间方向由内部高阻/外部噪声决定。</text><text x="536" y="748"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">无数字隔离、无隔离电源；两端地必须共地。</text>
+  </g>
+    <line x1="370" y1="260" x2="520" y2="260"
+    stroke="#1f5f99" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="370" y1="330" x2="520" y2="330"
+    stroke="#1f5f99" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="370" y1="390" x2="520" y2="390"
+    stroke="#1f5f99" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="890" y1="285" x2="1030" y2="285"
+    stroke="#2e6b3c" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="890" y1="345" x2="1030" y2="345"
+    stroke="#2e6b3c" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1360" y1="285" x2="1470" y2="285"
+    stroke="#a36108" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1360" y1="345" x2="1470" y2="345"
+    stroke="#a36108" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <g><rect x="80" y="955" width="201" height="32" rx="16"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="180.5" y="977" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#aa2d2d">1 kΩ 端接显著重于标准 120 Ω</text></g>
+    <g><rect x="500" y="955" width="219" height="32" rx="16"
+      fill="#fff0d4" stroke="#a36108" stroke-width="1.5"/>
+    <text x="609.5" y="977" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#a36108">线缆较短时可维持通信，但驱动/反射裕量下降</text></g>
+    <g><rect x="1030" y="955" width="237" height="32" rx="16"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="1.5"/>
+    <text x="1148.5" y="977" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#2e6b3c">建议核对目标波特率与线长后改为可选 120 Ω</text></g>
+    <g><rect x="70" y="860" width="1550" height="72" rx="8"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="84" y="889" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" font-weight="700" fill="#aa2d2d">核查提示</text>
+    <text x="84" y="913" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="14" fill="#59636e">R97 为 1 kΩ，不是常见的 120 Ω；如果这是有意用于短总线，需要在设计说明中写明。</text></g>
+  </svg>

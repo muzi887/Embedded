@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="900" viewBox="0 0 1900 900">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#84919b"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5f99"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="900" fill="#f7f6f1"/>
+  <text x="56" y="58" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1f2933">6 路数字输入：高边供电 + 光耦隔离</text>
+  <text x="56" y="90" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#59636e">输入闭合时 LED 导通，次级光敏三极管把 MCU 节点拉低；对外逻辑为低有效</text>
+  <line x1="56" y1="108" x2="1844" y2="108" stroke="#84919b" stroke-width="1"/>
+
+    <g filter="url(#shadow)">
+    <rect x="70" y="200" width="310" height="230" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="86" y="231" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">V02 现场电源</text>
+    <text x="86" y="256"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PD5 high → Q12 ON</text><text x="86" y="280"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Q11 ES4407 high-side ON</text><text x="86" y="304"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">F4 1.1 A PTC</text><text x="86" y="328"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V02 对外输出</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="500" y="200" width="320" height="230" rx="12"
+      fill="#ffffff" stroke="#84919b" stroke-width="2"/>
+    <text x="516" y="231" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">现场开关/触点</text>
+    <text x="516" y="256"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">CN6–CN11 pin 1: IN1–IN6</text><text x="516" y="280"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">pin 2: GND</text><text x="516" y="304"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">pin 3: V02</text><text x="516" y="328"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">推荐干接点或集电极开路</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="950" y="200" width="365" height="230" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="966" y="231" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">输入限流</text>
+    <text x="966" y="256"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V02 → R4/R9/... = 1 kΩ</text><text x="966" y="280"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">→ EL357N-G LED</text><text x="966" y="304"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">→ 外部返回 GND</text><text x="966" y="328"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">12 V 时约 10.8 mA</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1450" y="200" width="370" height="230" rx="12"
+      fill="#e4f0fa" stroke="#1f5f99" stroke-width="2"/>
+    <text x="1466" y="231" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">MCU 侧</text>
+    <text x="1466" y="256"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R5/R10/... = 4.7 kΩ 上拉到 3.3 V</text><text x="1466" y="280"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">100 nF 到地滤波</text><text x="1466" y="304"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">IN_1–IN_6 → GPIO</text><text x="1466" y="328"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">输入有效时 MCU = LOW</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="280" y="600" width="1330" height="145" rx="12"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="2"/>
+    <text x="296" y="631" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">通道映射</text>
+    <text x="296" y="656"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">CN11/IN1 → OP5 → PD7  |  CN8/IN2 → OP4 → PB3  |  CN10/IN3 → OP3 → PB4</text><text x="296" y="680"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">CN7/IN4 → OP2 → PB0  |  CN6/IN5 → OP7 → PB1  |  CN9/IN6 → OP6 → PE15</text>
+  </g>
+    <line x1="380" y1="315" x2="500" y2="315"
+    stroke="#a36108" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="820" y1="315" x2="950" y2="315"
+    stroke="#aa2d2d" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1315" y1="315" x2="1450" y2="315"
+    stroke="#1f5f99" stroke-width="4"
+    
+    marker-end="url(#arrow)"/>
+    <g><rect x="520" y="790" width="264" height="32" rx="16"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="652" y="812" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#aa2d2d">12 V 时 R ≈ 0.13 W（0805 临界）</text></g>
+    <g><rect x="920" y="790" width="120" height="32" rx="16"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="980" y="812" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#aa2d2d">不要直接接 24 V</text></g>
+    <g><rect x="1230" y="790" width="147" height="32" rx="16"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="1.5"/>
+    <text x="1303.5" y="812" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#2e6b3c">次级有 100 nF 低通</text></g>
+  </svg>

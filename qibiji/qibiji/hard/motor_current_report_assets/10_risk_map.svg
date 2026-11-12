@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1100" viewBox="0 0 1900 1100">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="1100" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">电机电流测量与代码风险分级</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">风险基于原理图、当前源码和静态推导；仍需样机示波器/电流源实测确认</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949e"/>
+
+    <g filter="url(#s)">
+    <rect x="70" y="150" width="540" height="240" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="86" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">P0 — 安全/正确性优先</text>
+    <text x="86" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 约 180–200 ms 软件保护延迟 + 继电器释放时间，无法快速保护短路。</text><text x="86" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• LM358 由 5 V 供电，ADC 输入没有专用过压钳位。</text><text x="86" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 阈值 &lt;1000 mA 重启后被 ×100 迁移。</text><text x="86" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 服务端配置只校验 U16，不校验合理量程。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="650" y="150" width="540" height="240" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="666" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">P1 — 测量/可维护性</text>
+    <text x="666" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 零点校准只在启动时完成，且无失败超时事件。</text><text x="666" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 低于 zero_avg 的负向瞬态被钳为 0。</text><text x="666" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 代码/注释中的窗口、时间和通道数多处过期。</text><text x="666" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 原始 ADC、零点值和饱和状态不可诊断。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1230" y="150" width="590" height="240" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1246" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">P2 — 精度/验证</text>
+    <text x="1246" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 单端地回流测量，依赖 PCB 接地与屏蔽。</text><text x="1246" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 3.3 V LDO 同时作为 ADC 参考，未做精密基准。</text><text x="1246" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• R43 在 3.5 A 时耗散约 0.61 W，需要温度降额。</text><text x="1246" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">• 换向浪涌与触点抖动需要台架验证。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="70" y="460" width="820" height="235" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="86" y="491" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">建议代码修改</text>
+    <text x="86" y="517"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">1. 配置范围限制：1000..20000 mA；去掉 &lt;1000 自动乘 100 或加版本号。</text><text x="86" y="542"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">2. 增加 ADC/零点状态：READY / CAL_FAIL / SATURATED / SHUNT_OPEN。</text><text x="86" y="567"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">3. 对 stall 使用从首个超限样本起算的 sys_ms 窗口，避免主循环拥塞导致不确定延时。</text><text x="86" y="592"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">4. 将硬编码系数改为宏 + 编译期/运行期自检。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="940" y="460" width="880" height="235" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="956" y="491" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">建议硬件修改</text>
+    <text x="956" y="517"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">1. 在 ADC 前加入 3.3 V 钳位/限幅，或将 LM358 改由 3.3 V 单电源供电。</text><text x="956" y="542"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">2. 评估将 R29 改小并在 ADC 端加保护二极管；确认注入电流。</text><text x="956" y="567"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">3. 为 VREF/VDDA 增加独立滤波或精密基准；保持模拟地回流独立。</text><text x="956" y="592"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">4. 为 R43、R23/R22、R29/C12 与 PC0 增加测试点。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="70" y="755" width="1750" height="190" rx="12" fill="#ffffff"
+      stroke="#87949e" stroke-width="2"/>
+    <text x="86" y="786" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">验证闭环</text>
+    <text x="86" y="812"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">用可编程电子负载/大功率电流源在 0、0.1、0.5、1、2、3.5、5、10 A 点标定；</text><text x="86" y="837"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">同时采集 V(I-V_MO)、U4A pin 1、PC0、raw_avg、sample_ma、motor_curr 和实际负载电流。</text><text x="86" y="862"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">分别在冷机、热机、正反向、启动浪涌、继电器换向和 GPRS 发射突发条件下记录误差与误触发率。</text>
+  </g>
+    <rect x="70" y="990" width="1750" height="72" rx="9"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="85" y="1018" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a83232">审核提示</text>
+    <text x="85" y="1044" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#596773">本报告不把静态公式当作已校准结果；最终阈值必须由样机的多点线性回归和温漂数据确定。</text>
+  </svg>

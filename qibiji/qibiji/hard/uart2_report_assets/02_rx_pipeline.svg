@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1950" height="1070" viewBox="0 0 1950 1070">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1950" height="1070" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">正常模式 UART2 接收链</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">DMA 收到物理字节后，由 IDLE 中断、双槽暂存、环形缓冲和帧队列逐层转交主循环</text>
+  <line x1="54" y1="106" x2="1896" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="50" y="150" width="280" height="205" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="66" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">U30 AT_RXD</text>
+    <text x="66" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">模块经 Q1 驱动 PA3</text><text x="66" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">115200 8N1</text><text x="66" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">空闲帧由模块 UARTFT 切分</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="385" y="150" width="330" height="205" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="401" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">DMA1_CH6</text>
+    <text x="401" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">Normal 模式</text><text x="401" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">最多 1024 字节/次</text><text x="401" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">BuffSize = DMA_Rec2_Len</text><text x="401" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">内存地址递增</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="770" y="150" width="335" height="205" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="786" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">USART2 IDLE IRQ</text>
+    <text x="786" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">读取 DR 清 IDLE</text><text x="786" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">len = 1024 − DMA_CNDTR</text><text x="786" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">复制整帧到乒乓槽</text><text x="786" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">重新装载 DMA</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1160" y="150" width="325" height="205" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="1176" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">乒乓暂存</text>
+    <text x="1176" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">slot 0 / slot 1</text><text x="1176" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">各 1024 字节</text><text x="1176" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">两槽全满：丢最旧</text><text x="1176" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">overwrite++</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1540" y="150" width="350" height="205" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="1556" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">主循环取帧</text>
+    <text x="1556" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">UartRx_PumpFromDma()</text><text x="1556" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">每次最多取 4 帧</text><text x="1556" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">取槽+复制时短关中断</text><text x="1556" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">长 EEPROM 写也会搬运</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="360" y="500" width="390" height="230" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="376" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">环形缓冲</text>
+    <text x="376" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">rxRingBuf[3072+1]</text><text x="376" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">空间不足截断并计数</text><text x="376" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">UartRx_Append()</text><text x="376" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">仅主循环访问</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="830" y="500" width="390" height="230" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="846" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">接收帧队列</text>
+    <text x="846" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">8 项 × 1024 字节</text><text x="846" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">UartRx_Extract()</text><text x="846" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">按 1023 字节切块</text><text x="846" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">队列满时停在环形缓冲</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1300" y="500" width="590" height="230" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="1316" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">Parse_Process()</text>
+    <text x="1316" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">提取第一个完整 {...} JSON</text><text x="1316" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON → 严格信封 / 兼容空对象心跳回执</text><text x="1316" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">无 JSON → AT 回执匹配</text><text x="1316" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">逐帧处理直到接收队列为空</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="450" y="835" width="1050" height="105" rx="12" fill="#ffffff"
+      stroke="#87949d" stroke-width="2"/>
+    <text x="466" y="866" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">接收诊断计数</text>
+    <text x="466" y="893"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      fill="#5c6874">g_uart2_rx_overwrite：乒乓槽覆盖次数；g_uartRx_dropped_bytes：环形缓冲截断字节数</text>
+  </g>
+    <line x1="330" y1="250" x2="385" y2="250" stroke="#a3650b"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="715" y1="250" x2="770" y2="250" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1105" y1="250" x2="1160" y2="250" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1485" y1="250" x2="1540" y2="250" stroke="#654588"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1715" y1="355" x2="1715" y2="450" stroke="#a93131"
+    stroke-width="3" marker-end="url(#arrowRed)"
+    />
+    <path d="M1715 450 L555 450 L555 500" fill="none" stroke="#a93131" stroke-width="3" marker-end="url(#arrowRed)"/>
+    <line x1="750" y1="615" x2="830" y2="615" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1220" y1="615" x2="1300" y2="615" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <rect x="60" y="955" width="1830" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="75" y="984" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="75" y="1010" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">近场 AT 配置期间，IDLE 中断跳过乒乓暂存，AT 序列直接读取 DMA_Rece_Buf2。</text>
+  </svg>

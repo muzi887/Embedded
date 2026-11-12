@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1950" height="1060" viewBox="0 0 1950 1060">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1950" height="1060" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">固件调用关系与数据流</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">静态分析基于当前工作区代码；函数均在主循环/定时器上下文执行</text>
+  <line x1="54" y1="106" x2="1896" y2="106" stroke="#87949e"/>
+
+    <g filter="url(#s)">
+    <rect x="60" y="155" width="300" height="180" rx="12" fill="#ebeff2"
+      stroke="#596773" stroke-width="2"/>
+    <text x="76" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">main()</text>
+    <text x="76" y="212"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC1_Init()</text><text x="76" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">TIM2_Int_Init(7199, 50)</text><text x="76" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">while(1) AD_Process();</text><text x="76" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">while(1) Dcmotor_Process();</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="440" y="155" width="350" height="225" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="456" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">ADC1_Init()</text>
+    <text x="456" y="212"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">GPIOC PC0–PC3 = AIN</text><text x="456" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">DMA1_CH1 circular</text><text x="456" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC1 3-channel scan</text><text x="456" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC clock 12 MHz</text><text x="456" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">calibration + start</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="880" y="155" width="410" height="225" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="896" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">AD_Process() → ADC1_Read_filter()</text>
+    <text x="896" y="212"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">AD_Value[256][3]</text><text x="896" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">sum / N → raw_avg</text><text x="896" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">zero calibration</text><text x="896" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">sample_ma conversion</text><text x="896" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">25-entry FIFO average</text><text x="896" y="337"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">stall compare + counters</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1370" y="155" width="510" height="225" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="1386" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">共享输出变量</text>
+    <text x="1386" y="212"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">armReg.motor_curr (u16, mA)</text><text x="1386" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">g_adc_val[0] = motor_curr</text><text x="1386" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">s_current_zero_ready</text><text x="1386" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pending_stop_reason = STALL</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="440" y="500" width="350" height="225" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="456" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">Dcmotor_Process()</text>
+    <text x="456" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">if !ready → force STOP</text><text x="456" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">dcmotor_keycheck()</text><text x="456" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">dcmotor_ctrl()</text><text x="456" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">relay drive / stop event</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="880" y="500" width="410" height="225" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="896" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">事件与上报</text>
+    <text x="896" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">EventPostMotorStall(sample_ma)</text><text x="896" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">→ motor_stall</text><text x="896" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">EventPostMotorStop(reason=stall)</text><text x="896" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">→ motor_stop</text><text x="896" y="657"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">PropertyReport_SetPending()</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1370" y="500" width="510" height="225" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1386" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">消费者</text>
+    <text x="1386" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">LCD: armReg.motor_curr / 100</text><text x="1386" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">property: /1000.0 → A</text><text x="1386" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">LCD threshold: /100</text><text x="1386" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">EEPROM address 0x0004</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="685" y="825" width="585" height="115" rx="12" fill="#ffffff"
+      stroke="#87949e" stroke-width="2"/>
+    <text x="701" y="856" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">关键配置</text>
+    <text x="701" y="882"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC2CURT = 3.3 / 4.096 / (0.05 × 2) = 8.057 mA/count</text><text x="701" y="907"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">默认阈值 = 3500 mA；堵转连续计数 = 10 次。</text>
+  </g>
+    <line x1="360" y1="245" x2="440" y2="245" stroke="#87949e"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="790" y1="245" x2="880" y2="245" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#ab)"
+    />
+    <line x1="1290" y1="245" x2="1370" y2="245" stroke="#167269"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="360" y1="305" x2="440" y2="610" stroke="#a36409"
+    stroke-width="3" marker-end="url(#a)"
+    stroke-dasharray="10 8"/>
+    <line x1="790" y1="610" x2="880" y2="610" stroke="#a36409"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1290" y1="610" x2="1370" y2="610" stroke="#a83232"
+    stroke-width="4" marker-end="url(#ar)"
+    />
+    <line x1="1625" y1="380" x2="1625" y2="500" stroke="#664387"
+    stroke-width="3" marker-end="url(#a)"
+    stroke-dasharray="10 8"/>
+    <line x1="1625" y1="725" x2="1110" y2="825" stroke="#1c5f95"
+    stroke-width="3" marker-end="url(#ab)"
+    stroke-dasharray="10 8"/>
+  </svg>

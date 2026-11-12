@@ -1,0 +1,101 @@
+#include "4G.h"
+#include "sys.h"
+
+#include "led.h"
+#include "usart.h"
+#include "delay.h"
+#include "gprs.h"
+
+u8 gprsonlineflag;
+
+void GM4G_Init(void) // IO初始化
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE); // 使能PORTB,PORTE时钟
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4; // LINKB
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5; // LINKA
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    // 4G--RST
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;         // 4G复位
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  // 推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; // IO速度为50MHz
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // 中断配置
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource5);
+    EXTI_ClearITPendingBit(EXTI_Line5);                            // GPRS 中断标志位是否清除
+    EXTI_InitStructure.EXTI_Line = EXTI_Line5;                     // 选择中断线路7
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;            // 设置为中断模式，事件模式关闭
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling; // 外部中断触发方式为上、下降沿触发
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                      // 外部中断使能
+    EXTI_Init(&EXTI_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /*
+     * 上电初始化时会执行一次 RST 脉冲（500ms 高电平），
+     * 此路径是 main()->GM4G_Init() 的启动时序，不属于 GM4G_Reset 触发路径。
+     */
+    GPIO_SetBits(GPIOA, GPIO_Pin_1);
+    delay_ms(500);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+}
+
+void GM4G_Reset(void) // 硬件复位 4G 模块（RST 引脚），用于 NORMAL->OFFLINE 后恢复
+{
+    /*
+     * [Reset Timing Annotation]
+     * 该函数由 gprs_state_machine() 在 NORMAL->OFFLINE 时触发（当前唯一触发路径）。
+     *
+     * 阻塞时序：
+     * 1) RST 拉高并 delay_ms(500)
+     * 2) RST 拉低
+     * 3) 调用 GM4G_Init()，其内部再次 delay_ms(500) 且重新配置 EXTI/NVIC
+     *
+     * 因此总阻塞约 1s（不含寄存器配置开销），并运行在主循环上下文中。
+     */
+    GPIO_SetBits(GPIOA, GPIO_Pin_1);
+    delay_ms(500);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+    GM4G_Init();
+}
+
+// 外部中断5-9中断服务函数  // PC.5
+void EXTI9_5_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line5)) // gprs中断标志位是否清除
+    {
+        EXTI_ClearITPendingBit(EXTI_Line5);
+        if (GPRS_LINKA)
+        {
+            gprsonlineflag = 1; // gprs在线
+           //
+                                //	MQTT_ConnectPack();  //连接服务器
+            // printf("gprsonlineflag = 1\n");
+            // 自动上报版本号
+            //cjson_pub_version();
+            // cjson_pub_getbin(0);
+        }
+        else
+        {
+            gprsonlineflag = 0; // gprs离线
+            LED_LINE = 0;
+            // printf("gprsonlineflag = 0\n");
+        }
+    }
+}

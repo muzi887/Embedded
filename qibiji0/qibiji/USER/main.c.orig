@@ -1,0 +1,39 @@
+#include "led.h"
+#include "delay.h"
+#include "key.h"
+#include "sys.h"
+#include "usart.h"
+#include "timer.h"
+#include "lcd.h"
+#include "adc.h"
+#include "wdg.h"
+#include "dc_motor.h"
+
+int main(void)
+{
+    delay_init();	    	     //延时函数初始化
+    NVIC_Configuration(); 	 //设置NVIC中断分组2:2位抢占优先级，2位响应优先级
+	      uart3_init(115200,0);    //8位
+    uart5_init(115200);      //与LCD通讯
+    LED_Init();			         //LED端口初始化
+		KEY_Init();              //按键初始化
+    ADC1_Init();             //ADC
+	  calc_adc_val_init();
+		dcmotor_gpioInit();      //moto io
+
+
+    TIM3_Int_Init(7199,1000); //100ms
+    TIM1_PWM_Init(3599,0);	 //不分频。PWM频率=72000000/3600=20Khz
+
+   // IWDG_Init(4,1990);       //3180MS  看门狗配置
+    printf("sys init!");
+    while(1)
+    {
+        IWDG_Feed();             	  //喂狗
+        Led_Run();
+				dcmotor_program();
+				dcmotor_protect(); //电机保护
+        ADC1_Read_filter();
+    }
+}
+

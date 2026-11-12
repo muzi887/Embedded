@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1140" viewBox="0 0 1900 1140">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="1140" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">UART2 发送队列与回执匹配</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">物理发送是阻塞轮询；上层统一队列按“一发一收/安全间隔”串行化 AT 与 JSON</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="80" y="150" width="360" height="220" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="96" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">业务/状态机入队</text>
+    <text x="96" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT：ICCID / MQTTCID / CSQ</text><text x="96" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON：属性、事件、回执、对时</text><text x="96" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON 仅在 NORMAL 入队</text><text x="96" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT 不受 ready 限制</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="550" y="150" width="350" height="220" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="566" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">8 项 FIFO</text>
+    <text x="566" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT 最大 31 字节</text><text x="566" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON 最大 1023 字节</text><text x="566" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">队列满则返回 0</text><text x="566" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">丢失不进入本地存储</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1010" y="150" width="350" height="220" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="1026" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">队首发送</text>
+    <text x="1026" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">state = WAITING</text><text x="1026" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">Usart2_Send() 轮询 TC</text><text x="1026" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">每字节约 86.8 µs</text><text x="1026" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">1 KiB 约 89 ms 阻塞</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1470" y="150" width="360" height="220" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="1486" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">USART2 TX</text>
+    <text x="1486" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">PA2 复用推挽</text><text x="1486" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">Q2 电平转换</text><text x="1486" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">U30 AT_RXD</text><text x="1486" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">无 DMA 发送、无流控</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="80" y="480" width="500" height="235" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="96" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">AT 等待</text>
+    <text x="96" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">默认 1000 ms</text><text x="96" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">最大重发 2 次</text><text x="96" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">应答须同时包含 resp_key 和 OK</text><text x="96" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">ERROR 通常要等到超时再重发</text><text x="96" y="638"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">仅匹配当前队首</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="680" y="480" width="500" height="235" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="696" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">JSON 等待</text>
+    <text x="696" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">当前调用者全部 callback=NULL</text><text x="696" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">固定 300 ms 队列安全间隔</text><text x="696" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">不等待任何 UART2 ACK</text><text x="696" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON 5 s/2 retry 分支实际未触发</text><text x="696" y="638"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">平台回执作为新下行 JSON 处理</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1280" y="480" width="540" height="235" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1296" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">回执/下行入口</text>
+    <text x="1296" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT 帧 → UartTx_OnRecv(...,1)</text><text x="1296" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">JSON 帧 → Parse_Process()</text><text x="1296" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">空对象 {} → 应用心跳确认</text><text x="1296" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">request_reply → 按 id 匹配对时</text><text x="1296" y="638"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">服务/配置 → 业务处理并重新入队回执</text>
+  </g>
+    <line x1="440" y1="260" x2="550" y2="260" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="900" y1="260" x2="1010" y2="260" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1360" y1="260" x2="1470" y2="260" stroke="#a3650b"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="920" y1="570" x2="1280" y2="570" stroke="#654588"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    stroke-dasharray="10 8"/>
+    <line x1="1650" y1="370" x2="1650" y2="440" stroke="#654588"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    />
+    <path d="M1650 440 L330 440 L330 480" fill="none" stroke="#654588" stroke-width="3" marker-end="url(#arrowBlue)"/>
+    <rect x="90" y="800" width="210" height="34" rx="17"
+      fill="#e3f4f1" stroke="#1a7368" stroke-width="1.5"/>
+    <text x="195" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1a7368">AT 1000 ms × 3 次尝试</text>
+    <rect x="485" y="800" width="190" height="34" rx="17"
+      fill="#f0e9f8" stroke="#654588" stroke-width="1.5"/>
+    <text x="580" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#654588">JSON 每条占位 300 ms</text>
+    <rect x="865" y="800" width="170" height="34" rx="17"
+      fill="#fdeaea" stroke="#a93131" stroke-width="1.5"/>
+    <text x="950" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a93131">8 项队列：拥塞时直接丢新项</text>
+    <rect x="1290" y="800" width="170" height="34" rx="17"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="1375" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a3650b">发送队列为空 ≠ 平台已收到</text>
+    <rect x="70" y="900" width="1750" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="85" y="929" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="85" y="955" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">当前 JSON 回调匹配函数存在但没有业务调用者；UartTx_OnRecv 的不匹配路径还缺少显式 return。</text>
+  </svg>

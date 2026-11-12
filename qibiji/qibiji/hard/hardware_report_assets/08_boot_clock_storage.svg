@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="970" viewBox="0 0 1800 970">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#84919b"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5f99"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1800" height="970" fill="#f7f6f1"/>
+  <text x="56" y="58" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1f2933">MCU 启动、复位、时钟与 RTC</text>
+  <text x="56" y="90" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#59636e">主 MCU 使用内部 Flash 启动；DS1302 独立保持日历</text>
+  <line x1="56" y1="108" x2="1744" y2="108" stroke="#84919b" stroke-width="1"/>
+
+    <g filter="url(#shadow)">
+    <rect x="70" y="170" width="320" height="230" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="86" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">BOOT</text>
+    <text x="86" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">BOOT0 → R55 10 kΩ → GND</text><text x="86" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">BOOT1 → R51 10 kΩ → GND</text><text x="86" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">启动源 = 主 Flash</text><text x="86" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">无外部启动切换</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="500" y="170" width="350" height="230" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="516" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">主复位 NRST</text>
+    <text x="516" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R56 10 kΩ 上拉到 3.3 V</text><text x="516" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">C24 100 nF 到 GND</text><text x="516" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">J2 pin 5 外露 RESET#</text><text x="516" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">无专用复位监控器</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="960" y="170" width="350" height="230" rx="12"
+      fill="#e4f0fa" stroke="#1f5f99" stroke-width="2"/>
+    <text x="976" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">HSE 时钟</text>
+    <text x="976" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Y1 8 MHz</text><text x="976" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">C22/C23 22 pF</text><text x="976" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R52 1 MΩ</text><text x="976" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">OSC_IN/OUT = pin 12/13</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1420" y="170" width="320" height="230" rx="12"
+      fill="#efe9f7" stroke="#65458b" stroke-width="2"/>
+    <text x="1436" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">4G 复位控制</text>
+    <text x="1436" y="226"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PA1 → Q3 反相</text><text x="1436" y="250"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U30 RESET 低有效</text><text x="1436" y="274"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R13 100 kΩ 上拉</text><text x="1436" y="298"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">默认上电运行</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="70" y="525" width="505" height="280" rx="12"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="2"/>
+    <text x="86" y="556" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">DS1302 RTC</text>
+    <text x="86" y="581"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U11 DS1302S 由 3.3 V 供电</text><text x="86" y="605"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Y2 32.768 kHz + 12 pF×2</text><text x="86" y="629"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">CR1220 → BAT_V</text><text x="86" y="653"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">RST/IO/SCLK = PC6/PC7/PC8</text><text x="86" y="677"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R77/R78/R79 上拉</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="660" y="525" width="430" height="280" rx="12"
+      fill="#eceef0" stroke="#59636e" stroke-width="2"/>
+    <text x="676" y="556" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">SWD 调试口 J2</text>
+    <text x="676" y="581"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">1: +3.3 V</text><text x="676" y="605"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">2: GND</text><text x="676" y="629"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">3: SWDIO / PA13</text><text x="676" y="653"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">4: SWCLK / PA14</text><text x="676" y="677"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">5: NRST / RESET#</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1190" y="525" width="550" height="280" rx="12"
+      fill="#efe9f7" stroke="#65458b" stroke-width="2"/>
+    <text x="1206" y="556" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">存储</text>
+    <text x="1206" y="581"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U9 FM25LXX — SPI1，CS/SCK/MISO/MOSI</text><text x="1206" y="605"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">WP 与 HOLD 均接 3.3 V</text><text x="1206" y="629"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">U10 24LC02 — I²C1（PB10/PB11）</text><text x="1206" y="653"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">A0/A1/A2 = 0 → 7-bit 地址 0x50</text><text x="1206" y="677"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">4.7 kΩ 上拉 SDA/SCL</text>
+  </g>
+    <g><rect x="100" y="870" width="210" height="32" rx="16"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="205" y="892" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#aa2d2d">MCU 自身复位与 4G 复位是两套网络</text></g>
+    <g><rect x="670" y="870" width="183" height="32" rx="16"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="1.5"/>
+    <text x="761.5" y="892" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#087f7b">RTC 独立于 MCU 内部备份域</text></g>
+    <g><rect x="1180" y="870" width="192" height="32" rx="16"
+      fill="#fff0d4" stroke="#a36108" stroke-width="1.5"/>
+    <text x="1276" y="892" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#a36108">FRAM 具体容量未在 BOM 固化</text></g>
+  </svg>

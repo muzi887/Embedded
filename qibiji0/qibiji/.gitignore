@@ -1,0 +1,36 @@
+# Build artifacts
+OBJ/
+LST/
+Listings/
+
+# Keil/ARMCC generated files
+*.o
+*.obj
+*.d
+*.dep
+*.axf
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+*.htm
+*.html
+*.build_log.htm
+*.lnp
+*.crf
+*.tra
+*.uvopt
+*.uvoptx
+
+# User/local debug artifacts
+*.log
+*.bak
+*.tmp
+*.temp
+
+# VSCode local settings
+.vscode/
+
+# Optional: keep shared workspace recommendations
+!.vscode/extensions.json

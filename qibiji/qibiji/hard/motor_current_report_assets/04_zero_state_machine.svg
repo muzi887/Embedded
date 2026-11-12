@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1850" height="900" viewBox="0 0 1850 900">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1850" height="900" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">电流零点校准与电机许可状态机</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">系统在有效零点建立之前强制电机停止，避免以未校准 ADC 码值误判过流</text>
+  <line x1="54" y1="106" x2="1796" y2="106" stroke="#87949e"/>
+
+    <g filter="url(#s)">
+    <rect x="60" y="180" width="290" height="185" rx="12" fill="#ebeff2"
+      stroke="#596773" stroke-width="2"/>
+    <text x="76" y="211" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">POWER-ON</text>
+    <text x="76" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">s_current_zero_ready = 0</text><text x="76" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">zero_sum = 0</text><text x="76" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">zero_sample_count = 0</text><text x="76" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor blocked</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="470" y="180" width="330" height="185" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="486" y="211" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">WAIT_ZERO</text>
+    <text x="486" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">每个 flag20ms 读取一次</text><text x="486" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">要求 motor state = STOP</text><text x="486" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">累加 raw_avg</text><text x="486" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">样本数达到 16</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="920" y="180" width="330" height="185" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="936" y="211" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">ZERO_READY</text>
+    <text x="936" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">zero_avg = round(zero_sum/16)</text><text x="936" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ready = 1</text><text x="936" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor 才允许运行</text><text x="936" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">记录 current_stop_since</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1370" y="180" width="390" height="185" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1386" y="211" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">RUNNING</text>
+    <text x="1386" y="237"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">sample_ma = max(raw−zero,0)×8.057</text><text x="1386" y="262"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">10 次连续超限 → stop</text><text x="1386" y="287"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">25 点 FIFO → motor_curr</text><text x="1386" y="312"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">运行中冻结零点跟踪</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="920" y="500" width="330" height="180" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="936" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">STOPPED_TRACK</text>
+    <text x="936" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">等待 1 s 稳定</text><text x="936" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">每 1 s 更新零点一次</text><text x="936" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">IIR = 15/16 old + 1/16 raw</text><text x="936" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">单步变化限制 ±1 code</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="470" y="500" width="330" height="180" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="486" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">异常路径</text>
+    <text x="486" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">校准中电机被请求运行</text><text x="486" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">清零 zero_sum / count</text><text x="486" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">保持 blocked</text><text x="486" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">等待再次 STOP</text>
+  </g>
+    <line x1="350" y1="270" x2="470" y2="270" stroke="#87949e"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="800" y1="270" x2="920" y2="270" stroke="#a36409"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1250" y1="270" x2="1370" y2="270" stroke="#167269"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1560" y1="365" x2="1560" y2="460" stroke="#1c5f95"
+    stroke-width="3" marker-end="url(#a)"
+    />
+    <path d="M1560 460 L1250 460 L1250 500" fill="none" stroke="#1c5f95" stroke-width="3" marker-end="url(#ab)"/>
+    <line x1="1085" y1="680" x2="1085" y2="745" stroke="#664387"
+    stroke-width="3" marker-end="url(#a)"
+    />
+    <path d="M1085 745 L1010 745 L1010 365" fill="none" stroke="#664387" stroke-width="3" marker-end="url(#a)" stroke-dasharray="9 7"/>
+    <path d="M635 500 L635 365" fill="none" stroke="#a83232" stroke-width="3" marker-end="url(#ar)" stroke-dasharray="9 7"/>
+    <rect x="100" y="800" width="242" height="34" rx="17"
+      fill="#e2f4f1" stroke="#167269" stroke-width="1.5"/>
+    <text x="221" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#167269">零点 ready 前禁止电机是有效安全门控</text>
+    <rect x="585" y="800" width="152" height="34" rx="17"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="661" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a83232">校准失败没有超时故障事件</text>
+    <rect x="1060" y="800" width="142" height="34" rx="17"
+      fill="#fff0d5" stroke="#a36409" stroke-width="1.5"/>
+    <text x="1131" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a36409">原始零点码值不对外可见</text>
+  </svg>

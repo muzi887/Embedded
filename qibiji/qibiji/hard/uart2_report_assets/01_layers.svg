@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1050" viewBox="0 0 1900 1050">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="1050" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">UART2 分层功能总览</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">MCU USART2 不是单一串口驱动，而是 4G 模块的 AT + 主题化 JSON 通信子系统</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="60" y="150" width="300" height="205" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="76" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">物理层</text>
+    <text x="76" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">PA2 → Q2 → U30 AT_RXD</text><text x="76" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">PA3 ← Q1 ← U30 AT_TXD</text><text x="76" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">115200 8N1</text><text x="76" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">无硬件流控</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="440" y="150" width="340" height="205" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="456" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">USART / DMA 层</text>
+    <text x="456" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">USART2 IDLE 中断</text><text x="456" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">DMA1_Channel6 接收</text><text x="456" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">DMA_Rece_Buf2[1024]</text><text x="456" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">发送：轮询 TC，阻塞式</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="860" y="150" width="390" height="205" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="876" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">帧与队列层</text>
+    <text x="876" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">2 × 1024 字节乒乓暂存</text><text x="876" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">3072 字节线性缓冲</text><text x="876" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">8 × 1023 字节接收帧队列</text><text x="876" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">8 项 AT/JSON 发送队列</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1330" y="150" width="510" height="205" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="1346" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">协议层</text>
+    <text x="1346" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT 应答：关键词 + OK</text><text x="1346" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">下行 JSON 信封校验</text><text x="1346" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">主题槽位：1…8</text><text x="1346" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">服务 / 配置 / 属性 / 对时</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="300" y="480" width="400" height="220" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="316" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">链路状态机</text>
+    <text x="316" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">OFFLINE</text><text x="316" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT_INIT_PUSH / WAIT</text><text x="316" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">DELAY / BACKOFF</text><text x="316" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">NORMAL</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="820" y="480" width="460" height="220" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="836" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">业务引擎</text>
+    <text x="836" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">属性上报 / 事件上报</text><text x="836" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">服务回执 / 配置下发</text><text x="836" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">sys.timeSync</text><text x="836" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">应用心跳 + 模块复位自愈</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1400" y="480" width="420" height="220" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="1416" y="511" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">外部交互</text>
+    <text x="1416" y="538"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">LINKA：蜂窝链路</text><text x="1416" y="563"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">banner：模块启动证据</text><text x="1416" y="588"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">UART2：AT / MQTT 串口协议</text><text x="1416" y="613"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">平台心跳回执：{}</text>
+  </g>
+    <line x1="360" y1="250" x2="440" y2="250" stroke="#a3650b"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="780" y1="250" x2="860" y2="250" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1250" y1="250" x2="1330" y2="250" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1580" y1="355" x2="1580" y2="440" stroke="#654588"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1330" y1="500" x2="1280" y2="500" stroke="#654588"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    />
+    <line x1="700" y1="590" x2="820" y2="590" stroke="#1c5f95"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    />
+    <rect x="90" y="825" width="190" height="34" rx="17"
+      fill="#e4f0fa" stroke="#1c5f95" stroke-width="1.5"/>
+    <text x="185" y="848" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1c5f95">IDLE 切帧是整条接收链的核心</text>
+    <rect x="550" y="825" width="150" height="34" rx="17"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="625" y="848" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a3650b">AT 配置时绕过普通暂存</text>
+    <rect x="1010" y="825" width="200" height="34" rx="17"
+      fill="#f0e9f8" stroke="#654588" stroke-width="1.5"/>
+    <text x="1110" y="848" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#654588">业务 JSON 不等待串口 ACK</text>
+    <rect x="70" y="920" width="1750" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="85" y="949" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="85" y="975" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">关键区分：GPRS_LINKA、atflag_online、gprs_is_ready、平台心跳确认是四种不同状态。</text>
+  </svg>

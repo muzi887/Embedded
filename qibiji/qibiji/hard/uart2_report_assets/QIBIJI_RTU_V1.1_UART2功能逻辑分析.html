@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QIBIJI Small RTU V1.1 UART2 功能逻辑分析</title>
+<style>
+@page { size: A4; margin: 15mm 13mm 17mm 13mm; }
+html { font-size: 10pt; }
+body { margin: 0; color: #1f2933; font-family: "Microsoft YaHei","PingFang SC",sans-serif; line-height: 1.55; }
+.cover { min-height: 230mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; page-break-after: always; }
+.cover h1 { border: 0; font-size: 29pt; color: #173b57; margin: 0 0 12pt; page-break-before: auto; }
+.cover .subtitle { font-size: 15pt; color: #526270; margin-bottom: 18pt; }
+.cover .meta { color: #6a7580; margin: 3pt 0; }
+.toc { page-break-after: always; }
+.toc h2 { margin-top: 0; }
+.toc ul { list-style: none; padding-left: 0; }
+.toc li { margin: 3pt 0; }
+.toc .toc-l2 { padding-left: 18pt; font-size: 9.3pt; }
+.toc a { color: #27313a; text-decoration: none; }
+h1 { font-size: 20pt; color: #163f5f; margin-top: 1.5em; margin-bottom: .55em; padding-bottom: .25em; border-bottom: 2px solid #9eb6c8; page-break-before: always; break-after: avoid; }
+h1:first-of-type { page-break-before: auto; }
+h2 { font-size: 14pt; color: #1b4b70; margin-top: 1.45em; margin-bottom: .45em; page-break-after: avoid; }
+h3 { font-size: 11.5pt; color: #1b4b70; margin-top: 1.2em; page-break-after: avoid; }
+p { margin: .45em 0 .7em; orphans: 3; widows: 3; }
+ul, ol { margin: .5em 0 .8em; padding-left: 1.5em; }
+li { margin: .22em 0; }
+code { padding: .05em .25em; border-radius: 3px; background: #edf1f4; color: #27313a; font-family: Consolas,monospace; font-size: .92em; }
+pre { padding: .75em; background: #eef2f5; border: 1px solid #c8d0d7; white-space: pre-wrap; overflow-wrap: anywhere; page-break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; margin: .65em 0 1em; font-size: 8.3pt; }
+th, td { border: 1px solid #aab4bd; padding: .32em .42em; vertical-align: top; word-break: break-word; }
+th { background: #e7eef3; color: #1b3d56; }
+tbody tr:nth-child(even) td { background: #f7f9fa; }
+figure { margin: .8em 0 1.1em; text-align: center; page-break-inside: avoid; }
+figure img { max-width: 100%; height: auto; }
+figcaption { color: #5c6874; font-size: 8.5pt; margin-top: .35em; }
+blockquote { margin: .9em 0; padding: .55em .8em; border-left: 4px solid #c28b30; background: #fff8e9; color: #4a5260; }
+hr { border: 0; border-top: 1px solid #c3ccd3; margin: 1.3em 0; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <h1>QIBIJI Small RTU V1.1 UART2 功能逻辑分析</h1>
+  <div class="subtitle">USART2 / DMA / AT 状态机 / MQTT 串口协议 / 对时与心跳自愈</div>
+  <div class="meta">STM32 固件与硬件链路联合分析</div>
+  <div class="meta">2026-10-29</div>
+</div>
+<div class="toc"><h2>目录</h2><ul><li class="toc-l1"><a href="#heading-1">结论摘要</a></li><li class="toc-l1"><a href="#heading-2">1. 功能边界与代码入口</a></li><li class="toc-l2"><a href="#heading-3">1.1 应用初始化</a></li><li class="toc-l2"><a href="#heading-4">1.2 关键代码位置</a></li><li class="toc-l1"><a href="#heading-5">2. 物理层与 USART2 初始化</a></li><li class="toc-l2"><a href="#heading-6">2.1 引脚和电气域</a></li><li class="toc-l2"><a href="#heading-7">2.2 USART2 参数</a></li><li class="toc-l1"><a href="#heading-8">3. UART2 接收链</a></li><li class="toc-l2"><a href="#heading-9">3.1 DMA 接收</a></li><li class="toc-l2"><a href="#heading-10">3.2 IDLE 中断与双槽暂存</a></li><li class="toc-l2"><a href="#heading-11">3.3 普通模式与 AT 配置模式</a></li><li class="toc-l2"><a href="#heading-12">3.4 主循环取帧</a></li><li class="toc-l2"><a href="#heading-13">3.5 丢包统计</a></li><li class="toc-l1"><a href="#heading-14">4. 接收解析</a></li><li class="toc-l2"><a href="#heading-15">4.1 严格信封</a></li><li class="toc-l2"><a href="#heading-16">4.2 AT 回执</a></li><li class="toc-l1"><a href="#heading-17">5. 发送链与队列</a></li><li class="toc-l2"><a href="#heading-18">5.1 物理发送</a></li><li class="toc-l2"><a href="#heading-19">5.2 统一发送队列</a></li><li class="toc-l2"><a href="#heading-20">5.3 JSON 等待的实际行为</a></li><li class="toc-l1"><a href="#heading-21">6. GPRS 链路状态机</a></li><li class="toc-l2"><a href="#heading-22">6.1 OFFLINE</a></li><li class="toc-l2"><a href="#heading-23">6.2 AT_INIT_PUSH / WAIT</a></li><li class="toc-l2"><a href="#heading-24">6.3 失败与退避</a></li><li class="toc-l2"><a href="#heading-25">6.4 NORMAL</a></li><li class="toc-l2"><a href="#heading-26">6.5 回调内容限制</a></li><li class="toc-l1"><a href="#heading-27">7. 主循环顺序</a></li><li class="toc-l1"><a href="#heading-28">8. 下行业务功能</a></li><li class="toc-l2"><a href="#heading-29">8.1 `type=service`</a></li><li class="toc-l2"><a href="#heading-30">8.2 `type=config`</a></li><li class="toc-l2"><a href="#heading-31">8.3 `type=property_get`</a></li><li class="toc-l2"><a href="#heading-32">8.4 `type=request_reply`</a></li><li class="toc-l2"><a href="#heading-33">8.5 空对象 `{}`</a></li><li class="toc-l1"><a href="#heading-34">9. MQTT 串口主题协议</a></li><li class="toc-l2"><a href="#heading-35">9.1 上行主题</a></li><li class="toc-l2"><a href="#heading-36">9.2 下行主题</a></li><li class="toc-l1"><a href="#heading-37">10. 23 条近场 AT 重配置</a></li><li class="toc-l2"><a href="#heading-38">10.1 命令顺序</a></li><li class="toc-l2"><a href="#heading-39">10.2 超时与失败</a></li><li class="toc-l2"><a href="#heading-40">10.3 主循环影响</a></li><li class="toc-l1"><a href="#heading-41">11. 对时与心跳</a></li><li class="toc-l2"><a href="#heading-42">11.1 对时</a></li><li class="toc-l2"><a href="#heading-43">11.2 心跳</a></li><li class="toc-l1"><a href="#heading-44">12. 状态诊断模型</a></li><li class="toc-l1"><a href="#heading-45">13. 模块复位</a></li><li class="toc-l1"><a href="#heading-46">14. 静态代码审查发现</a></li><li class="toc-l2"><a href="#heading-47">P0：可能造成数据错误或异常行为</a></li><li class="toc-l2"><a href="#heading-48">P1：协议和可靠性</a></li><li class="toc-l2"><a href="#heading-49">P2：可维护性和诊断</a></li><li class="toc-l1"><a href="#heading-50">15. 端到端时序</a></li><li class="toc-l2"><a href="#heading-51">15.1 上电</a></li><li class="toc-l2"><a href="#heading-52">15.2 收到平台服务</a></li><li class="toc-l2"><a href="#heading-53">15.3 链路掉线</a></li><li class="toc-l2"><a href="#heading-54">15.4 近场重新配置</a></li><li class="toc-l1"><a href="#heading-55">16. 建议测试矩阵</a></li><li class="toc-l1"><a href="#heading-56">17. 最终判断</a></li><li class="toc-l1"><a href="#heading-57">附录 A　UART2 相关参数</a></li><li class="toc-l1"><a href="#heading-58">附录 B　导出文件</a></li></ul></div>
+<h1 id="heading-1">结论摘要</h1>
+<p>当前工程中的 <strong>UART2 是 STM32F103 与 WH‑LTE‑7S1 4G 模块之间的专用通信口</strong>，不是调试口，也不承担 RS‑485。它同时包含五种逻辑：</p>
+<ol><li><strong>物理串口与 DMA 接收</strong>：PA2/PA3、115200 8N1、DMA1_Channel6、IDLE 中断。</li><li><strong>AT 命令通道</strong>：用于查询 ICCID、MQTTCID、CSQ，以及近场重新配置模块。</li><li><strong>MQTT 主题化串口协议</strong>：上行以“主题槽位号 + 逗号 + JSON”发送；下行由模块回送 AT 文本或 JSON。</li><li><strong>业务协议处理</strong>：属性上报、事件上报、服务回执、配置下发、属性读取、对时。</li><li><strong>连接自愈</strong>：LINKA 去抖、AT 初始化状态机、应用心跳、对时超时和 4G 模块硬复位。</li></ol>
+<p>四个“在线”概念必须分开看：</p>
+<table><thead><tr><th>状态</th><th>含义</th></tr></thead><tbody><tr><td><code>GPRS_LINKA</code> / <code>gprsonlineflag</code></td><td>模块蜂窝链路原始状态</td></tr><tr><td><code>atflag_online</code></td><td>收到过模块启动 banner</td></tr><tr><td><code>gprs_is_ready()</code></td><td>MCU 状态机进入 NORMAL</td></tr><tr><td><code>NetLiveness_IsServerConfirmed()</code></td><td>最近 240 秒内收到过平台心跳回执</td></tr></tbody></table>
+<p>“模块已联网”不等于“MQTT 已连接并订阅成功”，更不等于“平台已经确认在线”。</p>
+<p>本报告的代码基线为：</p>
+<ul><li>仓库提交：<code>fbbd4090483749fee57844bde7d7c50e152d611f</code></li><li>提交日期：2026‑10‑20</li><li>提交说明：<code>修订增加急停</code></li><li>相关驱动、队列、GPRS、对时/心跳源码在分析时无未提交修改。</li></ul>
+<figure><img src="uart2_report_assets/01_layers.png" alt="图 1　UART2 分层功能总览。" style="width:17cm"><figcaption>图 1　UART2 分层功能总览。</figcaption></figure>
+<h1 id="heading-2">1. 功能边界与代码入口</h1>
+<h2 id="heading-3">1.1 应用初始化</h2>
+<p><code>main()</code> 中的相关顺序为：</p>
+<ol><li><code>uart2_init(115200)</code>；</li><li><code>GM4G_Init()</code>：配置 LINKA、LINKB、PA1 模块复位、PC5 外部中断，并输出模块复位脉冲；</li><li><code>UartTx_Queue_Init()</code>；</li><li><code>UartRx_Queue_Init()</code>；</li><li>主循环先调用近场 AT 序列；若 busy，本轮 <code>continue</code>；</li><li>否则执行按键、ADC、电机、LCD、属性上报、<code>Gprs_Process()</code>、EEPROM、RS‑485。</li></ol>
+<p><code>Gprs_Process()</code> 内部固定顺序：</p>
+<table><thead><tr><th>顺序</th><th>函数</th><th>功能</th></tr></thead><tbody><tr><td>1</td><td><code>gprs_rx_datas()</code></td><td>从 UART2 乒乓槽搬到环形缓冲/帧队列</td></tr><tr><td>2</td><td><code>Parse_Process()</code></td><td>分发 JSON 或 AT 响应</td></tr><tr><td>3</td><td><code>gprs_state_machine()</code></td><td>OFFLINE / AT 初始化 / NORMAL</td></tr><tr><td>4</td><td><code>Gprs_PeriodicPush_Process()</code></td><td>当前实际负责对时周期与热身</td></tr><tr><td>5</td><td><code>NetLiveness_Process()</code></td><td>首帧心跳门槛与失联复位</td></tr><tr><td>6</td><td><code>UartTx_Queue_Process()</code></td><td>串行发送队首帧、超时和重试</td></tr><tr><td>7</td><td><code>Gprs_ClockSync_Process()</code></td><td>对时超时、重试和通道探测</td></tr><tr><td>8</td><td><code>Gprs_Reset_Process()</code></td><td>ReSet 回执后的延时 MCU 复位</td></tr></tbody></table>
+<h2 id="heading-4">1.2 关键代码位置</h2>
+<table><thead><tr><th>功能</th><th>文件与行号</th></tr></thead><tbody><tr><td>UART2 初始化</td><td><code>HARDWARE/USART/usart2.c:24</code></td></tr><tr><td>DMA 接收重装</td><td><code>HARDWARE/USART/usart2.c:186</code></td></tr><tr><td>IDLE 中断</td><td><code>HARDWARE/USART/usart2.c:142</code></td></tr><tr><td>发送队列</td><td><code>HARDWARE/GPRS/uart_queue.c:427</code></td></tr><tr><td>接收泵/环形缓冲</td><td><code>HARDWARE/GPRS/uart_queue.c:517-609</code></td></tr><tr><td>JSON/AT 分发</td><td><code>HARDWARE/GPRS/gprs_JSON.c:426</code></td></tr><tr><td>GPRS 状态机</td><td><code>HARDWARE/GPRS/gprs_AT.c:113</code></td></tr><tr><td>23 条近场配置</td><td><code>HARDWARE/USART/uart3_at_sequence.c:181</code></td></tr><tr><td>应用心跳</td><td><code>HARDWARE/GPRS/net_liveness.c:145</code></td></tr><tr><td>模块复位</td><td><code>HARDWARE/4G/4G.c:91</code></td></tr></tbody></table>
+<h1 id="heading-5">2. 物理层与 USART2 初始化</h1>
+<h2 id="heading-6">2.1 引脚和电气域</h2>
+<table><thead><tr><th>信号</th><th>MCU 侧</th><th>模块侧</th><th>说明</th></tr></thead><tbody><tr><td>UART2_TX</td><td>PA2 复用推挽</td><td>U30 AT_RXD</td><td>经 Q2 电平转换</td></tr><tr><td>UART2_RX</td><td>PA3 浮空输入</td><td>U30 AT_TXD</td><td>经 Q1 电平转换</td></tr><tr><td>LINKA</td><td>PC5</td><td>U30 LINK 输出</td><td>蜂窝链路状态</td></tr><tr><td>LINKB</td><td>PC4</td><td>U30 LINK 输出</td><td>另一链路指示</td></tr><tr><td>4G_RST</td><td>PA1</td><td>Q3 → U30 RESET</td><td>PA1 高时经 Q3 拉低模块 RESET</td></tr><tr><td>+3.8V</td><td>U12 Buck</td><td>U30 pin 16</td><td>4G 主电源</td></tr></tbody></table>
+<p>模块逻辑域由 <code>V_PAD_3V0</code> 提供，约 3.0 V；MCU 为 3.3 V，通过 MMBT5551 转换。</p>
+<h2 id="heading-7">2.2 USART2 参数</h2>
+<table><thead><tr><th>参数</th><th>配置</th></tr></thead><tbody><tr><td>外设</td><td>USART2</td></tr><tr><td>波特率</td><td>115200</td></tr><tr><td>数据位</td><td>8</td></tr><tr><td>停止位</td><td>1</td></tr><tr><td>校验</td><td>无</td></tr><tr><td>流控</td><td>无</td></tr><tr><td>接收 DMA</td><td>DMA1_Channel6</td></tr><tr><td>DMA 模式</td><td>Normal</td></tr><tr><td>DMA 缓冲</td><td><code>DMA_Rece_Buf2[1024]</code></td></tr><tr><td>接收完成判定</td><td>USART2 IDLE 中断</td></tr><tr><td>发送方式</td><td>轮询 TC，逐字节阻塞</td></tr><tr><td>NVIC</td><td>USART2 IRQ，抢占 1 / 子优先级 1</td></tr></tbody></table>
+<p><code>usart.h</code> 的注释写着 USART2 RX=DMA1_Channel7，与代码实际使用的 Channel6 不一致。以代码和 STM32F103 映射为准：<strong>USART2_RX = DMA1_Channel6</strong>。</p>
+<h1 id="heading-8">3. UART2 接收链</h1>
+<figure><img src="uart2_report_assets/02_rx_pipeline.png" alt="图 2　UART2 正常接收链。" style="width:17cm"><figcaption>图 2　UART2 正常接收链。</figcaption></figure>
+<h2 id="heading-9">3.1 DMA 接收</h2>
+<p>DMA 使用 Normal 模式，每次最多接收 1024 字节。IDLE 中断到来后：</p>
+<pre><code>Usart2_Rec_Cnt =
+    DMA_Rec2_Len - DMA_GetCurrDataCounter(DMA1_Channel6);</code></pre>
+<p>然后重新装载 DMA 计数器。若模块在 1024 字节内仍持续发送、没有形成 IDLE 间隔，DMA 可能自然结束而代码没有 DMA 传输完成中断来继续搬运，这是当前接收链的硬边界。</p>
+<h2 id="heading-10">3.2 IDLE 中断与双槽暂存</h2>
+<p>接收暂存：</p>
+<pre><code>rxStage[0][1024]
+rxStage[1][1024]</code></pre>
+<p>IDLE 中断在普通模式下把当前 DMA 帧复制到写指针指向的槽：</p>
+<ol><li>当前槽为空：直接写入；</li><li>两槽都满：清除当前写指针所指的最旧槽；</li><li><code>g_uart2_rx_overwrite++</code>；</li><li>写入新帧并切换写指针。</li></ol>
+<p>这样主循环即使被长 EEPROM 写阻塞，也不会由下一次 DMA 立即覆盖上一帧。最多保存最近两帧。</p>
+<p>中断还会在帧内搜索 ASCII 字符串 <code>WH-LTE-7S1</code>，命中则设置 <code>g_uart2_banner_seen=1</code>。</p>
+<h2 id="heading-11">3.3 普通模式与 AT 配置模式</h2>
+<p>当 <code>uart3_at_sequence_should_run()!=0</code> 时：</p>
+<ul><li>IDLE 中断不再复制到乒乓槽；</li><li>普通主循环不运行；</li><li>AT 配置状态机直接检查 <code>DMA_Rece_Buf2</code> 和 DMA 剩余计数；</li><li>AT 序列完成或失败后，重新把 UART2 交回普通接收链。</li></ul>
+<h2 id="heading-12">3.4 主循环取帧</h2>
+<p><code>UartRx_PumpFromDma(verbose)</code>：</p>
+<ul><li>一次最多取 4 个暂存帧；</li><li>取槽和复制进环形缓冲时短暂关闭中断；</li><li><code>verbose=1</code> 时打印 <code>[GPRS] RX[len]: 原文</code>；</li><li>EEPROM 长写内部调用 <code>verbose=0</code>，只搬运不打印；</li><li>接收数据进入 3072 字节线性环形缓冲；</li><li>再按最多 1023 字节切块，进入 8 项接收帧队列。</li></ul>
+<p>接收系数的完整层次：</p>
+<table><thead><tr><th>层</th><th>容量</th></tr></thead><tbody><tr><td>单次 DMA</td><td>1024 B</td></tr><tr><td>乒乓暂存</td><td>2 × 1024 B</td></tr><tr><td>环形缓冲</td><td>3072 B</td></tr><tr><td>接收帧队列</td><td>8 × 1024 B</td></tr></tbody></table>
+<h2 id="heading-13">3.5 丢包统计</h2>
+<table><thead><tr><th>计数</th><th>含义</th></tr></thead><tbody><tr><td><code>g_uart2_rx_overwrite</code></td><td>两槽都满，旧帧被覆盖的次数</td></tr><tr><td><code>g_uartRx_dropped_bytes</code></td><td>环形缓冲满，尾部数据被截断的字节数</td></tr></tbody></table>
+<p>二者发生变化时，<code>Gprs_Process()</code> 会打印：</p>
+<pre><code>[GPRS] rx drop=N overwrite=M</code></pre>
+<h1 id="heading-14">4. 接收解析</h1>
+<p><code>Parse_Process()</code> 循环取出接收帧：</p>
+<pre><code>帧中有完整 JSON？
+  ├─ 是：先识别空对象 {}，否则严格信封校验并按 type 分发
+  └─ 否：交给 UartTx_OnRecv(frame, len, 1)，作为 AT 回执</code></pre>
+<p>JSON 提取使用大括号深度匹配。它不识别字符串内部的 <code>{</code>、<code>}</code>，如果 JSON 的字符串值包含花括号，可能误切帧。</p>
+<h2 id="heading-15">4.1 严格信封</h2>
+<p>普通下行 JSON 必须包含：</p>
+<pre><code>id           非空字符串
+productKey   非空字符串
+deviceKey    非空字符串
+type         非空字符串
+body         JSON 对象</code></pre>
+<p>允许的 type：</p>
+<pre><code>service
+config
+property
+property_get
+request_reply</code></pre>
+<p>当前没有把信封中的 productKey/deviceKey 与 EEPROM 本地值逐字比较，只检查其非空。</p>
+<h2 id="heading-16">4.2 AT 回执</h2>
+<p>无 JSON 的帧交给 <code>UartTx_OnRecv()</code>：</p>
+<ul><li>仅检查当前发送队首；</li><li>AT 项必须同时匹配 <code>resp_key</code> 和其后的 <code>OK</code>；</li><li>匹配成功：执行回调并出队；</li><li>不匹配：继续等待，超时后重发。</li></ul>
+<p>注意：<code>UartTx_OnRecv()</code> 在“队首存在但类型不匹配”的路径没有任何显式 <code>return</code>，而函数返回类型为 <code>u8</code>，属于代码正确性问题。</p>
+<h1 id="heading-17">5. 发送链与队列</h1>
+<figure><img src="uart2_report_assets/03_tx_queue.png" alt="图 3　UART2 发送队列与回执匹配。" style="width:17cm"><figcaption>图 3　UART2 发送队列与回执匹配。</figcaption></figure>
+<h2 id="heading-18">5.1 物理发送</h2>
+<p><code>Usart2_Send()</code> 不使用 DMA：</p>
+<pre><code>while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+USART_SendData(USART2, buf[t]);</code></pre>
+<p>115200 8N1 下单字节约为：</p>
+<p>$$ t_{\mathrm{byte}}=\frac{10}{115200}\approx86.8\ \mu s $$</p>
+<p>1 KiB 约需 89 ms。发送期间主循环阻塞。</p>
+<h2 id="heading-19">5.2 统一发送队列</h2>
+<table><thead><tr><th>参数</th><th>值</th></tr></thead><tbody><tr><td>队列深度</td><td>8</td></tr><tr><td>AT 命令长度</td><td>最大 31 B</td></tr><tr><td>AT 响应关键词</td><td>最大 15 B</td></tr><tr><td>AT 超时</td><td>1000 ms</td></tr><tr><td>AT 最大重发</td><td>2</td></tr><tr><td>JSON 长度</td><td>最大 1023 B</td></tr><tr><td>JSON 回调键</td><td>最大 19 B</td></tr><tr><td>无回调 JSON 间隔</td><td>300 ms</td></tr></tbody></table>
+<p>规则：</p>
+<ul><li><code>UartTx_Push_JSON()</code> 要求 <code>gprs_is_ready()==1</code>；</li><li><code>UartTx_Push_AT()</code> 在离线状态也可入队；</li><li>队列满时返回 0；上报不会持久化，直接丢失；</li><li>同一时刻只允许一个队首处于发送/等待状态；</li><li>AT 超时最多重发两次；</li><li>未识别的迟到回执不会匹配后续指令。</li></ul>
+<h2 id="heading-20">5.3 JSON 等待的实际行为</h2>
+<p>当前所有 <code>UartTx_Push_JSON()</code> 调用者都传入 <code>callback=NULL</code>：</p>
+<ul><li>实际等待时间固定为 300 ms；</li><li><code>UART_TX_JSON_TIMEOUT_MS=5000</code> 与 <code>max_retry=2</code> 不会触发；</li><li>JSON 的 UART2 回调匹配分支当前没有业务调用者；</li><li>平台 ACK 是通过新的下行 JSON 独立识别的；</li><li>“发送队列已空”只表示 UART2 已发出，不代表平台已收到或接受。</li></ul>
+<h1 id="heading-21">6. GPRS 链路状态机</h1>
+<figure><img src="uart2_report_assets/04_state_machine.png" alt="图 4　GPRS / UART2 链路状态机。" style="width:17cm"><figcaption>图 4　GPRS / UART2 链路状态机。</figcaption></figure>
+<h2 id="heading-22">6.1 OFFLINE</h2>
+<p>条件：</p>
+<ul><li><code>link_state==1</code>；</li><li>且 <code>atflag_online</code> 为真或曾检测到掉线恢复；</li></ul>
+<p>满足后进入 AT_INIT_PUSH。</p>
+<p>若离线持续至少 60 秒，且距上次模块硬复位至少 5 分钟，则调用 <code>GM4G_Reset()</code>。</p>
+<h2 id="heading-23">6.2 AT_INIT_PUSH / WAIT</h2>
+<p>一次性入队三条 AT：</p>
+<pre><code>usr.cn#AT+ICCID?
+usr.cn#AT+MQTTCID?
+usr.cn#AT+CSQ?</code></pre>
+<p>成功标志：</p>
+<ul><li><code>ATflag_ICCID</code>；</li><li><code>ATflag_MQTTCID</code>；</li><li><code>ATflag_CSQ</code>。</li></ul>
+<p>三条全部置位后进入 NORMAL。</p>
+<h2 id="heading-24">6.3 失败与退避</h2>
+<ul><li>单条 AT：1 秒超时，最多重发 2 次；</li><li>三条处理后仍不齐全：等 10 秒；</li><li>最多约 3 轮初始化；</li><li>第 3 轮仍失败：进入 30 分钟 BACKOFF；</li><li>30 分钟后重新进入 AT_INIT_PUSH。</li></ul>
+<p><code>gprs_state_machine()</code> 先处理接收，随后才由状态机消费本轮 AT 回调，因此同一主循环内通常可以立即看到成功标志。</p>
+<h2 id="heading-25">6.4 NORMAL</h2>
+<ul><li><code>gprs_is_ready()==1</code>；</li><li>允许业务 JSON 入队；</li><li>每 10 分钟发一次 <code>AT+CSQ?</code>；</li><li>链路由高变低并持续 2 秒时，清空发送队列、取消对时并回 OFFLINE；</li><li>链路恢复需要高电平持续 500 ms。</li></ul>
+<h2 id="heading-26">6.5 回调内容限制</h2>
+<ul><li>CSQ 回调只复制前两位数字；</li><li>ICCID 回调按固定位置抽取数字；</li><li>MQTTCID 回调复制可打印 ASCII；</li><li>只要响应中存在对应前缀并匹配了 <code>OK</code>，即使内容格式异常，标志也可能置位。</li></ul>
+<p>因此 AT 初始化成功主要表示“模块对命令有应答”，不代表卡片/号码内容一定合法完整。</p>
+<h1 id="heading-27">7. 主循环顺序</h1>
+<figure><img src="uart2_report_assets/05_main_loop.png" alt="图 5　主循环中的 UART2 执行顺序。" style="width:17cm"><figcaption>图 5　主循环中的 UART2 执行顺序。</figcaption></figure>
+<p>正常主循环中，UART2 接收早于业务处理：</p>
+<pre><code>PropertyReport_Process()
+    ↓
+Gprs_Process()
+    ├─ 收帧
+    ├─ 解析下行
+    ├─ 推进链路状态
+    ├─ 调度对时
+    ├─ 处理心跳
+    ├─ 发送队首
+    ├─ 对时重试
+    └─ 延时复位</code></pre>
+<p>好处：</p>
+<ul><li>收到平台服务命令后可在同一轮生成回执并入发送队列；</li><li>对时回执先更新 DS1302，再允许心跳模块发送；</li><li>ReSet 回执在被解析后不会被立即打断，而是在后续轮次执行真正复位。</li></ul>
+<p>代价：</p>
+<ul><li>单条 JSON 最长约 89 ms 的阻塞发送；</li><li>解析、cJSON 和日志都会占用主循环时间；</li><li>输入队列拥塞时，状态机和业务处理可能延迟。</li></ul>
+<h1 id="heading-28">8. 下行业务功能</h1>
+<figure><img src="uart2_report_assets/07_downlink.png" alt="图 6　UART2 下行 JSON 分发。" style="width:17cm"><figcaption>图 6　UART2 下行 JSON 分发。</figcaption></figure>
+<h2 id="heading-29">8.1 <code>type=service</code></h2>
+<table><thead><tr><th>serviceCode</th><th>行为</th></tr></thead><tbody><tr><td><code>setValue</code></td><td>设置目标开度，并按目标与当前开度启动升降</td></tr><tr><td><code>stopGate</code></td><td>立即请求停止电机，返回成功回执</td></tr><tr><td><code>getFirmware</code></td><td>返回 <code>FirmwareVer</code></td></tr><tr><td><code>ReSet</code></td><td>入队成功回执，等待至少 1 秒并清空队列后复位 MCU</td></tr><tr><td><code>setUpdateValue</code></td><td>写入 OTA 更新标志</td></tr><tr><td><code>getConfig</code></td><td>返回电流上限、OTA 开关、阀高配置</td></tr></tbody></table>
+<p>未识别的 serviceCode 当前没有默认失败回执。</p>
+<h2 id="heading-30">8.2 <code>type=config</code></h2>
+<p>支持的 configCode：</p>
+<pre><code>MotorMaxCurrConfig
+GateMaxHeightConfig
+OTAEnableFlagConfig</code></pre>
+<p>处理流程：</p>
+<ol><li>校验 configCode；</li><li><code>params</code> 必须只有一个子项；</li><li>校验参数名和类型；</li><li>写 EEPROM；</li><li>回读验证；</li><li>通过 <code>up/service/reply</code> 返回 <code>config.push</code>。</li></ol>
+<h2 id="heading-31">8.3 <code>type=property_get</code></h2>
+<ol><li>生成当前全量属性快照；</li><li>通过 <code>up/service/reply</code> 带回原 <code>id</code>；</li><li>再发 <code>up/property/post</code>，把属性写入平台点位。</li></ol>
+<h2 id="heading-32">8.4 <code>type=request_reply</code></h2>
+<p>用于 <code>sys.timeSync</code>：</p>
+<ul><li>只接受当前在途请求的 <code>id</code>；</li><li><code>code</code> 必须为 0；</li><li>读取 <code>body.output.serverTime</code>；</li><li>UTC 加 8 小时；</li><li>写 DS1302；</li><li>调用 <code>NetLiveness_OnTimeSyncOk()</code> 解锁首帧心跳。</li></ul>
+<h2 id="heading-33">8.5 空对象 <code>{}</code></h2>
+<p>这是平台对极简心跳的回执：</p>
+<ul><li>只有存在待确认心跳时才处理；</li><li>清除 pending；</li><li>连续 miss 清零；</li><li>记录最近 ACK 时间；</li><li>作为“双向通道可用”的证据。</li></ul>
+<h1 id="heading-34">9. MQTT 串口主题协议</h1>
+<p>模块配置使用 1 个发送主题槽位号 + MQTT 报文负载。发送第一段是槽位号，例如：</p>
+<pre><code>3,{&quot;id&quot;:&quot;...&quot;,&quot;type&quot;:&quot;property&quot;,...}
+4,{&quot;id&quot;:&quot;...&quot;,&quot;type&quot;:&quot;event&quot;,...}
+6,{&quot;id&quot;:&quot;...&quot;,&quot;type&quot;:&quot;service_reply&quot;,...}
+8,{&quot;id&quot;:&quot;...&quot;,&quot;type&quot;:&quot;request&quot;,...}
+2,{}</code></pre>
+<h2 id="heading-35">9.1 上行主题</h2>
+<table><thead><tr><th>槽位</th><th>主题</th><th>当前用途</th></tr></thead><tbody><tr><td>1</td><td><code>up/sys/online</code></td><td>保留/旧事件路径</td></tr><tr><td>2</td><td><code>up/sys/heartbeat</code></td><td>应用心跳</td></tr><tr><td>3</td><td><code>up/property/post</code></td><td>属性</td></tr><tr><td>4</td><td><code>up/event/post</code></td><td>电机事件等</td></tr><tr><td>5</td><td><code>up/alarm/post</code></td><td>告警，已配置</td></tr><tr><td>6</td><td><code>up/service/reply</code></td><td>服务回执</td></tr><tr><td>7</td><td><code>up/ota/request</code></td><td>OTA 请求，已配置</td></tr><tr><td>8</td><td><code>up/request/invoke</code></td><td>对时请求</td></tr></tbody></table>
+<h2 id="heading-36">9.2 下行主题</h2>
+<table><thead><tr><th>槽位</th><th>主题</th></tr></thead><tbody><tr><td>1</td><td><code>down/service/invoke</code></td></tr><tr><td>2</td><td><code>down/config/push</code></td></tr><tr><td>3</td><td><code>down/property/get</code></td></tr><tr><td>4</td><td><code>down/ota/reply</code></td></tr><tr><td>5</td><td><code>down/request/reply</code></td></tr></tbody></table>
+<h1 id="heading-37">10. 23 条近场 AT 重配置</h1>
+<figure><img src="uart2_report_assets/06_at_config.png" alt="图 7　23 条 UART2 AT 配置序列。" style="width:17cm"><figcaption>图 7　23 条 UART2 AT 配置序列。</figcaption></figure>
+<p>该功能由 BLE 参数写入触发，但实际配置对象是 UART2 上的 4G 模块。文件名 <code>uart3_at_sequence.c</code> 是历史命名，不代表它使用 USART3。</p>
+<h2 id="heading-38">10.1 命令顺序</h2>
+<pre><code>0  usr.cn#AT+CSQ?
+1  usr.cn#AT+WKMOD=MQTT,NOR
+2  usr.cn#AT+MQTTSVR=host,port
+3  usr.cn#AT+MQTTUSER=deviceKey
+4  usr.cn#AT+MQTTPSW=deviceSecret
+5  usr.cn#AT+MQTTCID=deviceKey
+6  usr.cn#AT+MQTTMOD=1
+7  usr.cn#AT+HEARTEN=OFF
+8  MQTTPUBTP=1 up/sys/online
+9  MQTTPUBTP=2 up/sys/heartbeat
+10 MQTTPUBTP=3 up/property/post
+11 MQTTPUBTP=4 up/event/post
+12 MQTTPUBTP=5 up/alarm/post
+13 MQTTPUBTP=6 up/service/reply
+14 MQTTPUBTP=7 up/ota/request
+15 MQTTPUBTP=8 up/request/invoke
+16 MQTTSUBTP=1 down/service/invoke
+17 MQTTSUBTP=2 down/config/push
+18 MQTTSUBTP=3 down/property/get
+19 MQTTSUBTP=4 down/ota/reply
+20 MQTTSUBTP=5 down/request/reply
+21 usr.cn#AT+CACHEN=OFF       // 可选
+22 usr.cn#AT+S</code></pre>
+<p>所有主题 QoS=0，发布 retain=0。</p>
+<h2 id="heading-39">10.2 超时与失败</h2>
+<p>每一步：</p>
+<ul><li>发送前重新装载 DMA；</li><li>最长等待 2000 ms；</li><li>成功帧间隔 50 ms；</li><li>40 ms 串口静默可作为无 IDLE 时的兜底帧结束条件。</li></ul>
+<p>失败策略：</p>
+<ul><li><code>AT+CACHEN=OFF</code> 失败时只告警并跳过；</li><li>其他步骤失败直接终止；</li><li>不重试整条序列；</li><li>成功完成才保存 productKey/deviceKey；</li><li>随后 <code>GM4G_Reset()</code>，再执行 <code>NVIC_SystemReset()</code>。</li></ul>
+<h2 id="heading-40">10.3 主循环影响</h2>
+<p>序列 busy 时，main 循环每轮只执行：</p>
+<ul><li>喂看门狗；</li><li>BLE poll；</li><li>UART2 AT 状态机。</li></ul>
+<p>按键、ADC、电机控制、LCD、属性上报、普通 GPRS 和 RS‑485 都暂停。若电机在配置前正在运行，继电器不会因为该配置流程自动停止。</p>
+<h1 id="heading-41">11. 对时与心跳</h1>
+<figure><img src="uart2_report_assets/08_liveness.png" alt="图 8　对时与心跳自愈。" style="width:17cm"><figcaption>图 8　对时与心跳自愈。</figcaption></figure>
+<h2 id="heading-42">11.1 对时</h2>
+<p>进入 NORMAL 后：</p>
+<ol><li>先热身 2 秒，等待模块建立 MQTT 会话和订阅；</li><li>发 <code>sys.timeSync</code> 请求；</li><li>稳态每次等待 15 / 30 / 60 秒；</li><li>等待首帧心跳期间，所有等待压缩为 5 秒；</li><li>每次使用新的毫秒时间戳 <code>id</code>；</li><li>收到匹配回执后写 DS1302；</li><li>正常稳态每 24 小时发起一轮。</li></ol>
+<p>掉线恢复后，如果此前没有收到过合法下行，先不下发正式对时，而是在 60 秒节奏下发送单帧探测，直到任一合法下行证明双向通道可用。</p>
+<h2 id="heading-43">11.2 心跳</h2>
+<p>首帧心跳必须等校时成功。之后：</p>
+<ul><li>每 120 秒发送 <code>2,{}</code>；</li><li>平台回 <code>{}</code>；</li><li>最近回执在 240 秒内，显示“平台已确认”；</li><li>连续 3 次无回执，才考虑模块硬复位；</li><li>自愈复位最小间隔为 15 分钟；</li><li>掉线或模块复位时，保留 miss 计数，避免复位风暴。</li></ul>
+<h1 id="heading-44">12. 状态诊断模型</h1>
+<figure><img src="uart2_report_assets/09_status_model.png" alt="图 9　四层在线状态。" style="width:17cm"><figcaption>图 9　四层在线状态。</figcaption></figure>
+<p>排障时应逐层确认：</p>
+<ol><li><strong>蜂窝链路</strong>：LINKA 是否稳定高、CSQ 是否正常；</li><li><strong>模块可交互</strong>：是否收到 banner，三条 AT 是否成功；</li><li><strong>应用通道</strong>：是否拿到 <code>sys.timeSync</code> 回执和心跳 <code>{}</code> 回执；</li><li><strong>业务协议</strong>：Topic 槽位、JSON 信封和平台接受状态是否正确。</li></ol>
+<p>常见误判：</p>
+<ul><li>LINKA 高就认为平台在线；</li><li>AT 查询成功就认为 MQTT 订阅成功；</li><li>发送队列为空就认为平台已收到；</li><li>平台在线就认为属性/事件一定被接收。</li></ul>
+<h1 id="heading-45">13. 模块复位</h1>
+<p><code>GM4G_Reset()</code>：</p>
+<ol><li>PA1 拉高，使 Q3 拉低模块 RESET，持续约 1000 ms；</li><li>PA1 拉低；</li><li>调用 <code>GM4G_Init()</code>；</li><li><code>GM4G_Init()</code> 再拉高 500 ms，然后拉低。</li></ol>
+<p>因此实际阻塞约 <strong>1.5 秒</strong>，源码注释中的“约 1 秒”偏短。</p>
+<p>触发入口：</p>
+<table><thead><tr><th>路径</th><th>条件</th></tr></thead><tbody><tr><td>链路离线</td><td>离线≥60 秒且复位间隔≥5 分钟</td></tr><tr><td>心跳失联</td><td>miss≥3 且复位间隔≥15 分钟</td></tr><tr><td>对时失败</td><td>等待首帧心跳期间连续失败</td></tr><tr><td>BLE 重配置</td><td>23 条 AT 成功后</td></tr></tbody></table>
+<h1 id="heading-46">14. 静态代码审查发现</h1>
+<figure><img src="uart2_report_assets/10_risks.png" alt="图 10　UART2 代码风险清单。" style="width:17cm"><figcaption>图 10　UART2 代码风险清单。</figcaption></figure>
+<h2 id="heading-47">P0：可能造成数据错误或异常行为</h2>
+<ol><li>DMA 为 Normal 模式且没有 DMA 传输完成中断。超过 1024 字节且没有 IDLE 间隔的帧可能停止接收。</li><li>没有启用 UART 溢出、噪声、帧错误中断。</li><li><code>UartTx_OnRecv()</code> 在“队首类型与 strtype 不匹配”时缺少返回语句。</li><li><code>Gprs_ClockSync_IssueAttempt()</code> 不检查 <code>UartTx_Push_JSON()</code> 的返回值；队列满时仍进入等待，可能在没有真正发送的情况下超时。</li><li>AT 配置序列期间直接读取 DMA，若模块异步送来 JSON/其他 AT 文本，可能被误当成当前命令应答。</li></ol>
+<h2 id="heading-48">P1：协议和可靠性</h2>
+<ol><li>当前业务 JSON 全部使用 <code>callback=NULL</code>，5 秒超时和 2 次 JSON 重试不会发生。</li><li>JSON 每个仅占 300 ms 队列，<code>发送队列为空</code> 不代表平台收到。</li><li>AT 只有“关键词 + OK”出现在同一帧时才匹配；跨帧响应会超时。</li><li><code>UartRx_Extract()</code> 按 1023 字节切块，帧队列项不一定等于一个完整协议帧。</li><li>严格信封只校验 productKey/deviceKey 非空，没有与本地值比较。</li><li>AT 回调只要找到前缀就置成功标志；CSQ、ICCID 或 MQTTCID 内容格式异常时可能仍被接受。</li></ol>
+<h2 id="heading-49">P2：可维护性和诊断</h2>
+<ol><li><code>usart.h</code> 中 USART2 DMA 通道注释写反。</li><li><code>uart3_at_sequence.c</code> 实际操作 UART2，文件名误导。</li><li><code>Usart2_Rec_Cnt</code>、<code>UART2_RX_Complete</code> 在中断和主循环间共享，但没有 volatile。</li><li><code>UartRx_PumpFromDma()</code> 的日志打印使用暂存槽指针，打印期间槽可能被中断改写；功能数据已先复制，主要影响日志可信度。</li><li><code>Gprs_PeriodicPush_Process()</code> 当前主要处理对时，不是周期属性推送；<code>gprs_periodic_last_tick</code> 和 <code>GPRS_PERIODIC_PUSH_INTERVAL_MS</code> 基本未使用。</li><li>AT 命令长度采用硬编码，如 ICCID 命令长度 18；修改命令文本后容易失配。</li><li><code>handleAT_CCLK()</code> 与 <code>ATflag_CCLK</code> 是遗留路径，当前对时主要走 JSON <code>sys.timeSync</code>。</li><li><code>UartRx_GetRemainingBuffer()</code> / <code>UartRx_Consume()</code> 在工程中没有实际调用者。</li><li><code>EventPostSimple()</code> 仍使用主题槽位 1，但它当前没有活动调用；如果以后启用，需确认是否应改为事件槽位 4。</li></ol>
+<h1 id="heading-50">15. 端到端时序</h1>
+<h2 id="heading-51">15.1 上电</h2>
+<pre><code>uart2_init
+  → GM4G_Init 500 ms 复位脉冲
+  → 模块输出 WH-LTE-7S1 banner
+  → UART2 IDLE 收帧
+  → banner_seen / atflag_online
+  → LINKA 稳定高 500 ms
+  → AT_INIT_PUSH
+  → ICCID / MQTTCID / CSQ 全部 OK
+  → NORMAL
+  → 2 s 热身
+  → sys.timeSync
+  → DS1302 写时间
+  → 首帧心跳 2,{}
+  → 平台回 {}
+  → 平台确认在线</code></pre>
+<h2 id="heading-52">15.2 收到平台服务</h2>
+<pre><code>MQTT down/service/invoke
+  → UART2 收到 JSON
+  → Parse_Process
+  → 信封校验
+  → service 分支
+  → 执行业务
+  → 主题槽位 6 回执入队
+  → UartTx_Queue_Process
+  → Usart2_Send</code></pre>
+<h2 id="heading-53">15.3 链路掉线</h2>
+<pre><code>LINKA 低
+  → 2 s 去抖
+  → OFFLINE
+  → 清发送队列
+  → 取消在途对时
+  → 62 s 后允许 GM4G_Reset（若距上次复位 ≥5 min）
+  → 模块重启
+  → 重新检测 banner / LINKA / AT</code></pre>
+<h2 id="heading-54">15.4 近场重新配置</h2>
+<pre><code>BLE 写入 MQTT 参数
+  → uart3_at_sequence_request_set(1)
+  → main 跳过普通任务
+  → 构建 23 条 AT
+  → 逐条 2 s 等待
+  → 全部成功
+  → 保存 PK/DK
+  → GM4G_Reset
+  → NVIC_SystemReset</code></pre>
+<h1 id="heading-55">16. 建议测试矩阵</h1>
+<table><thead><tr><th>测试</th><th>观测点</th><th>通过标准</th></tr></thead><tbody><tr><td>正常上电</td><td>banner、LINKA、ICCID、MQTTCID、CSQ、timeSync</td><td>进入 NORMAL 并收到心跳 ACK</td></tr><tr><td>1024 B 连续帧</td><td><code>overwrite</code>、DMA 剩余计数</td><td>不丢帧或明确进入风险分支</td></tr><tr><td>1025 B 无空闲帧</td><td>UART2 接收计数</td><td>必须明确会丢/不会丢，不能静默</td></tr><tr><td>AT 关键词与 OK 跨帧</td><td>发送队列、重试次数</td><td>明确能否匹配</td></tr><tr><td>AT 返回 ERROR</td><td>重试和状态机退避</td><td>按设计超时重试或改进为即时失败</td></tr><tr><td>队列满</td><td>属性、事件、心跳的返回值</td><td>不阻塞主循环，丢失有计数</td></tr><tr><td>掉线 2 s 抖动</td><td>状态机</td><td>不误判离线</td></tr><tr><td>离线 60 s</td><td>模块 RST、恢复日志</td><td>按节流复位</td></tr><tr><td>心跳连续 3 次丢失</td><td>reset 间隔、recovery 日志</td><td>15 分钟节流生效</td></tr><tr><td><code>property_get</code></td><td>服务回执与属性补发</td><td>两者均出现且数据一致</td></tr><tr><td>未知 serviceCode</td><td>平台回执</td><td>当前预期为无回执，应明确是否为缺陷</td></tr><tr><td>空对象 <code>{}</code> 重复到达</td><td>heartbeat pending/miss</td><td>无在途心跳时忽略</td></tr><tr><td>近场配置时电机运行</td><td>电机/继电器状态</td><td>验证暂停期间的预期行为</td></tr><tr><td>23 条 AT 中途失败</td><td>请求标志、主循环恢复</td><td>能回到普通模式且不误复位</td></tr></tbody></table>
+<h1 id="heading-56">17. 最终判断</h1>
+<p>UART2 的当前实现已经形成较完整的通信框架：</p>
+<ul><li>中断/DMA/双槽/环形缓冲保证主循环长阻塞时仍能接收；</li><li>AT 与 JSON 共用发送队列，避免物理串口并发写；</li><li>采用状态机而非固定延时完成模块初始化；</li><li>使用主题槽位把 MQTT 发布和订阅映射到简明串口格式；</li><li>通过对时、应用心跳和模块复位构成多层恢复。</li></ul>
+<p>主要短板集中在边界条件和协议确认：</p>
+<ul><li>DMA 不是循环模式，缺少 DMA 完成中断；</li><li>未启用 UART 错误中断；</li><li>JSON 业务发送没有串口确认和有效重试；</li><li>AT 解析依赖同一帧内的关键词和 OK；</li><li>队列满、对时入队失败、状态变量可见性和未返回路径需要加固；</li><li>线上线下状态必须在 UI、日志和平台诊断中分层表达。</li></ul>
+<h1 id="heading-57">附录 A　UART2 相关参数</h1>
+<table><thead><tr><th>项目</th><th>值</th></tr></thead><tbody><tr><td>波特率</td><td>115200</td></tr><tr><td>UART 格式</td><td>8N1</td></tr><tr><td>DMA 通道</td><td>DMA1_Channel6</td></tr><tr><td>DMA 缓冲</td><td>1024 B</td></tr><tr><td>乒乓槽</td><td>2 × 1024 B</td></tr><tr><td>环形缓冲</td><td>3072 B</td></tr><tr><td>接收队列</td><td>8 × 1024 B</td></tr><tr><td>发送队列</td><td>8 项</td></tr><tr><td>AT 超时</td><td>1000 ms</td></tr><tr><td>AT 重发</td><td>2</td></tr><tr><td>JSON 占位</td><td>300 ms</td></tr><tr><td>心跳周期</td><td>120 s</td></tr><tr><td>心跳 miss 阈值</td><td>3</td></tr><tr><td>心跳复位节流</td><td>15 min</td></tr><tr><td>链路掉线去抖</td><td>2 s</td></tr><tr><td>链路恢复去抖</td><td>500 ms</td></tr><tr><td>离线复位等待</td><td>60 s</td></tr><tr><td>离线复位节流</td><td>5 min</td></tr><tr><td>周期 CSQ</td><td>10 min</td></tr><tr><td>周期对时</td><td>24 h</td></tr><tr><td>近场 AT 序列</td><td>23 条</td></tr><tr><td>近场单步超时</td><td>2000 ms</td></tr><tr><td>近场命令间隔</td><td>50 ms</td></tr></tbody></table>
+<h1 id="heading-58">附录 B　导出文件</h1>
+<table><thead><tr><th>文件</th><th>内容</th></tr></thead><tbody><tr><td><code>QIBIJI_RTU_V1.1_UART2功能逻辑分析.pdf</code></td><td>固定版式报告</td></tr><tr><td><code>QIBIJI_RTU_V1.1_UART2功能逻辑分析.docx</code></td><td>可编辑报告</td></tr><tr><td><code>QIBIJI_RTU_V1.1_UART2功能逻辑分析.md</code></td><td>Markdown 源文本</td></tr><tr><td><code>uart2_report_assets/</code></td><td>10 张逻辑图和 SVG 源图</td></tr></tbody></table>
+<blockquote>本报告描述当前工作区代码的实际行为。现场行为还受模块固件版本、WH-LTE-7S1 内部 UART 切帧设置、MQTT 会话状态、平台报文和 PCB 信号完整性影响。</blockquote>
+</body>
+</html>

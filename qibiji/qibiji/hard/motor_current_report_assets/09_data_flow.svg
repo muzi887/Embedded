@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="920" viewBox="0 0 1900 920">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="920" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">电流数据的三个消费者</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">保护使用即时样本，显示/属性使用 25 点平滑值；两条数据路径不应混为一谈</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949e"/>
+
+    <g filter="url(#s)">
+    <rect x="70" y="170" width="350" height="250" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="86" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">短期 sample_ma</text>
+    <text x="86" y="227"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">每 20 ms 产生</text><text x="86" y="252"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">raw_avg − zero_avg</text><text x="86" y="277"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">每个值是约 16 ms 块平均</text><text x="86" y="302"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">用于 stall 判定</text><text x="86" y="327"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">不做 25 点平滑</text><text x="86" y="352"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">上报 motor_stall</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="515" y="170" width="380" height="250" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="531" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">25 点平滑值</text>
+    <text x="531" y="227"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">FIFO 满后开始更新</text><text x="531" y="252"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">窗口约 500 ms</text><text x="531" y="277"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">armReg.motor_curr</text><text x="531" y="302"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">g_adc_val[0]</text><text x="531" y="327"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">存 U16，单位 mA</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="990" y="170" width="370" height="250" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="1006" y="201" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">LCD 显示</text>
+    <text x="1006" y="227"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor_curr / 100</text><text x="1006" y="252"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">DisplayFloat 一位小数</text><text x="1006" y="277"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">分辨率显示约 0.1 A</text><text x="1006" y="302"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">首页数据变化触发刷新</text><text x="1006" y="327"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">设置页显示阈值 A</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="990" y="500" width="370" height="250" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="1006" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">4G 属性</text>
+    <text x="1006" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor_curr / 1000.0f</text><text x="1006" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">MotorCurrent 单位 A</text><text x="1006" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">property post / get</text><text x="1006" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">两位小数格式化</text><text x="1006" y="657"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">设备离线时可能不发送</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="70" y="500" width="820" height="220" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="86" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">单位链</text>
+    <text x="86" y="557"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">硬件分流：1 A → 50 mV</text><text x="86" y="582"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">放大：50 mV → 100 mV</text><text x="86" y="607"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC：100 mV → 约 124 counts</text><text x="86" y="632"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">软件：1 count → 8.057 mA</text><text x="86" y="657"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">armReg.motor_curr 始终保存 mA。</text>
+  </g>
+    <line x1="420" y1="295" x2="515" y2="295" stroke="#a83232"
+    stroke-width="4" marker-end="url(#ar)"
+    />
+    <line x1="895" y1="295" x2="990" y2="295" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#ab)"
+    />
+    <path d="M705 420 L705 465 L1175 465 L1175 500"
+      fill="none" stroke="#1c5f95" stroke-width="4" marker-end="url(#ab)"/>
+    <rect x="100" y="830" width="212" height="34" rx="17"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="206" y="853" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a83232">堵转事件上报即时 sample_ma</text>
+    <rect x="570" y="830" width="152" height="34" rx="17"
+      fill="#e4f0fa" stroke="#1c5f95" stroke-width="1.5"/>
+    <text x="646" y="853" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1c5f95">LCD 与属性上报平滑值</text>
+    <rect x="1030" y="830" width="132" height="34" rx="17"
+      fill="#fff0d5" stroke="#a36409" stroke-width="1.5"/>
+    <text x="1096" y="853" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a36409">两者都受阈值配置影响</text>
+  </svg>

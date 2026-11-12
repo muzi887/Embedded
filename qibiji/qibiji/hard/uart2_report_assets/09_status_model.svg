@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="950" viewBox="0 0 1900 950">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="950" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">四个“在线”状态不能混用</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">诊断 UART2 问题时应先确认当前处在哪一层</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="65" y="160" width="400" height="260" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="81" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">① 蜂窝链路</text>
+    <text x="81" y="218"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">信号：GPRS_LINKA / PC5</text><text x="81" y="243"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">显示侧：gprsonlineflag</text><text x="81" y="268"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">原始 EXTI：上升/下降沿</text><text x="81" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">状态机去抖：低 2 s / 高 500 ms</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="510" y="160" width="400" height="260" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="526" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">② 模块可交互</text>
+    <text x="526" y="218"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">atflag_online：见过启动 banner</text><text x="526" y="243"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">AT 查询可应答</text><text x="526" y="268"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">状态机：NORMAL</text><text x="526" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">gprs_is_ready()</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="955" y="160" width="400" height="260" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="971" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">③ 应用通道</text>
+    <text x="971" y="218"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">sys.timeSync 成功</text><text x="971" y="243"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">首帧心跳已解锁</text><text x="971" y="268"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">近 240 s 有合法下行</text><text x="971" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">NetLiveness_IsServerConfirmed()</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1400" y="160" width="430" height="260" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="1416" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">④ 业务数据</text>
+    <text x="1416" y="218"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">属性/事件/服务回执真正入队</text><text x="1416" y="243"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">发送队列未满</text><text x="1416" y="268"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">Topic 与信封合法</text><text x="1416" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">平台端可能仍拒收</text>
+  </g>
+    <line x1="465" y1="290" x2="510" y2="290" stroke="#a3650b"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="910" y1="290" x2="955" y2="290" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1355" y1="290" x2="1400" y2="290" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <g filter="url(#shadow)">
+    <rect x="360" y="570" width="1180" height="180" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="376" y="601" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">典型误判</text>
+    <text x="376" y="628"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="17"
+      fill="#5c6874">LINKA 高 + AT 正常，不代表 MQTT 已经订阅成功。</text><text x="376" y="653"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="17"
+      fill="#5c6874">发送队列为空，不代表平台已经收到或接受数据。</text><text x="376" y="678"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="17"
+      fill="#5c6874">平台显示在线，也可能是紧凑心跳可见、业务信封被拒。</text>
+  </g>
+    <rect x="170" y="815" width="1560" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="185" y="844" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="185" y="870" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">排障顺序应从 LINKA → banner/NORMAL → 心跳回执 → 业务 Topic/JSON 响应逐层验证。</text>
+  </svg>

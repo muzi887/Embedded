@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1950" height="1130" viewBox="0 0 1950 1130">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1950" height="1130" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">UART2 实现的代码风险清单</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">按传输正确性、状态判断和可维护性分组</text>
+  <line x1="54" y1="106" x2="1896" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="60" y="150" width="560" height="255" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="76" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">P0 / 正确性</text>
+    <text x="76" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• DMA 为 Normal 模式，无 TC 中断，&gt;1024 B 连续帧可能丢失。</text><text x="76" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• 未启用 UART 溢出/噪声/帧错误中断。</text><text x="76" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• UartTx_OnRecv() 不匹配分支缺少显式 return。</text><text x="76" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• 对时入队失败仍设置 pending 和超时计时。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="665" y="150" width="570" height="255" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="681" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">P1 / 协议一致性</text>
+    <text x="681" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• JSON callback=NULL，5 s/2 retry 分支实际不生效。</text><text x="681" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• 业务 JSON 仅有 300 ms 队列安全间隔，无串口确认。</text><text x="681" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• AT 必须同帧含关键词与 OK；跨帧响应会超时。</text><text x="681" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• 严格信封没有比较本地 PK/DK。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1280" y="150" width="610" height="255" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1296" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">P2 / 可维护性</text>
+    <text x="1296" y="208"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• Uart3_at_sequence 实际操作 UART2，命名误导。</text><text x="1296" y="233"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• usart.h 注释的 DMA 通道与代码不一致。</text><text x="1296" y="258"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• Gprs_PeriodicPush_Process 当前不发送属性。</text><text x="1296" y="283"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">• 若干 UART 状态变量跨上下文但未加 volatile。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="60" y="490" width="860" height="245" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="76" y="521" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">缓冲区与队列</text>
+    <text x="76" y="548"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">DMA 1024 B；乒乓 2 × 1024 B；环形缓冲 3072 B；接收队列 8 × 1024 B。</text><text x="76" y="573"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">两槽全满时覆盖最旧；环形缓冲满时截断并计数。</text><text x="76" y="598"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">普通接收项可能被按 1023 B 切块，不保证一帧对应一个接收项。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="970" y="490" width="920" height="245" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="986" y="521" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">诊断与恢复</text>
+    <text x="986" y="548"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">建议增加：UART error flags、DMA TC/HT 计数、当前 rxStage 占用、TX 队列水位。</text><text x="986" y="573"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">建议记录 AT 超时/ERROR/JSON 校验失败/入队失败各自的独立计数。</text><text x="986" y="598"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">建议把发送队列满与网络掉线分开上报，避免业务侧把两者混为一谈。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="60" y="810" width="1830" height="120" rx="12" fill="#ffffff"
+      stroke="#87949d" stroke-width="2"/>
+    <text x="76" y="841" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">建议验证</text>
+    <text x="76" y="868"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">连续发送 1024/1025/2048 B 无空闲压力帧；AT 关键词与 OK 分帧；队列满；掉线/重连中发送；JSON 无效与未知 service。</text>
+  </g>
+    <rect x="60" y="980" width="1830" height="74" rx="9"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="75" y="1009" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a3650b">实现提示</text>
+    <text x="75" y="1035" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#5c6874">以上风险是静态分析发现，不代表现场必然触发；需用模块日志、逻辑分析仪和压力测试逐项确认。</text>
+  </svg>

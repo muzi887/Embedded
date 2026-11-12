@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1950" height="1120" viewBox="0 0 1950 1120">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949d"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a93131"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1950" height="1120" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1e2933">对时与心跳自愈逻辑</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#5c6874">首帧心跳必须等待 sys.timeSync 成功；之后每 120 s 心跳，连续失联才复位模块</text>
+  <line x1="54" y1="106" x2="1896" y2="106" stroke="#87949d"/>
+
+    <g filter="url(#shadow)">
+    <rect x="60" y="155" width="330" height="205" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="76" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">进入 NORMAL</text>
+    <text x="76" y="213"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">gprs_is_ready() = 1</text><text x="76" y="238"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">MQTT 会话尚未证明</text><text x="76" y="263"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">等待 2 s 热身</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="470" y="155" width="390" height="205" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="486" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">sys.timeSync</text>
+    <text x="486" y="213"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">请求槽位 8</text><text x="486" y="238"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">type=request</text><text x="486" y="263"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">最多 3 次尝试</text><text x="486" y="288"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">新 id / 单次等待 15/30/60 s</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="940" y="155" width="410" height="205" rx="12" fill="#f0e9f8"
+      stroke="#654588" stroke-width="2"/>
+    <text x="956" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">request_reply</text>
+    <text x="956" y="213"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">id 匹配</text><text x="956" y="238"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">code=0</text><text x="956" y="263"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">serverTime → DS1302</text><text x="956" y="288"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">NetLiveness_OnTimeSyncOk</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1430" y="155" width="440" height="205" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="1446" y="186" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">首帧心跳</text>
+    <text x="1446" y="213"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">帧：2,{}</text><text x="1446" y="238"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">槽位 2</text><text x="1446" y="263"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">平台回：{}</text><text x="1446" y="288"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">解锁平台在线确认</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="450" y="500" width="420" height="220" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="466" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">稳态对时</text>
+    <text x="466" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">每 24 h 发起一轮</text><text x="466" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">15 s / 30 s / 60 s 等待</text><text x="466" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">掉线恢复后先等一帧下行</text><text x="466" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">未确认通道时 60 s 单帧探测</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="960" y="500" width="420" height="220" rx="12" fill="#e3f4f1"
+      stroke="#1a7368" stroke-width="2"/>
+    <text x="976" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">稳态心跳</text>
+    <text x="976" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">每 120 s 发送</text><text x="976" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">最近回执 &lt;240 s → 平台在线</text><text x="976" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">连续 miss 3 次</text><text x="976" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">复位前置条件：≥15 min</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1470" y="500" width="400" height="220" rx="12" fill="#fdeaea"
+      stroke="#a93131" stroke-width="2"/>
+    <text x="1486" y="531" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">硬复位自愈</text>
+    <text x="1486" y="558"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">UartTx_Queue_Init()</text><text x="1486" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">GM4G_Reset()</text><text x="1486" y="608"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">共享复位时间线</text><text x="1486" y="633"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">模块重连后重新校时</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="420" y="845" width="1110" height="100" rx="12" fill="#fff0d4"
+      stroke="#a3650b" stroke-width="2"/>
+    <text x="436" y="876" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1e2933">快速模式</text>
+    <text x="436" y="903"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#5c6874">等待首帧心跳期间，对时探测/等待/重启周期由 60 s 收缩到 5 s。</text>
+  </g>
+    <line x1="390" y1="255" x2="470" y2="255" stroke="#1a7368"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="860" y1="255" x2="940" y2="255" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#arrowBlue)"
+    />
+    <line x1="1350" y1="255" x2="1430" y2="255" stroke="#654588"
+    stroke-width="4" marker-end="url(#arrow)"
+    />
+    <line x1="1650" y1="360" x2="1650" y2="450" stroke="#a3650b"
+    stroke-width="3" marker-end="url(#arrow)"
+    />
+    <path d="M1650 450 L1170 450 L1170 500" fill="none" stroke="#a3650b" stroke-width="3" marker-end="url(#arrowBlue)"/>
+    <line x1="1380" y1="610" x2="1470" y2="610" stroke="#1a7368"
+    stroke-width="3" marker-end="url(#arrowBlue)"
+    />
+    <rect x="90" y="1000" width="240" height="34" rx="17"
+      fill="#e3f4f1" stroke="#1a7368" stroke-width="1.5"/>
+    <text x="210" y="1023" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1a7368">平台在线 = 最近 240 s 有心跳回执</text>
+    <rect x="620" y="1000" width="170" height="34" rx="17"
+      fill="#fff0d4" stroke="#a3650b" stroke-width="1.5"/>
+    <text x="705" y="1023" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a3650b">模块在线 ≠ MQTT 可用</text>
+    <rect x="1110" y="1000" width="180" height="34" rx="17"
+      fill="#fdeaea" stroke="#a93131" stroke-width="1.5"/>
+    <text x="1200" y="1023" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a93131">心跳丢失 3 次不等于立即复位</text>
+  </svg>

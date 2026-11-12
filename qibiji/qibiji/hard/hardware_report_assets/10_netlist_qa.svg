@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="820" viewBox="0 0 1800 820">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#84919b"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5f99"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1800" height="820" fill="#f7f6f1"/>
+  <text x="56" y="58" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1f2933">网表统计与静态一致性检查</text>
+  <text x="56" y="90" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#59636e">mcu(1).NET 解析结果：网络可由引脚到网络唯一映射；未做原理图 ERC/PCB DRC</text>
+  <line x1="56" y1="108" x2="1744" y2="108" stroke="#84919b" stroke-width="1"/>
+
+    <g filter="url(#shadow)">
+    <rect x="70" y="165" width="300" height="150" rx="12"
+      fill="#e4f0fa" stroke="#1f5f99" stroke-width="2"/>
+    <text x="86" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">273</text>
+    <text x="86" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">元件实例</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="420" y="165" width="300" height="150" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="436" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">177</text>
+    <text x="436" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">网络总数</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="770" y="165" width="300" height="150" rx="12"
+      fill="#efe9f7" stroke="#65458b" stroke-width="2"/>
+    <text x="786" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">766</text>
+    <text x="786" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">引脚—网络连接</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1120" y="165" width="300" height="150" rx="12"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="2"/>
+    <text x="1136" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">94</text>
+    <text x="1136" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">具名网络</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1470" y="165" width="260" height="150" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="1486" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">0</text>
+    <text x="1486" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">重复网络名</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="70" y="400" width="810" height="300" rx="12"
+      fill="#ffffff" stroke="#84919b" stroke-width="2"/>
+    <text x="86" y="431" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">元件构成（按参考号前缀）</text>
+    <text x="86" y="456"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R: 111    C: 54    Q: 19    U: 12    CN: 11</text><text x="86" y="480"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">D: 10    K: 7    OP: 7    F: 5    L: 5    E: 5</text><text x="86" y="504"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">LED: 5    P: 3    T: 2    Y: 2    SW: 2</text><text x="86" y="528"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">J / USB / CARD / LCD / RF / PZ / BT: 各 1</text><text x="86" y="552"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">共 273 个元件实例；表中含器件的全部网络连接。</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="950" y="400" width="780" height="300" rx="12"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="2"/>
+    <text x="966" y="431" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">静态检查发现</text>
+    <text x="966" y="456"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">5 个接口器件在 .NET 中 0 连接：CN3/CN4/CN5/USB1/CARD1</text><text x="966" y="480"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R109/R110 仅一端接 +3.3 V（当前为悬空端）</text><text x="966" y="504"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">SW2 的 SK1/SK2 只连上拉，未见与 MCU 的连接</text><text x="966" y="528"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R20 的 I-V_SUN 端未进入 .NET 网络</text><text x="966" y="552"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PDF 中 +12V'' / BAT+'' 使用双单引号命名，需确认非笔误</text>
+  </g>
+    <g><rect x="70" y="730" width="1660" height="72" rx="8"
+      fill="#fff0d4" stroke="#a36108" stroke-width="1.5"/>
+    <text x="84" y="759" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" font-weight="700" fill="#a36108">核查提示</text>
+    <text x="84" y="783" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="14" fill="#59636e">建议在 Altium 中对全部 sheet 运行 ERC、未连接引脚/NET 检查，并把 PDF、.NET、BOM、PCB 从同一版次一次性导出。</text></g>
+  </svg>

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1120" viewBox="0 0 1900 1120">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="1120" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">U4A 电流放大电路还原</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">LM358 单电源非反相放大器；输入衰减器 (R23/R22) 与反馈网络 (R27/R25) 共同形成总增益 2</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949e"/>
+
+    <rect x="80" y="160" width="1740" height="630" rx="16" fill="#ffffff" stroke="#87949e" stroke-width="2" filter="url(#s)"/>
+    <g filter="url(#s)">
+    <rect x="120" y="200" width="285" height="150" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="136" y="231" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">分流节点</text>
+    <text x="136" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R43 = 50 mΩ</text><text x="136" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">V(I-V_MO) = 0.05 × I_MO</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="530" y="190" width="360" height="245" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="546" y="221" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">输入分压</text>
+    <text x="546" y="247"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R23 = 10 kΩ（串联）</text><text x="546" y="272"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R22 = 20 kΩ（到 GND）</text><text x="546" y="297"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">V+ = V_shunt × 20/30</text><text x="546" y="322"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">V+ = 0.667 × V_shunt</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1030" y="175" width="420" height="300" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="1046" y="206" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">LM358DR2G / U4A</text>
+    <text x="1046" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pin 3  1IN+  ← 分压节点</text><text x="1046" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pin 2  1IN−  ← R25 / R27 反馈</text><text x="1046" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pin 1  1OUT  → R29 → ADC10</text><text x="1046" y="307"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pin 8  VCC   = +5 V</text><text x="1046" y="332"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">pin 4  GND   = 0 V</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1550" y="190" width="230" height="245" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="1566" y="221" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">反馈网络</text>
+    <text x="1566" y="247"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R27 = 20 kΩ</text><text x="1566" y="272"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R25 = 10 kΩ</text><text x="1566" y="297"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">G = 1 + 20/10</text><text x="1566" y="322"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">G = 3.0</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1030" y="565" width="420" height="165" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1046" y="596" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">输出滤波</text>
+    <text x="1046" y="622"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R29 = 1 kΩ 串联</text><text x="1046" y="647"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">C12 = 100 nF 到 GND</text><text x="1046" y="672"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">fc ≈ 1 / (2π×1k×100n) ≈ 1.59 kHz</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1550" y="565" width="230" height="165" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1566" y="596" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">ADC 输入</text>
+    <text x="1566" y="622"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC1_CH10</text><text x="1566" y="647"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">PC0 / pin 15</text><text x="1566" y="672"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">12-bit 右对齐</text>
+  </g>
+    <line x1="405" y1="275" x2="530" y2="275" stroke="#a83232"
+    stroke-width="4" marker-end="url(#ar)"
+    />
+    <line x1="890" y1="275" x2="1030" y2="275" stroke="#a36409"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1450" y1="245" x2="1550" y2="245" stroke="#167269"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1665" y1="435" x2="1240" y2="435" stroke="#664387"
+    stroke-width="4" marker-end="url(#a)"
+    stroke-dasharray="10 8"/>
+    <line x1="1165" y1="475" x2="1165" y2="565" stroke="#167269"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1450" y1="640" x2="1550" y2="640" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#ab)"
+    />
+    <text x="840" y="505" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    text-anchor="middle" font-size="23" font-weight="700"
+    fill="#1d2833">V_OUT = 3 × V+ = 2 × V_shunt = 0.100 × I_MO</text>
+    <text x="840" y="548" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    text-anchor="middle" font-size="16" font-weight="400"
+    fill="#596773">R25 接 GND，R27 从输出接回 pin 2；这是电压反馈，不是电流反馈。</text>
+    <rect x="110" y="835" width="412" height="34" rx="17"
+      fill="#e4f0fa" stroke="#167269" stroke-width="1.5"/>
+    <text x="316" y="858" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#167269">I = 1 A → V_ADC = 100 mV → 约 124 codes</text>
+    <rect x="655" y="835" width="352" height="34" rx="17"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="831" y="858" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a83232">I = 3.5 A → 350 mV → 约 434 codes</text>
+    <rect x="1200" y="835" width="282" height="34" rx="17"
+      fill="#e4f0fa" stroke="#1c5f95" stroke-width="1.5"/>
+    <text x="1341" y="858" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1c5f95">ADC2CURT ≈ 8.057 mA/count</text>
+    <rect x="110" y="930" width="1680" height="72" rx="9"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="125" y="958" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a83232">审核提示</text>
+    <text x="125" y="984" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#596773">U4A 由 +5 V 供电，输出在极高故障电流下可超过 3.3 V；R29 限流但 ADC 端没有专用钳位器件。</text>
+  </svg>

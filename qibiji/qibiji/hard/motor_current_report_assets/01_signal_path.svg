@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="980" viewBox="0 0 1900 980">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="980" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">电机电流测量完整信号链</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">从 K1 触点电流回流、50 mΩ 分流电阻到 LM358、ADC、数字滤波和堵转停机</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949e"/>
+
+    <g filter="url(#s)">
+    <rect x="60" y="160" width="285" height="195" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="76" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">电机执行端</text>
+    <text x="76" y="217"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">MO+ / MO− 外接电机</text><text x="76" y="242"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">K1 双刀双掷触点换向</text><text x="76" y="267"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">接触器/继电器开关驱动</text><text x="76" y="292"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">无 PWM 电流闭环</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="430" y="160" width="300" height="195" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="446" y="191" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">电流采样</text>
+    <text x="446" y="217"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">K1 返回端 → I-V_MO</text><text x="446" y="242"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R43 = 50 mΩ</text><text x="446" y="267"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">I-V_MO → R43 → GND</text><text x="446" y="292"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">V_shunt = 0.050 × I</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="815" y="150" width="355" height="220" rx="12" fill="#e2f4f1"
+      stroke="#167269" stroke-width="2"/>
+    <text x="831" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">U4A 模拟前端</text>
+    <text x="831" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R23/R22：10k / 20k → ×2/3</text><text x="831" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R27/R25：20k / 10k → ×3</text><text x="831" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">总增益 = 2.0</text><text x="831" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">V_ADC = 0.100 × I(A)</text><text x="831" y="307"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">R29 1k + C12 100nF</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1255" y="150" width="280" height="220" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1271" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">STM32 ADC</text>
+    <text x="1271" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">ADC1_CH10</text><text x="1271" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">PC0 / pin 15</text><text x="1271" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">12-bit, VREF ≈ 3.3 V</text><text x="1271" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">8.06 mA/LSB</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1580" y="150" width="260" height="220" rx="12" fill="#f0e9f7"
+      stroke="#664387" stroke-width="2"/>
+    <text x="1596" y="181" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">数字处理</text>
+    <text x="1596" y="207"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">20 ms 处理节拍</text><text x="1596" y="232"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">256 点块平均</text><text x="1596" y="257"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">零点校准</text><text x="1596" y="282"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">25 点滑动平均</text><text x="1596" y="307"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">堵转连续计数</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="760" y="485" width="405" height="235" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="776" y="516" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">保护与执行</text>
+    <text x="776" y="542"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">sample_ma &gt; 阈值</text><text x="776" y="567"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">连续 10 次（约 200 ms）</text><text x="776" y="592"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">发布 motor_stall</text><text x="776" y="617"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">请求 stop(stall)</text><text x="776" y="642"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">立即关闭 RLY_1 / K2 供电</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1235" y="485" width="385" height="235" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1251" y="516" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">显示与上报</text>
+    <text x="1251" y="542"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">armReg.motor_curr：mA</text><text x="1251" y="567"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">LCD：/100 → A，一位小数</text><text x="1251" y="592"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">Property：/1000 → A</text><text x="1251" y="617"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor_stall：即时 sample_ma</text><text x="1251" y="642"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="16"
+      fill="#596773">motor_stop：reason=stall</text>
+  </g>
+    <line x1="345" y1="255" x2="430" y2="255" stroke="#a36409"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="730" y1="255" x2="815" y2="255" stroke="#a83232"
+    stroke-width="4" marker-end="url(#ar)"
+    />
+    <line x1="1170" y1="255" x2="1255" y2="255" stroke="#167269"
+    stroke-width="4" marker-end="url(#a)"
+    />
+    <line x1="1535" y1="255" x2="1580" y2="255" stroke="#1c5f95"
+    stroke-width="4" marker-end="url(#ab)"
+    />
+    <path d="M1710 370 L1710 430 L960 430 L960 485"
+      fill="none" stroke="#664387" stroke-width="3" marker-end="url(#a)"/>
+    <line x1="1710" y1="370" x2="1500" y2="485" stroke="#1c5f95"
+    stroke-width="3" marker-end="url(#ab)"
+    />
+    <rect x="70" y="800" width="252" height="34" rx="17"
+      fill="#e4f0fa" stroke="#1c5f95" stroke-width="1.5"/>
+    <text x="196" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#1c5f95">理论满量程约 33 A（ADC 3.3 V）</text>
+    <rect x="505" y="800" width="152" height="34" rx="17"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="581" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a83232">默认堵转阈值 3.5 A</text>
+    <rect x="850" y="800" width="202" height="34" rx="17"
+      fill="#fff0d5" stroke="#a36409" stroke-width="1.5"/>
+    <text x="951" y="823" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      font-weight="600" fill="#a36409">保护名义延迟 180–200 ms</text>
+    <rect x="70" y="875" width="1650" height="72" rx="9"
+      fill="#fdeaea" stroke="#a83232" stroke-width="1.5"/>
+    <text x="85" y="903" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="16" font-weight="700" fill="#a83232">审核提示</text>
+    <text x="85" y="929" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#596773">采样是单端、非隔离方案；R43 位于电机回流地路径，PCB 回流和继电器噪声会进入模拟前端。</text>
+  </svg>

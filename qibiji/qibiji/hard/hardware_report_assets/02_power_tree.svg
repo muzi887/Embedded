@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1230" viewBox="0 0 1900 1230">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#84919b"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f5f99"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="1230" fill="#f7f6f1"/>
+  <text x="56" y="58" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1f2933">电源树、保护与上电顺序</text>
+  <text x="56" y="90" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#59636e">额定关系来自原理图；电压计算采用芯片反馈公式。P_EN 通过 Q10 拉低 TPS563201 的 EN。</text>
+  <line x1="56" y1="108" x2="1844" y2="108" stroke="#84919b" stroke-width="1"/>
+
+    <g filter="url(#shadow)">
+    <rect x="70" y="165" width="300" height="160" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="86" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">太阳能输入</text>
+    <text x="86" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">SUN+</text><text x="86" y="245"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">D2 SB1045L</text><text x="86" y="269"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">F1 2920L400 / 4 A</text><text x="86" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">T1 SMBJ30CA</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="520" y="165" width="380" height="225" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="536" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">CN3767 充电器</text>
+    <text x="536" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Buck P-MOS Q5 + L2 33 µH</text><text x="536" y="245"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R14 = 50 mΩ → I_CH ≈ 2.4 A</text><text x="536" y="269"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">MPPT 目标 ≈ 13.26 V</text><text x="536" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">过充 14.8 V / 浮充 13.55 V</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1040" y="165" width="320" height="180" rx="12"
+      fill="#fff0d4" stroke="#a36108" stroke-width="2"/>
+    <text x="1056" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">BAT+</text>
+    <text x="1056" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">12 V 铅酸电池</text><text x="1056" y="245"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">CN1-3 / F3 4 A</text><text x="1056" y="269"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Q6 / OP1 充电通断</text><text x="1056" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V_BAT 高边</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1490" y="165" width="310" height="180" rx="12"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="2"/>
+    <text x="1506" y="196" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">SW1 / 保护</text>
+    <text x="1506" y="221"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">TK-6700-1</text><text x="1506" y="245"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">F2 1.1 A PTC</text><text x="1506" y="269"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">D5 SS56</text><text x="1506" y="293"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">T2 SMBJ24CA</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1450" y="455" width="350" height="170" rx="12"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="2"/>
+    <text x="1466" y="486" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">+12V''</text>
+    <text x="1466" y="511"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">E3 470 µF / 25 V</text><text x="1466" y="535"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">继电器线圈</text><text x="1466" y="559"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V01 / V02 高边输出</text><text x="1466" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">TPS5430 输入</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="950" y="455" width="340" height="190" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="966" y="486" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">TPS5430 → +5 V</text>
+    <text x="966" y="511"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R80 10 kΩ / R81 3.24 kΩ</text><text x="966" y="535"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">VOUT ≈ 4.99 V</text><text x="966" y="559"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">L6 15 µH + B340A</text><text x="966" y="583"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">E2 220 µF</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="500" y="535" width="335" height="180" rx="12"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="2"/>
+    <text x="516" y="566" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">AMS1117-3.3</text>
+    <text x="516" y="591"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">5 V → 3.3 V LDO</text><text x="516" y="615"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">100 µF + 100 nF</text><text x="516" y="639"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">MCU / 485 / LCD / 存储</text><text x="516" y="663"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">最大负载需按封装热阻复核</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="950" y="760" width="340" height="190" rx="12"
+      fill="#efe9f7" stroke="#65458b" stroke-width="2"/>
+    <text x="966" y="791" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">TPS563201 → +3.8 V</text>
+    <text x="966" y="816"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">R62 39 kΩ / R64 10 kΩ</text><text x="966" y="840"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">VOUT ≈ 3.76 V</text><text x="966" y="864"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">EN 默认经 R61 上拉</text><text x="966" y="888"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">P_EN 高 → Q10 拉低 EN</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="1440" y="760" width="360" height="190" rx="12"
+      fill="#efe9f7" stroke="#65458b" stroke-width="2"/>
+    <text x="1456" y="791" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">WH-LTE-7S1</text>
+    <text x="1456" y="816"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">pin 16: +3.8 V</text><text x="1456" y="840"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">pin 5: V_PAD_3V0</text><text x="1456" y="864"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">峰值电流留出 3 A Buck 余量</text><text x="1456" y="888"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V_PAD 生成后提供 UART 上拉</text>
+  </g>
+    <g filter="url(#shadow)">
+    <rect x="70" y="835" width="330" height="185" rx="12"
+      fill="#e1f5f2" stroke="#087f7b" stroke-width="2"/>
+    <text x="86" y="866" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1f2933">V01 / V02 输出</text>
+    <text x="86" y="891"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">Q11 / Q13 ES4407</text><text x="86" y="915"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">F4 / F5 1.1 A PTC</text><text x="86" y="939"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">PD5 / PD4 高电平开</text><text x="86" y="963"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" fill="#59636e">V02 同时供 6 路输入上拉</text>
+  </g>
+
+    <line x1="370" y1="245" x2="520" y2="245"
+    stroke="#a36108" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="900" y1="245" x2="1040" y2="245"
+    stroke="#a36108" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1360" y1="245" x2="1490" y2="245"
+    stroke="#a36108" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1645" y1="345" x2="1645" y2="455"
+    stroke="#aa2d2d" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1450" y1="540" x2="1290" y2="540"
+    stroke="#aa2d2d" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="950" y1="550" x2="835" y2="555"
+    stroke="#2e6b3c" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1120" y1="645" x2="1120" y2="760"
+    stroke="#2e6b3c" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1290" y1="855" x2="1440" y2="855"
+    stroke="#65458b" stroke-width="5"
+    
+    marker-end="url(#arrow)"/>
+    <line x1="1645" y1="625" x2="1645" y2="760"
+    stroke="#aa2d2d" stroke-width="4"
+    stroke-dasharray="9 7"
+    marker-end="url(#arrow)"/>
+    <line x1="950" y1="870" x2="400" y2="900"
+    stroke="#2e6b3c" stroke-width="4"
+    stroke-dasharray="9 7"
+    marker-end="url(#arrow)"/>
+    <line x1="1450" y1="555" x2="400" y2="930"
+    stroke="#aa2d2d" stroke-width="4"
+    stroke-dasharray="9 7"
+    marker-end="url(#arrow)"/>
+    <g><rect x="90" y="1105" width="246" height="32" rx="16"
+      fill="#fdeaea" stroke="#aa2d2d" stroke-width="1.5"/>
+    <text x="213" y="1127" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#aa2d2d">+12V'' ≈ V_BAT − V_F(D5)</text></g>
+    <g><rect x="480" y="1105" width="138" height="32" rx="16"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="1.5"/>
+    <text x="549" y="1127" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#2e6b3c">+5V ≈ 4.99 V</text></g>
+    <g><rect x="750" y="1105" width="111" height="32" rx="16"
+      fill="#e5f3e8" stroke="#2e6b3c" stroke-width="1.5"/>
+    <text x="805.5" y="1127" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#2e6b3c">+3.3V LDO</text></g>
+    <g><rect x="980" y="1105" width="156" height="32" rx="16"
+      fill="#efe9f7" stroke="#65458b" stroke-width="1.5"/>
+    <text x="1058" y="1127" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#65458b">+3.8V ≈ 3.76 V</text></g>
+    <g><rect x="1300" y="1105" width="165" height="32" rx="16"
+      fill="#fff0d4" stroke="#a36108" stroke-width="1.5"/>
+    <text x="1382.5" y="1127" text-anchor="middle"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="14"
+      font-weight="600" fill="#a36108">F2 裕量重点：4G 突发负载</text></g>
+    <g><rect x="70" y="1010" width="1180" height="72" rx="8"
+      fill="#fff0d4" stroke="#a36108" stroke-width="1.5"/>
+    <text x="84" y="1039" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="15" font-weight="700" fill="#a36108">核查提示</text>
+    <text x="84" y="1063" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="14" fill="#59636e">P_EN 为高时关断 3.8 V；MCU 复位期间 PE2 高阻，Q10 关断，因此 3.8 V 默认先上电。</text></g>
+  </svg>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="970" viewBox="0 0 1900 970">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#87949e"/>
+    </marker>
+    <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1c5f95"/>
+    </marker>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5"
+      orient="auto-start-reverse" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 z" fill="#a83232"/>
+    </marker>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1900" height="970" fill="#f7f6f1"/>
+  <text x="54" y="55" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="30" font-weight="700" fill="#1d2833">堵转判定时序（名义时间）</text>
+  <text x="54" y="87" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    font-size="16" fill="#596773">阈值为 motor_warning_curr_upper；判定使用 sample_ma，而不是 25 点平滑值</text>
+  <line x1="54" y1="106" x2="1846" y2="106" stroke="#87949e"/>
+
+    <rect x="230" y="160" width="1560" height="650" rx="14" fill="#ffffff" stroke="#87949e" filter="url(#s)"/>
+    <rect x="300" y="410" width="60" height="200" rx="5"
+      fill="#1c5f95" opacity=".55"/>
+      <text x="330" y="400" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">ok</text><rect x="420" y="410" width="60" height="200" rx="5"
+      fill="#1c5f95" opacity=".55"/>
+      <text x="450" y="400" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">ok</text><rect x="540" y="446" width="60" height="164" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="570" y="436" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="660" y="390" width="60" height="220" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="690" y="380" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="780" y="418" width="60" height="192" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="810" y="408" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="900" y="446" width="60" height="164" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="930" y="436" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1020" y="390" width="60" height="220" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1050" y="380" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1140" y="418" width="60" height="192" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1170" y="408" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1260" y="446" width="60" height="164" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1290" y="436" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1380" y="390" width="60" height="220" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1410" y="380" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1500" y="418" width="60" height="192" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1530" y="408" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text><rect x="1620" y="446" width="60" height="164" rx="5"
+      fill="#a83232" opacity=".82"/>
+      <text x="1650" y="436" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="14" fill="#1d2833">></text>
+    <line x1="280" y1="610" x2="1760" y2="610" stroke="#a83232" stroke-width="3" stroke-dasharray="10 7"/>
+    <text x="1790" y="615" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    text-anchor="end" font-size="15" font-weight="700"
+    fill="#a83232">阈值</text>
+    <line x1="280" y1="760" x2="1760" y2="760" stroke="#1d2833" stroke-width="2"/>
+    <line x1="330" y1="760" x2="330" y2="770" stroke="#1d2833"/>
+      <text x="330" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">-40 ms</text><line x1="450" y1="760" x2="450" y2="770" stroke="#1d2833"/>
+      <text x="450" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">-20 ms</text><line x1="570" y1="760" x2="570" y2="770" stroke="#1d2833"/>
+      <text x="570" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">0 ms</text><line x1="690" y1="760" x2="690" y2="770" stroke="#1d2833"/>
+      <text x="690" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">20 ms</text><line x1="810" y1="760" x2="810" y2="770" stroke="#1d2833"/>
+      <text x="810" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">40 ms</text><line x1="930" y1="760" x2="930" y2="770" stroke="#1d2833"/>
+      <text x="930" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">60 ms</text><line x1="1050" y1="760" x2="1050" y2="770" stroke="#1d2833"/>
+      <text x="1050" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">80 ms</text><line x1="1170" y1="760" x2="1170" y2="770" stroke="#1d2833"/>
+      <text x="1170" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">100 ms</text><line x1="1290" y1="760" x2="1290" y2="770" stroke="#1d2833"/>
+      <text x="1290" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">120 ms</text><line x1="1410" y1="760" x2="1410" y2="770" stroke="#1d2833"/>
+      <text x="1410" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">140 ms</text><line x1="1530" y1="760" x2="1530" y2="770" stroke="#1d2833"/>
+      <text x="1530" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">160 ms</text><line x1="1650" y1="760" x2="1650" y2="770" stroke="#1d2833"/>
+      <text x="1650" y="790" text-anchor="middle"
+        font-family="Consolas,monospace" font-size="13" fill="#596773">180 ms</text>
+    <text x="520" y="210" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    text-anchor="start" font-size="17" font-weight="700"
+    fill="#a83232">连续第 1 次超限</text>
+    <line x1="520" y1="220" x2="480" y2="390" stroke="#a83232"
+    stroke-width="2" marker-end="url(#ar)"
+    />
+    <text x="1400" y="210" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+    text-anchor="start" font-size="17" font-weight="700"
+    fill="#a83232">第 10 次超限 → stop</text>
+    <line x1="1400" y1="220" x2="1380" y2="400" stroke="#a83232"
+    stroke-width="2" marker-end="url(#ar)"
+    />
+    <g filter="url(#s)">
+    <rect x="80" y="835" width="520" height="105" rx="12" fill="#fdeaea"
+      stroke="#a83232" stroke-width="2"/>
+    <text x="96" y="866" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">保护延迟</text>
+    <text x="96" y="892"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      fill="#596773">首个读点至第 10 个约 180 ms；按 10 个 20 ms 窗口计约 200 ms。</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="650" y="835" width="590" height="105" rx="12" fill="#fff0d5"
+      stroke="#a36409" stroke-width="2"/>
+    <text x="666" y="866" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">事件顺序</text>
+    <text x="666" y="892"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      fill="#596773">motor_stall(sample_ma) 先入发送队列，随后 motor_stop(reason=stall)</text>
+  </g>
+    <g filter="url(#s)">
+    <rect x="1290" y="835" width="530" height="105" rx="12" fill="#e4f0fa"
+      stroke="#1c5f95" stroke-width="2"/>
+    <text x="1306" y="866" font-family="Microsoft YaHei,Segoe UI,sans-serif"
+      font-size="20" font-weight="700" fill="#1d2833">误触发边界</text>
+    <text x="1306" y="892"
+      font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="15"
+      fill="#596773">上电/换向浪涌若持续 ≥200 ms 可能被当作堵转。</text>
+  </g>
+  </svg>
