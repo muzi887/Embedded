@@ -1,0 +1,810 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>880</width>
+    <height>680</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>下位机初始化配置工具</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="centralLayout">
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tabSerial">
+       <attribute name="title">
+        <string>串口连接</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="serialLayout">
+        <item>
+         <layout class="QHBoxLayout" name="serialRow1">
+          <item>
+           <widget class="QLabel" name="labelPortName">
+            <property name="text">
+             <string>串口号：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboPort">
+            <property name="minimumWidth">
+             <number>160</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnRefresh">
+            <property name="text">
+             <string>刷新</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="labelBaud">
+            <property name="text">
+             <string>波特率：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboBaud">
+            <item>
+             <property name="text">
+              <string>9600</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>115200</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>460800</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnOpen">
+            <property name="text">
+             <string>打开串口</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="serialSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="serialRow2">
+          <item>
+           <widget class="QPushButton" name="btnProbe">
+            <property name="text">
+             <string>链路探活</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="labelState">
+            <property name="text">
+             <string>未连接</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelSerialHint">
+          <property name="text">
+           <string>下位机固定使用 115200 8N1（无流控）。波特率下拉框默认 115200，其它值仅用于排查接线问题。</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="serialSpacer2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabParam">
+       <attribute name="title">
+        <string>参数配置</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="paramLayout">
+        <item>
+         <widget class="QGroupBox" name="groupGate">
+          <property name="title">
+           <string>闸门参数（EEPROM 0x0004–0x000C）</string>
+          </property>
+          <layout class="QFormLayout" name="gateForm">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelMotorWarningCurrUpper">
+             <property name="text">
+              <string>堵转电流上限（0.1A）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="lineMotorWarningCurrUpper"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelGateMaxheight">
+             <property name="text">
+              <string>闸门全开高度（mm）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineGateMaxheight"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelGateMaxturns">
+             <property name="text">
+              <string>量程圈数（螺纹圈数）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="lineGateMaxturns"/>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="labelGateKaidu">
+             <property name="text">
+              <string>开度百分比（0-100）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="lineGateKaidu"/>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="labelGateKaiduCount">
+             <property name="text">
+              <string>开度计数：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLineEdit" name="lineGateKaiduCount"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupOta">
+          <property name="title">
+           <string>OTA 信息（EEPROM 200–243，整块结构体）</string>
+          </property>
+          <layout class="QFormLayout" name="otaForm">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelOtaFlag">
+             <property name="text">
+              <string>OTA_flag：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="otaFlagRow">
+             <item>
+              <widget class="QLineEdit" name="lineOtaFlag"/>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelOtaFlagHex">
+               <property name="text">
+                <string>= -</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelOtaVer">
+             <property name="text">
+              <string>OTA_ver：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineOtaVer"/>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelOtaSize">
+             <property name="text">
+              <string>OTA_size（只读）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="lineOtaSize">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="labelUpdateFlag">
+             <property name="text">
+              <string>UPDATE_flag（0/1）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="lineUpdateFlag"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupMqtt">
+          <property name="title">
+           <string>MQTT 参数（EEPROM 64/96/128/160，各 32 字符）</string>
+          </property>
+          <layout class="QFormLayout" name="mqttForm">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelMqttProductKey">
+             <property name="text">
+              <string>productKey：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="lineMqttProductKey">
+             <property name="maxLength">
+              <number>32</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelMqttDeviceKey">
+             <property name="text">
+              <string>deviceKey：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineMqttDeviceKey">
+             <property name="maxLength">
+              <number>32</number>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelMqttDeviceSecret">
+             <property name="text">
+              <string>deviceSecret：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="lineMqttDeviceSecret">
+             <property name="maxLength">
+              <number>32</number>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="labelMqttAddr">
+             <property name="text">
+              <string>mqtt_addr：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="lineMqttAddr">
+             <property name="maxLength">
+              <number>32</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelParamHint">
+          <property name="text">
+           <string>说明：这里是下位机 EEPROM 中的参数（闸门 5 项 + OTA 4 项 + MQTT 4 项）。建议先“读取参数”再修改；“写入参数”只会下发与上次读取不同的字段。</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="paramRow1">
+          <item>
+           <widget class="QPushButton" name="btnRead">
+            <property name="text">
+             <string>读取参数</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnWrite">
+            <property name="text">
+             <string>写入参数</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="paramSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <spacer name="paramSpacer2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab4g">
+       <attribute name="title">
+        <string>4G 配置</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="g4Layout">
+        <item>
+        <widget class="QGroupBox" name="group4g">
+          <property name="title">
+           <string>重连策略（只下发到 4G 模块，不写入下位机 EEPROM）</string>
+          </property>
+          <layout class="QFormLayout" name="g4Form">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelSockRstim">
+             <property name="text">
+              <string>重连间隔（秒）：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="lineSockRstim"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelSockRsnum">
+             <property name="text">
+              <string>重连次数：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineSockRsnum"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label4gHint">
+          <property name="text">
+           <string>说明：一键配置会读取「参数配置」页 MQTT 组的四项（productKey/deviceKey/deviceSecret/mqtt_addr，来自下位机 EEPROM），逐条下发 AT 指令到 4G 模块；productKey 在模块里没有对应参数，只体现在 13 条 topic 指令中；mqtt_addr 支持“地址:端口”或“地址,端口”。下方重连间隔/次数只用于本次下发（不写入下位机 EEPROM）：留空表示本次不下发（模块保持原值），填了则为 1–65535（0 会被模块拒绝），「全部读取」会连这两项一起从模块读回（模块支持 AT+SOCKRSTIM? / AT+SOCKRSNUM?）。</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="g4Row1">
+          <item>
+           <widget class="QPushButton" name="btn4gPush">
+            <property name="text">
+             <string>全部下发（一键配置）</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn4gRead">
+            <property name="text">
+             <string>全部读取</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn4gStop">
+            <property name="text">
+             <string>停止</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClear4g">
+            <property name="text">
+             <string>清空日志</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="g4Spacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="g4Row2">
+          <item>
+           <widget class="QLabel" name="labelProgress">
+            <property name="text">
+             <string>配置进度：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QProgressBar" name="progress4g">
+            <property name="value">
+             <number>0</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="label4gState">
+          <property name="text">
+           <string>状态：空闲</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="text4gView">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabBle">
+       <attribute name="title">
+        <string>蓝牙</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="bleLayout">
+        <item>
+         <widget class="QGroupBox" name="groupBle">
+          <property name="title">
+           <string>蓝牙模块（DX-BT24，USART3 → PD8/PD9，9600 8N1）</string>
+          </property>
+          <layout class="QFormLayout" name="bleForm">
+           <item row="0" column="0">
+            <widget class="QLabel" name="labelBleAddr">
+             <property name="text">
+              <string>蓝牙地址：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="lineBleAddr">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="labelBleName">
+             <property name="text">
+              <string>蓝牙名：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="lineBleName">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="labelBleVersion">
+             <property name="text">
+              <string>版本号：</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="lineBleVersion">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelBleHint">
+          <property name="text">
+           <string>说明：读取是通过下位机把 AT 指令透传到蓝牙模块（AT+LADDR / AT+NAME / AT+VERSION）。模块只在蓝牙未被连接时才进 AT 模式——若手机正连着，读取会超时，请先断开手机；若一直超时，检查模块是否装好与 PD8(TX)/PD9(RX) 接线。</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="bleRow1">
+          <item>
+           <widget class="QPushButton" name="btnBleAddr">
+            <property name="text">
+             <string>读取蓝牙地址</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBleName">
+            <property name="text">
+             <string>读取蓝牙名</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBleVersion">
+            <property name="text">
+             <string>读取版本</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBleClearLog">
+            <property name="text">
+             <string>清空日志</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="bleSpacer1">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="bleRow2">
+          <item>
+           <widget class="QLabel" name="labelBleCmd">
+            <property name="text">
+             <string>AT 指令：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineBleCmd">
+            <property name="placeholderText">
+             <string>例如 AT+LADDR（无需输入结尾的 CR/LF）</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBleSend">
+            <property name="text">
+             <string>发送</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="textBleView">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabAt">
+       <attribute name="title">
+        <string>AT 控制台</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="atLayout">
+        <item>
+         <layout class="QHBoxLayout" name="atRow1">
+          <item>
+           <widget class="QLabel" name="labelAtCmd">
+            <property name="text">
+             <string>AT 指令：</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineAtCmd">
+            <property name="placeholderText">
+             <string>例如 usr.cn#AT+CSQ?（WH-LTE-7S1 需要 usr.cn# 前缀）</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnAtSend">
+            <property name="text">
+             <string>发送</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="atRow2">
+          <item>
+           <widget class="QPushButton" name="btnAtCsq">
+            <property name="text">
+             <string>信号质量 AT+CSQ</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnAtIccid">
+            <property name="text">
+             <string>SIM卡 AT+ICCID</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnAtCclk">
+            <property name="text">
+             <string>模块时间 AT+CCLK</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnAtMqttCid">
+            <property name="text">
+             <string>MQTT ID AT+MQTTCID</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearAt">
+            <property name="text">
+             <string>清空日志</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="atSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="textAtView">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabLog">
+       <attribute name="title">
+        <string>日志</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="logLayout">
+        <item>
+         <layout class="QHBoxLayout" name="logRow1">
+          <item>
+           <widget class="QCheckBox" name="checkHex">
+            <property name="text">
+             <string>HEX 显示</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearLog">
+            <property name="text">
+             <string>清空</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnExportLog">
+            <property name="text">
+             <string>导出日志</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="logSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="textLogView">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
