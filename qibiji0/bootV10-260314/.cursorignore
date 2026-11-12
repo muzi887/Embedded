@@ -1,0 +1,66 @@
+﻿# Cursor 忽略文件配置
+# 这些文件和目录将被 Cursor AI 忽略，不会用于代码分析和建议
+
+# Keil 编译输出（本工程输出在 User/ 下）
+User/Objects/
+User/Listings/
+User/DebugConfig/
+OBJ/
+*.o
+*.d
+*.crf
+*.lst
+*.map
+*.hex
+*.bin
+*.elf
+*.axf
+*.htm
+*.dep
+*.lnp
+*.sct
+
+# Keil MDK 个人/本地工程文件（保留 .uvprojx 供对照）
+*.uvguix.*
+*.uvoptx
+*.dbgconf
+*.scvd
+*.ini
+*.log
+
+# 临时文件和备份文件
+*.tmp
+*.swp
+*~
+*.orig
+*.bak
+*_副本.*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE：与 .gitignore 一致，保留共享的 C/C++ 检索配置（若存在）
+.vscode/*
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+.idea/
+*.suo
+*.user
+*.sdf
+*.opensdf
+
+# 调试日志与本地产物
+JLinkLog.txt
+*.exe
+
+# 批处理脚本（通常不需要 AI 分析）
+*.bat
+
+# 标准库 / CMSIS 体量很大，日常业务改动一般不改这些
+# 需要改库或排查启动/CMSIS 时再临时放宽
+Library/
+Start/
