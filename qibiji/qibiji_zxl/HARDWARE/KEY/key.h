@@ -2,24 +2,28 @@
 #define __KEY_H
 #include "sys.h"
 
-#define KEY_LEFT_VAL     PAin(12) 
-#define KEY_RIGHT_VAL   	PCin(9) 
-#define KEY_ENTER_VAL  		PAin(11) 
-#define KEY_DOWN_VAL  		PAin(15) 
-#define KEY_UP_VAL  	  	PDin(15)
+/* ---------------------------------------------------------------------------
+ * 面板按键（KEY）模块 —— 对外唯一接口
+ *
+ * 职责：把 5 路按键电平翻译成「一次按键事件」。
+ *
+ * 用法：上电调一次 KEY_Init()；
+ *       此后每 10ms 调一次 KEY_Tick()（采样 + 去抖）；
+ *       主循环用 KEY_Pop() 取事件，取走即清，无事件返回 KEY_NONE。
+ * --------------------------------------------------------------------------- */
 
-#define KEY_UP 			1
-#define KEY_DOWN		2
-#define KEY_ENTER		3
-#define KEY_LEFT		4
-#define KEY_RIGHT	  5
+typedef enum
+{
+    KEY_NONE = 0,
+    KEY_UP,             /* K1 UP   = 1 */
+    KEY_DOWN,           /* K2 DOWN = 2 */
+    KEY_STOP,           /* K5 STOP = 3，旧名 KEY_ENTER */
+    KEY_SET,            /* K4 SET  = 4，旧名 KEY_LEFT  */
+    KEY_CANCEL          /* K3 CAN  = 5，旧名 KEY_RIGHT */
+} key_code_t; // 一个类型和编译器的常量
 
-extern u8 KeyNum;
-
-void KEY_Init(void);  		//IO初始化
-u8 KEY_Scan(void);  			//按键扫描函数
-void KEY_Process(void);
-void KeyLed_Ctl(u8 state);	//KEY_LED控制
-void Get_KeyVal(void);      //按键值扫描
+void       KEY_Init(void);
+void       KEY_Tick(void);
+key_code_t KEY_Pop(void);
 
 #endif

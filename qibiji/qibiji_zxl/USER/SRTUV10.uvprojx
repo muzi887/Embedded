@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\KEY</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -508,6 +508,46 @@
               <FileName>key.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\KEY\key.h</FilePath>
+            </File>
+            <File>
+              <FileName>debug_uart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\DEBUG_UART\debug_uart.c</FilePath>
+            </File>
+            <File>
+              <FileName>debug_uart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\DEBUG_UART\debug_uart.h</FilePath>
+            </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\TIMER\timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>timer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\TIMER\timer.h</FilePath>
+            </File>
+            <File>
+              <FileName>lcd12864.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd12864.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd12864.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd12864.h</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_pages.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd_pages.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_pages.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd_pages.h</FilePath>
             </File>
           </Files>
         </Group>
