@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -548,6 +548,46 @@
               <FileName>lcd_pages.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\LCD12864\lcd_pages.h</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_backlight.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd_backlight.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_backlight.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD12864\lcd_backlight.h</FilePath>
+            </File>
+            <File>
+              <FileName>adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\ADC\adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\ADC\adc.h</FilePath>
+            </File>
+            <File>
+              <FileName>dcmotor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\DCMOTOR\dcmotor.c</FilePath>
+            </File>
+            <File>
+              <FileName>dcmotor.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\DCMOTOR\dcmotor.h</FilePath>
+            </File>
+            <File>
+              <FileName>gate_io.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GATEIO\gate_io.c</FilePath>
+            </File>
+            <File>
+              <FileName>gate_io.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GATEIO\gate_io.h</FilePath>
             </File>
           </Files>
         </Group>

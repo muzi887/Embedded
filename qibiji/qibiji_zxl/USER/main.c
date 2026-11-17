@@ -5,6 +5,8 @@
 #include "delay.h"
 #include "lcd12864.h"
 #include "lcd_pages.h"
+#include "adc.h"
+#include "dcmotor.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -37,6 +39,27 @@ static void APP_DispatchKey(key_code_t key)
 
     LCD_PAGES_Process(key);     /* 页面状态机消费按键事件 */
     LCD_BACKLIGHT_Kick();       /* 任意按键点亮背光 + 重置 30s 计时 */
+
+    /* only on the home page, same gating as the original PageSta==0 */
+    if (LCD_PAGES_IsHome())
+    {
+        if (key == KEY_UP)
+            DCMOTOR_Request(MOTOR_UP);
+        else if (key == KEY_DOWN)
+            DCMOTOR_Request(MOTOR_DOWN);
+        else if (key == KEY_STOP)
+            DCMOTOR_Request(MOTOR_STOP);
+    }
+
+		if (LCD_PAGES_IsHome())
+    {
+			if (key == KEY_UP)
+					DCMOTOR_Request(MOTOR_UP);
+			else if (key == KEY_DOWN)
+					DCMOTOR_Request(MOTOR_DOWN);
+			else if (key == KEY_STOP)
+					DCMOTOR_Request(MOTOR_STOP);
+    }
 }
 
 int main(void)
@@ -50,6 +73,10 @@ int main(void)
 	LCD12864_Init();
 	LCD_BACKLIGHT_Init();   /* 点亮背光、启动 30s 计时 */
 	LCD_PAGES_Init(); 
+	ADC1_Init();
+	GATEIO_Init();                     /* hardware layer: GPIO + JTAG + seeds */
+	DCMOTOR_Init();                    /* decision layer: relays off, state reset */
+	DCMOTOR_SetMaxTurns(0u);           /* run calibration or measure */
 	TIM3_10ms_Init();
 
 	/* 上电提示：看到这两行说明程序已经跑起来、时钟和串口都对。 */
@@ -63,11 +90,23 @@ int main(void)
 		{
 			KEY_Tick();		
     	LCD_BACKLIGHT_Tick(); 
+			ADC_Tick();
+			GATEIO_Tick();          /* sample first: limits + encoder edges */
+			DCMOTOR_Tick();         /* then consume: states/delta + run time */
 		}
 		
 		/* 2) 取走一个事件，取走即清；没有事件就什么都不做 */
 		key = KEY_Pop();
 		if (key != KEY_NONE)
 			APP_DispatchKey(key);
+
+		/* calibration trigger: set-page "auto" flag acts like a one-shot */
+    if (LCD_PAGES_GetParam(LCD_PARAM_AUTO_FLAG) != 0u)
+    {
+        LCD_PAGES_SetParam(LCD_PARAM_AUTO_FLAG, 0u);   /* consume flag */
+        DCMOTOR_StartCalibration();   /* ignores call if not STOP / ADC not ready */
+    }
+		
+		DCMOTOR_Process();          /* 联锁+堵转+限位拦截+边沿执行 */
 	}
 }

@@ -22,5 +22,6 @@ typedef enum
 
 uint16_t LCD_PAGES_GetParam(lcd_param_t p);
 void     LCD_PAGES_SetParam(lcd_param_t p, uint16_t v);
+uint8_t LCD_PAGES_IsHome(void);   /* 1 if current page is home */
 
 #endif

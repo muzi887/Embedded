@@ -451,3 +451,8 @@ void LCD_PAGES_Process(key_code_t key)
         s_DrawPage(s_page);
     }
 }
+
+uint8_t LCD_PAGES_IsHome(void)
+{
+    return (s_page == PAGE_HOME) ? 1u : 0u;
+}
