@@ -1,6 +1,7 @@
 #include "timer.h"
 
 static volatile uint8_t s_tick_10ms;
+volatile uint32_t g_sys_ms = 0;
 
 void TIM3_10ms_Init(void)
 {
@@ -43,6 +44,7 @@ void TIM3_IRQHandler(void)
     if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
     {
         TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-        s_tick_10ms = 1;   /* 中断里只置标志，业务一律留给主循环 */
+        g_sys_ms += 10u;      /* 10 ms per tick -- the base of all GPRS timeouts */
+        s_tick_10ms = 1;   /* 中断里只置标志，业务一律留给主循环，consumed by Tick_10ms_Take() */
     }
 }

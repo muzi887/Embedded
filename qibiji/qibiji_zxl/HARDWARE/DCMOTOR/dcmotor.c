@@ -2,6 +2,7 @@
 #include "gate_io.h"
 #include "adc.h"
 #include "delay.h"
+#include "property_report.h" 
 
 /* ===========================================================================
  * DC motor implementation
@@ -12,7 +13,7 @@
  *  - request (state) vs executed (old) separation, action only on edge
  *  - limit switches (active-low) force stop; encoder pulses adjust a baseline count
  * Removed: armReg, remote flag, key-check (keys arrive via explicit Request), 
- *  GPRS events / property report, EEPROM persistence, auto-stop return travel.
+ * EEPROM persistence, auto-stop return travel.
  * Added: current-zero interlock + stall stop via ADC, max-run fallback,
  *  opening percentage from encoder count / full-travel pulse countt,
  *  auto full-travel calibration (RAM only, reuses the existing state machine).
@@ -344,9 +345,18 @@ void DCMOTOR_Process(void)
 
 void DCMOTOR_Tick(void)
 {
+    static uint16_t s_last_opening_sent = 0xFFFFu;   
+
     DCMOTOR_UpdateLimits();     /* GATEIO levels -> latches, baseline sync */
     DCMOTOR_ConsumePulses();    /* GATEIO edge delta -> s_count */
     DCMOTOR_UpdateOpening();    /* s_count / s_max_turns -> s_opening */
+
+    /* 开度变化 → 通知属性上报 */
+    if (s_opening != s_last_opening_sent)
+    {
+        s_last_opening_sent = s_opening;
+        PropertyReport_SetPending();
+    }
 
     if ((s_state == MOTOR_UP) || (s_state == MOTOR_DOWN))
     {

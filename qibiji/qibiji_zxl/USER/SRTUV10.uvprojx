@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -588,6 +588,116 @@
               <FileName>gate_io.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\GATEIO\gate_io.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_4g.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_4g.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_4g.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_4g.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_at.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_at.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_at.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_at.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_port.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_port.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_port.h</FilePath>
+            </File>
+            <File>
+              <FileName>uart_queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\uart_queue.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart_queue.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\uart_queue.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_json.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_json.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_json.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_json.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs.h</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\cJSON.c</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\cJSON.h</FilePath>
+            </File>
+            <File>
+              <FileName>malloc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\malloc.c</FilePath>
+            </File>
+            <File>
+              <FileName>mymalloc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\mymalloc.h</FilePath>
+            </File>
+            <File>
+              <FileName>event_pub.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\event_pub.h</FilePath>
+            </File>
+            <File>
+              <FileName>net_liveness.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\net_liveness.h</FilePath>
+            </File>
+            <File>
+              <FileName>property_report.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\property_report.h</FilePath>
+            </File>
+            <File>
+              <FileName>property_report.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\property_report.c</FilePath>
+            </File>
+            <File>
+              <FileName>netliveness.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\netliveness.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -7,6 +7,12 @@
 #include "lcd_pages.h"
 #include "adc.h"
 #include "dcmotor.h"
+#include "gprs_at.h"
+#include "uart_queue.h"
+#include "gprs_4g.h"
+#include "gprs_port.h"
+#include "gprs_json.h"
+#include "gprs.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -77,6 +83,10 @@ int main(void)
 	GATEIO_Init();                     /* hardware layer: GPIO + JTAG + seeds */
 	DCMOTOR_Init();                    /* decision layer: relays off, state reset */
 	DCMOTOR_SetMaxTurns(0u);           /* run calibration or measure */
+	GPRS_PORT_Init(115200); 					 /* USART2 to 4G module: check your module's actual baud */
+	GPRS_4G_Init();         					 /* module reset + LINKA EXTI -- after UART so the boot banner is captured */
+	UartTx_Queue_Init();
+	UartRx_Queue_Init();
 	TIM3_10ms_Init();
 
 	/* 上电提示：看到这两行说明程序已经跑起来、时钟和串口都对。 */
@@ -108,5 +118,14 @@ int main(void)
     }
 		
 		DCMOTOR_Process();          /* 联锁+堵转+限位拦截+边沿执行 */
+
+		/* ---- GPRS 调度：每轮调用，无节拍门控 ---- */
+    GPRS_AT_RxPump();                    /* 1. staged frames -> rx queue */
+    GPRS_JSON_ParseProcess();         
+    GPRS_AT_StateMachine();              /* 3. link state machine */
+		NetLiveness_Process();
+    PropertyReport_Process();
+    UartTx_Queue_Process(g_sys_ms);      /* 5. tx state machine */
+		GPRS_Reset_Process();
 	}
 }
