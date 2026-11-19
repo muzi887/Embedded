@@ -9,6 +9,8 @@
 
 void LCD_PAGES_Init(void);
 void LCD_PAGES_Process(key_code_t key);
+/* call each main loop: updates rows whose content changes without a key press */
+void LCD_PAGES_Refresh(void);   
 
 /* Editable parameters, kept in RAM. EEPROM persistence is NOT in this
  * round - the module only guarantees the in-RAM value. */

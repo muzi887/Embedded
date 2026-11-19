@@ -531,6 +531,7 @@ void UartTx_Queue_Process(u32 sys_tick_ms)
 	{
 		txQueue.json_retry_cnt = 0;
 		GPRS_PORT_Send(item->u.json.data, item->u.json.json_len);
+		GPRS_Printf("send json-->%s\n", item->u.json.data);  
 	}
 }
 

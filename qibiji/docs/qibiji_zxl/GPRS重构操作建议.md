@@ -74,19 +74,18 @@
 | `armReg.gate_kaidu` | 当前开度（0–100） | `DCMOTOR_GetOpening()` |
 | `armReg.motor_curr` | 电机电流（mA×1000） | `(u32)ADC_GetCurrentMa() * 1000` |
 | `sys_moter_state` | 电机状态 | `DCMOTOR_GetState()` |
-| `armReg.range_target` | 远程目标开度 | **新工程 DCMOTOR 无"目标开度"概念**——见下文专门说明 |
+| `armReg.range_target` | 远程目标开度 | `DCMOTOR_SetTarget()`（已落地，见《DCMotor重构操作建议》§6 目标开度闭环） |
 | `armReg.motor_warning_curr_upper` | 堵转电流阈值（配置写） | 本轮不搬配置写，固定为编译期常量或后续 EEPROM |
 | `armReg.gate_maxheight` | 闸门最大行程（配置写） | 同上 |
 | `armReg.reportT` | 上报周期（配置） | 固定常量（本版不上报周期兜底） |
 | `autoFlag` | 自动校准中标志 | `DCMOTOR_IsCalibrating()` |
 | `rxparagate` | 收到的开度值 | 保留为 `gprs_json.c` 内局部 `static u8` |
 
-**`setValue` 落地要专门讲清楚**：原工程 `SettingValue()` 直接写 `armReg.range_target` 和 `sys_moter_state = MOTOR_UP/DOWN`，电机驱动层再去逼近目标。新工程 DCMOTOR 是**请求式**接口（`DCMOTOR_Request(MOTOR_UP/MOTOR_DOWN/MOTOR_STOP)`），没有"设目标开度后自动逼近"这一层。所以阶段二有两个选择：
+**`setValue` 落地（已按方案 B 实现）**：原工程 `SettingValue()` 直接写 `armReg.range_target` 和 `sys_moter_state = MOTOR_UP/DOWN`，电机驱动层再去逼近目标。新工程早期 DCMOTOR 只有**请求式**接口（`DCMOTOR_Request(MOTOR_UP/MOTOR_DOWN/MOTOR_STOP)`），所以曾考虑只做"点动"（方案 A）；现已给 DCMOTOR 补上**目标开度闭环**（方案 B）：
 
-- **方案 A（推荐，改动最小）**：`setValue` 只做"点动"语义——收到目标开度，比较 `DCMOTOR_GetOpening()`，发一次对应方向的 `DCMOTOR_Request()`；到位判断交给现有逻辑。**协议上回执仍回 success**，但要注意这与原工程"设目标后自动走到"的语义有差异，需平台侧知悉。
-- **方案 B（语义对齐，改动大）**：给 DCMOTOR 增加 `DCMOTOR_SetTarget(u16)` 和目标逼近状态机。这超出本轮"只做 GPRS"的范围，**列为后续待办**，本轮不铺开。
-
-本轮代码按**方案 A** 写，并在 `SettingValue()` 处用注释标出方案 B 的接入点。
+- `DCMOTOR_SetTarget(t)` 设 0–100 目标，`DCMOTOR_Process()` 第 3 步按 `s_opening` 选方向，到位即 STOP；`DCMOTOR_IsCalibrating()` 时拒绝；
+- 手动 `DCMOTOR_Request()`、任何 STOP、校准启动都会取消未完成的目标（`s_target_active = 0u`）；
+- 因此 `GPRS_SetValue()` 现在只做参数校验 + `DCMOTOR_SetTarget()` + 回执，语义与原工程"设目标后自动走到"一致。
 
 ### 3.2 基础件与库
 
@@ -890,7 +889,27 @@ void GPRS_AT_RxPump(void)
         }
         UartRx_Append(buf, len);
         __set_PRIMASK(primask);
-        GPRS_Printf("[GPRS] RX[%u]\r\n", (unsigned)len);
+
+        /* GPRS_Printf's internal buffer is 256 bytes: a long AT reply such as
+           +MQTTPUBTP (428 B) would be cut off. Print in 200-byte chunks. */
+        if (len > 200u)
+        {
+            uint16_t off = 0u;
+            GPRS_Printf("[GPRS] RX[%u] +++\r\n", (unsigned)len);
+            while (off < len)
+            {
+                uint16_t n = (uint16_t)(len - off);
+                if (n > 200u)
+                    n = 200u;
+                GPRS_Printf("%.*s", (int)n, buf + off);
+                off = (uint16_t)(off + n);
+            }
+            GPRS_Printf("\r\n--- end ---\r\n");
+        }
+        else
+        {
+            GPRS_Printf("[GPRS] RX[%u] %.*s\r\n", (unsigned)len, (int)len, buf);
+        }
     }
     UartRx_Extract();
 

@@ -32,7 +32,7 @@
 |---|---|
 | `armReg` 里的远程 / 电池 / 太阳能 / GPRS / 时间 / 报警字段 | 无对应硬件或模块；与电机/行程相关的字段已在 §11 逐项落地，其余明确不做 |
 | `dcmotor_auto()` 的 EEPROM 存储 / `dcmotor_auto_stop()` 回位 | v5 已做**自动校准**本体（复用状态机、RAM 存 `s_max_turns`）；但原工程 `auto_stop()` 的"标定后再下降回全关"这段、以及写 EEPROM 掉电保持，仍不搬——前者对算开度非必需，后者无 EEPROM 模块 |
-| `remoteflag` / 4G 目标开度 t3/t4 | 没有 4G 模块；远程控制以后接 |
+| `remoteflag` | 只是"远程改过目标"的标志位，等价语义已由 `DCMOTOR_IsTargetActive()` 表达；t3/t4 到位判断由目标闭环本体取代 |
 | `EventPostMotorStart/Stop()` / `PropertyReport_SetPending()` | 没有 GPRS；停止原因用 getter 暴露，不上报 |
 | `dcmotor_keycheck()` 读全局 `KeyNum` | 新工程按键走事件分发；改由 `main.c` 的 `APP_DispatchKey()` 显式调 `DCMOTOR_Request()`（限位拦截放在 Request 里，和原工程 keycheck 的限位门控等价） |
 | `KeyLed_Ctl()` | 按键 LED 属于 LED 模块，不归电机 |
@@ -375,6 +375,12 @@ void    DCMOTOR_StartCalibration(void);   /* ignored unless STOP + ADC ready */
 uint8_t DCMOTOR_IsCalibrating(void);      /* 1 while calibration owns the motor */
 uint8_t DCMOTOR_GetCalResult(void);       /* CAL_RESULT_* */
 
+/* target opening control (closed loop on encoder feedback) */
+uint8_t  DCMOTOR_SetTarget(uint16_t target);  /* 1 = accepted, 0 = rejected */
+void     DCMOTOR_CancelTarget(void);
+uint16_t DCMOTOR_GetTarget(void);             /* 0..100 */
+uint8_t  DCMOTOR_IsTargetActive(void);        /* 1 = driving to a target */
+
 #endif
 ```
 
@@ -383,8 +389,10 @@ uint8_t DCMOTOR_GetCalResult(void);       /* CAL_RESULT_* */
 | 函数 | 谁调、何时调 | 作用 |
 |---|---|---|
 | `DCMOTOR_Init()` | `main()` 里一次，**在 `GATEIO_Init()` 之后** | 配继电器 GPIO、全断、状态清零、用 `GATEIO` 当前限位初始化标志 |
-| `DCMOTOR_Request(state)` | `APP_DispatchKey()` 里，按键事件到来时 | 只写"想去哪"；**已到限位时拒绝往该方向开**（防顶死） |
-| `DCMOTOR_Process()` | 主循环每轮 | 做联锁 + 收堵转 + **限位拦截** + 边沿执行（真正驱动继电器） |
+| `DCMOTOR_Request(state)` | `APP_DispatchKey()` 里，按键事件到来时 | 只写"想去哪"；**已到限位时拒绝往该方向开**（防顶死）；**同时取消未完成的目标开度**，手动优先 |
+| `DCMOTOR_SetTarget(t)` | 平台 `setValue` 下发时（`GPRS_SetValue`） | 设目标开度 0–100，返回 1=接受；未校准（`s_max_turns==0`）、正在校准、越界都返回 0，调用方据此回 409 |
+| `DCMOTOR_CancelTarget()` / `DCMOTOR_GetTarget()` / `DCMOTOR_IsTargetActive()` | 调试 / 显示 / 上层判断 | 取消目标、读目标值、查目标闭环是否在跑 |
+| `DCMOTOR_Process()` | 主循环每轮 | 做联锁 + 收堵转 + **目标开度闭环** + 限位拦截 + 边沿执行（真正驱动继电器） |
 | `DCMOTOR_Tick()` | 10ms 节拍里，**在 `GATEIO_Tick()` 之后** | 读限位/脉冲增量、维护 `s_count`/`s_opening`、累计运行时长、超时停机 |
 | `DCMOTOR_GetState/GetDir/GetLastStopReason()` | 调试 / 显示 | 只读：当前状态、方向、上次停机原因 |
 | `DCMOTOR_GetOpening()` | 调试 / 显示（本轮不改 LCD） | 开度百分比 0–100 |
@@ -461,6 +469,10 @@ static uint16_t s_opening;      /* opening percent 0..100 */
 static uint8_t  s_cal_active;   /* 1 = calibration owns the motor */
 static uint8_t  s_cal_phase;    /* CAL_PHASE_* */
 static uint8_t  s_cal_result;   /* CAL_RESULT_* */
+
+/* ---- target opening ---- */
+static uint16_t s_target;        /* requested opening 0..100 */
+static uint8_t  s_target_active; /* 1 = target loop owns the direction */
 
 static void DCMOTOR_RelayInit(void)
 {
@@ -601,6 +613,9 @@ void DCMOTOR_Init(void)
     s_cal_phase = CAL_PHASE_IDLE;
     s_cal_result = CAL_RESULT_IDLE;
 
+    s_target = 0u;
+    s_target_active = 0u;
+
     DCMOTOR_RelayInit();
 
     /* GATEIO_Init() must have run first; seed the latches so a gate parked at
@@ -627,6 +642,7 @@ void DCMOTOR_StartCalibration(void)
     s_cal_phase = CAL_PHASE_SEEK_CLOSE;
     s_cal_result = CAL_RESULT_RUNNING;
     s_cal_active = 1u;
+    s_target_active = 0u;   /* calibration takes over the motor */
     s_state = MOTOR_DOWN;   /* internal set: bypasses Request guard */
 }
 
@@ -635,9 +651,6 @@ uint8_t DCMOTOR_GetCalResult(void)  { return s_cal_result; }
 
 void DCMOTOR_Request(uint8_t state)
 {
-    if (s_cal_active != 0u)
-        return;             /* calibration owns the motor: ignore all keys */
-
     /* refuse to drive into an already-tripped limit (same as the original
      * keycheck's "FLAG_OPENALL != 1 / FLAG_CLOSEALL != 1" guard). Without this,
      * a held UP key at the top would keep re-issuing UP and chatter the relay. */
@@ -645,7 +658,10 @@ void DCMOTOR_Request(uint8_t state)
     if ((state == MOTOR_DOWN) && (s_at_close != 0u)) return;
 
     if ((state == MOTOR_UP) || (state == MOTOR_DOWN) || (state == MOTOR_STOP))
+    {
+        s_target_active = 0u;   /* manual command wins over a pending target */
         s_state = state;
+    }
 }
 
 /* Advance calibration at the end of Process(), after edge handling, so the
@@ -697,7 +713,28 @@ void DCMOTOR_Process(void)
         DCMOTOR_DriveStop();     /* immediate physical cut, do not wait */
     }
 
-    /* 3) limit interlock: never keep driving into a tripped limit.
+    /* 3) target-opening loop: choose direction from the encoder feedback.
+     *    Runs before the limit interlock so a limit still wins. */
+    if ((s_target_active != 0u) && (s_cal_active == 0u))
+    {
+        if (s_opening == s_target)
+        {
+            s_target_active = 0u;      /* arrived */
+            s_state = MOTOR_STOP;
+        }
+        else if (s_opening < s_target)
+        {
+            if (s_state != MOTOR_UP)
+                s_state = MOTOR_UP;
+        }
+        else
+        {
+            if (s_state != MOTOR_DOWN)
+                s_state = MOTOR_DOWN;
+        }
+    }
+
+    /* 4) limit interlock: never keep driving into a tripped limit.
      *    Reason is set here; the STOP edge below will not overwrite it
      *    (it only defaults to MANUAL when reason is still NONE). */
     if ((s_at_open != 0u) && (s_state == MOTOR_UP))
@@ -713,7 +750,7 @@ void DCMOTOR_Process(void)
         s_opening = 0u;
     }
 
-    /* 4) edge-triggered action */
+    /* 5) edge-triggered action */
     if (s_old != s_state)
     {
         switch (s_state)
@@ -743,6 +780,7 @@ void DCMOTOR_Process(void)
                 s_stop_reason = MOTOR_STOP_MANUAL;
             }
             s_run_ms = 0u;
+            s_target_active = 0u;    /* any stop cancels a pending target */
             DCMOTOR_DriveStop();
             break;
         }
@@ -751,6 +789,28 @@ void DCMOTOR_Process(void)
 
     s_CalibrationProcess();     /* advance calibration after the drive edge */
 }
+
+/* -------------------------------------------------------------------------
+ * Target opening (closed loop)
+ * ------------------------------------------------------------------------- */
+
+uint8_t DCMOTOR_SetTarget(uint16_t target)
+{
+    if (target > 100u)
+        return 0u;
+    if (s_cal_active != 0u)
+        return 0u;
+    if (s_max_turns == 0u)
+        return 0u;              /* not calibrated: opening value is meaningless */
+
+    s_target = target;
+    s_target_active = 1u;
+    return 1u;
+}
+
+void DCMOTOR_CancelTarget(void)      { s_target_active = 0u; }
+uint16_t DCMOTOR_GetTarget(void)     { return s_target; }
+uint8_t  DCMOTOR_IsTargetActive(void){ return s_target_active; }
 
 void DCMOTOR_Tick(void)
 {
@@ -789,6 +849,10 @@ void DCMOTOR_SetMaxTurns(uint16_t turns)
 ```
 
 > **和 host 桩验证版的差异**：`delay_ms(5)` 在 host 验证时被桩成空循环（host 没有 SysTick）；**上面文档代码用的是真机 `delay_ms(5)`**，这是对的——`main()` 里已在 `DCMOTOR_Init()` 前调了 `delay_init()`。代码块顶部已包含 `#include "delay.h"`。
+
+> **校准期间的手动键**：当前 `DCMOTOR_Request()` 没有拦截 `s_cal_active`，校准中按上/下键会改写 `s_state`（`s_cal_active` 仍为 1，`s_CalibrationProcess()` 继续按相位推进）。若希望校准期间完全屏蔽手动键，在函数首行加 `if (s_cal_active != 0u) return;`。
+
+> **Init 的差别**：当前 `DCMOTOR_Init()` 没有显式清零 `s_count` 与 `s_cal_active/s_cal_phase/s_cal_result`，靠静态变量零初始化兜底，与文档写法等价。
 
 ---
 
@@ -1203,7 +1267,7 @@ int main(void)
 | A6 | "低 = 到位"是代码事实，不是假设 | `GATEIO_IsOpenLimit()` 读消抖后的低电平 |
 | A7 | 四根线集中在 `gate_io.h` 的 4 个宏，换板只改 4 行 | 本次模块拆分设计 |
 | A8 | 原工程 `Eeprom_Wpara()` 的分支标签（0x0004/0x0006）与实际写入字节地址（0x0008/0x000A）对不上，属标签写错；读写两端用同一字节地址，数据本身没坏 | 原工程 `reg.c` 代码 |
-| A9 | `range_target` 在原工程确有写入（GPRS/串口屏）与读取（`dcmotor_ctrl()` 到位判断），不是死字段；本工程没有 4G/上位机，故不做 | 原工程 `reg.c` / `gprs_JSON.c` |
+| A9 | `range_target` 在原工程确有写入（GPRS/串口屏）与读取（`dcmotor_ctrl()` 到位判断），不是死字段；本工程已用 `DCMOTOR_SetTarget()` 落地闭环（见 §6 目标开度） | 原工程 `reg.c` / `gprs_JSON.c` |
 
 **需要你拍板的 12 项（每项给了推荐默认值，照着做就能开工）**
 
@@ -1252,7 +1316,7 @@ int main(void)
 | `up_flag` | 全开标志 | 无任何读写（死字段；实际用全局 `FLAG_OPENALL`） | `GATEIO_IsOpenLimit()`（消抖后的硬件事实）+ `DCMOTOR` 内部 `s_at_open` 锁存 |
 | `down_flag` | 全关标志 | 无任何读写（实际用 `FLAG_CLOSEALL`） | `GATEIO_IsCloseLimit()` + `s_at_close` |
 | `up_err_flag` / `down_err_flag` | 上升/下降错误 | 无任何读写 | 不做；停机原因用 `motor_stop_reason_t` 表达 |
-| `range_target` | 目标开度 0–100% | 写：`gprs_JSON.c`（远程）、`HARDWARE/LCD-uart/lcd.c`（旧串口屏，写 300/0，量纲与 0–100 不一致）；读：`dcmotor_ctrl()` 的 t3/t4 到位判断 | **本轮不做**：没有 4G/上位机目标接口，只保留 UP/DOWN/STOP。以后加 `DCMOTOR_RequestOpening()` 再落地 |
+| `range_target` | 目标开度 0–100% | 写：`gprs_JSON.c`（远程）、`HARDWARE/LCD-uart/lcd.c`（旧串口屏，写 300/0，量纲与 0–100 不一致）；读：`dcmotor_ctrl()` 的 t3/t4 到位判断 | **已落地**：`DCMOTOR_SetTarget()` + `DCMOTOR_Process()` 第 3 步闭环，到目标自动 STOP |
 | `gate_maxturns` | 全行程脉冲数 | 写：`JudeDir()` 自动校准、`eepromToPara()` 从 EEPROM 恢复；读：`JudeCount()` 封顶、`ChangeReality()` 算开度、`dcmotor_ctrl()` 目标判断 | `s_max_turns`：`DCMOTOR_StartCalibration()` 自动标定（v5）或 `DCMOTOR_SetMaxTurns()` 手动设；不写 EEPROM |
 | `gate_kaidu` | 开度 0–100% | 写：`ChangeReality()`、`dcmotor_ctrl()` 限位归一 0/100、`eepromToPara()` 恢复；读：`Dispaly.c`/`DispalyPara.c`、`property_report.c`、`event_pub.c`、`gprs_JSON.c` | `s_opening` + `DCMOTOR_GetOpening()` |
 | `gate_kaidu_count` | 开度对应的脉冲计数（掉电保存） | 写：`JudeKaidu()` 动完存 EEPROM、`Eeprom_Wpara()` 写 0x000C；读：`eepromToPara()` 恢复成 `Num_count` | `s_count` + `DCMOTOR_GetCount()`；`GATEIO_GetPulseCount()` 是绝对累计量，两者不是同一个东西 |
@@ -1307,7 +1371,7 @@ int main(void)
 
 **定案**
 
-1. `range_target` 在原工程不是死字段（GPRS/串口屏写、`dcmotor_ctrl()` 读），但本工程没有 4G/上位机，本轮**不做**；将来加 `DCMOTOR_RequestOpening()` 时再落地。
+1. `range_target` 在原工程不是死字段（GPRS/串口屏写、`dcmotor_ctrl()` 读），本工程用 `DCMOTOR_SetTarget()` + `DCMOTOR_Process()` 第 3 步闭环落地；手动 `DCMOTOR_Request()`、任何 STOP、校准启动都会取消未完成的目标。
 2. `gate_maxheight` 归 LCD 的 `LCD_PARAM_GATE_MAX`，不参与控制；`DCMOTOR` 只认脉冲数 `s_max_turns`，两者通过 §12.3 实测换算，不强行绑定。
 3. 原工程 `Eeprom_Wpara()` 的分支标签与实际字节地址不一致是**标签写错**（见 §10.6 A8），数据没有被破坏；本版不搬。
 4. 是否补 EEPROM 掉电保持，见 §10.6 的 **D11**。做的话只需持久化 `s_max_turns`、`s_count`，`s_opening` 可由两者算出，不必单独存。

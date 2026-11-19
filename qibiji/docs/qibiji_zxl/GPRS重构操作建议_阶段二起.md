@@ -4,7 +4,7 @@
 >
 > **前置依赖**：必须先完成文件一《GPRS重构操作建议.md》的阶段一（§1–§6：地基、USART2/4G 物理通道、队列、六态状态机、main.c 挂载）。本文件的 JSON 命令闭环全部建立在阶段一的队列与状态机之上——阶段一没通，这里无从落地。
 >
-> **本文件包含**：阶段二（§7 JSON 解析 + 命令闭环）、阶段三（§8 保活与上报）、阶段四（§9 对时/配置/版本/OTA）、§10 改 main.c 全貌、§11 改 Keil 工程、§12 机制讲解与设计取舍、§13 原工程静态发现的坑、§14 与原工程对照/约束/待办。
+> **本文件包含**：阶段二（§7 JSON 解析 + 命令闭环）、§10 改 main.c 全貌、§11 改 Keil 工程、§12 机制讲解与设计取舍、§13 原工程静态发现的坑、§14 与原工程对照/约束/待办。
 
 ---
 
@@ -234,17 +234,12 @@ void GPRS_ReplyServices(int code, const char *message, const char *output)
 /* ---- command: setValue ---- */
 void GPRS_SetValue(int value)
 {
-    uint16_t target;
-    uint16_t current;
-
     /* NEW: range check -- original code silently truncated to u8 (value 300 -> 44) */
     if ((value < 0) || (value > 100))
     {
         GPRS_ReplyServices(400, "value out of range [0..100]", "{}");
         return;
     }
-    target = (uint16_t)value;
-    current = DCMOTOR_GetOpening();          /* was: armReg.gate_kaidu */
 
     /* NEW: refuse while calibrating -- original replied success but did nothing */
     if (DCMOTOR_IsCalibrating())
@@ -253,18 +248,17 @@ void GPRS_SetValue(int value)
         return;
     }
 
-    /*
-     * Stage-2 semantics: one-shot jog request toward the target.
-     * Original wrote armReg.range_target and sys_moter_state=MOTOR_UP/DOWN; the
-     * new DCMOTOR has no "target + auto-approach" layer. For a true "drive to
-     * target" behaviour, add DCMOTOR_SetTarget() later (see section 3.1 plan B)
-     * and replace these two lines.
-     */
-    if (target > current)
-        DCMOTOR_Request(MOTOR_UP);
-    else if (target < current)
-        DCMOTOR_Request(MOTOR_DOWN);
+    /* true closed-loop target: DCMOTOR_Process() compares the encoder-derived
+       opening with the target every tick and stops on arrival (plan B is now
+       the default; it replaces the former one-shot DCMOTOR_Request jog) */
+    if (DCMOTOR_SetTarget((uint16_t)value) == 0u)
+    {
+        GPRS_ReplyServices(409, "not calibrated, target rejected", "{}");
+        return;
+    }
 
+    /* motion is asynchronous: reply now, the opening progress is reported as
+       property frames driven by DCMOTOR_Tick() -> PropertyReport_SetPending() */
     GPRS_ReplyServices(0, "success", "{}");
 }
 
@@ -405,46 +399,9 @@ void GPRS_JSON_ParseProcess(void)
 
 ---
 
-## 8. 阶段三：保活与上报
-
-> **已独立成篇**：完整内容见《[GPRS重构操作建议_阶段三.md](./GPRS重构操作建议_阶段三.md)》。
-
-**目标**：加心跳探活（解决"假连接"）、开度变化/停机属性上报、事件上报。这一阶段让设备从"能收命令"变成"能主动汇报 + 能自愈"。
-
-**新增文件**：`net_liveness.h/.c`、`property_report.h/.c`、`event_pub.h/.c`。
-
-**核心接线（main.c 主循环，在 GPRS_AT_StateMachine() 之后）**：
-
-```c
-    NetLiveness_Process();
-    PropertyReport_Process();
-```
-
-同时要在 `gprs_json.c ParseProcess` 的 `cJSON_Parse` 之后、`GPRS_ValidateServerJson()` 之前插入心跳识别分支（详见独立文档 §1 末尾）。
-
-**验证清单（摘）**：进 NORMAL 后每 120s 应出现 `[LIVE] heartbeat ...`，平台回 `{}` 后出现 `heartbeat ack ok`；连续 3 次 miss 触发硬复位；开度变化 ≥2% 看到 property 上报；停机看到 `motor.stop` 事件。
-
-**注意**：`net_liveness.c` 内部有 `s_wait_timesync = 1` 门槛（首帧心跳要等校时成功才放行）。阶段三单独验证时，如果阶段四尚未实施，需要临时在 NORMAL 后手动调一次 `NetLiveness_OnTimeSyncOk()` 放行心跳，否则心跳永远不发。
-
----
-
-## 9. 阶段四：对时 / 配置 / 版本 / OTA（按需，最后做）
-
-> **已独立成篇**：完整内容见《[GPRS重构操作建议_阶段四.md](./GPRS重构操作建议_阶段四.md)》。
-
-**目标**：补齐对时（RTC 校准）、远程配置、版本号上报、OTA 框架。**可按需裁剪**——暂时不需要 OTA，只做对时 + 配置即可。阶段四依赖阶段三（心跳门槛 `s_wait_timesync=1` 必须在本阶段通过对时成功来放行）。
-
-**核心要点**：
-
-- 对时通过抽象层 `gprs_rtc.h`（`GPRS_RTC_Set` / `GPRS_RTC_GetUnixSec`）实现，本版先给软件桩；`request_reply` 分支要补进 `GPRS_JSON_ParseProcess`；对时成功后必须调 `NetLiveness_OnTimeSyncOk()` 放行首帧心跳。
-- **修 F1（高）**：原工程对时业务失败（`code!=0`）时直接 return，心跳被锁死 24 小时；新版明确要求 `code!=0` 也要 `OnTimeSyncFail()` + 重试，重试节奏 15s/30s/60s，每次换 id。
-- `getConfig` / `config` 先落 RAM + 编译期初值，持久化列为后续；`getFirmware` 回编译期版本号宏；OTA 本版只留 `setUpdateValue` 回执框架，真要做时单独建议。
-
----
-
 ## 10. 改 `main.c`（全貌核对）
 
-把四阶段全部接上后，`main.c` 的相关部分应是这样（在 DCMotor 文档 §7.5 那版基础上叠加 GPRS）：
+把阶段一、二接上后，`main.c` 的相关部分应是这样（在 DCMotor 文档 §7.5 那版基础上叠加 GPRS）：
 
 ```c
 #include "main.h"
@@ -605,7 +562,7 @@ cJSON 若拷进 `HARDWARE/GPRS/`，就不用再加 `HARDWARE\cJSON` 路径；若
 
 | 编号 | 原工程问题 | 新版处理 |
 |---|---|---|
-| **F1（高）** | 对时业务失败 `code!=0` 时直接 return，心跳被锁死 24h | §9.1 明确：`code!=0` 也要 `OnTimeSyncFail()` + 重试 |
+| **F1（高）** | 对时业务失败 `code!=0` 时直接 return，心跳被锁死 24h | 阶段四文档明确：`code!=0` 也要 `OnTimeSyncFail()` + 重试 |
 | **F2（高）** | 命令已执行但同轮掉线确认清空发送队列，回执发不出 | §7.3 的 ReSet 延后复位已修一类；F2 的"命令轮次撞掉线"窗口仍需现场留意——可考虑把 `UartTx_Queue_Init()` 的清队列移到确认无在途回执时（列为待办） |
 | **F3（中）** | `PeriodicPush` 名不副实（只做对时），属性无周期兜底 | 新版拆出独立的 `property_report.c`，不再叫 PeriodicPush；周期兜底仍未做（见待办） |
 | **F4（中）** | 非 NORMAL 上行静默丢弃且无告警 | 保留取舍，但 `GPRS_Printf` 日志可见 State 变化（§12.4） |
@@ -631,7 +588,7 @@ cJSON 若拷进 `HARDWARE/GPRS/`，就不用再加 `HARDWARE\cJSON` 路径；若
 | 日志 | `printf` + `MY4G_printf` | `GPRS_Printf()`（文件一 §5.3） |
 | 身份 | EEPROM 读 productKey/deviceKey | 编译期常量（文件一 §5.4），将来换读取函数 |
 | JSON 库 | cJSON + mymalloc | cJSON 原样拷，先用标准 malloc |
-| 对时 RTC | DS1302 | `gprs_rtc.h` 软件桩（§9.1） |
+| 对时 RTC | DS1302 | `gprs_rtc.h` 软件桩（见阶段四文档） |
 | OTA | 24CXX + STMFLASH + A1/A2 双区 | 不实现，只留回执框架 |
 | 蓝牙旁路 | uart3_at_sequence 共享 USART2 | 不搬，USART2 归 4G 专用 |
 | 模块拆分 | 7 文件混在 GPRS 目录 | 同左，但按四阶段逐步落地 |

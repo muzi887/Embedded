@@ -213,7 +213,7 @@ gprs_store_write_str(addr, s):
 int main(void)
 {
     /* ... 已有 init ... */
-    TIM4_Init();                  /* g_sys_ms 开始走 */
+    TIM3_10ms_Init();             /* g_sys_ms 开始走（TIMER/timer.c） */
     GPRS_PORT_Init(115200);
 
     /* ---- EEPROM 层 ---- */

@@ -18,9 +18,16 @@ void GPRS_JSON_ParseProcess(void);
 void GPRS_ReplyServices(int code, const char *message, const char *output);
 /* short-lived variant used by ReSet/stopGate */
 void GPRS_ReplyServicesPush(int code, const char *message, const char *output, uint16_t timeout_ms);
-
 /* command handlers */
 void GPRS_SetValue(int value);
 void GPRS_StopGate(void);
+
+/* timeSync */
+void GPRS_ClockSync_Start(void);
+void GPRS_ClockSync_Process(void);
+void GPRS_ClockSync_Reset(void);      /* call when the link goes down */
+void GPRS_ClockSync_OnNormal(void);   /* call on entering NORMAL */
+void GPRS_ClockSync_OnDownlink(void); /* call on any parsed downlink frame */
+void GPRS_SendLivenessPing(void);
 
 #endif

@@ -1,11 +1,12 @@
 #include "property_report.h"
-#include "gprs_at.h"         /* DCMOTOR_IsCalibrating via dcmotor.h */
+#include "gprs_at.h"     
 #include "dcmotor.h"
 #include "adc.h"
 #include <stdio.h>
 #include <string.h>
 #include "uart_queue.h"
 #include "timer.h"
+#include "net_liveness.h"   
 
 static uint8_t  s_pending = 0u;
 static uint16_t s_last_opening = 0xFFFFu;
@@ -27,14 +28,22 @@ uint8_t PropertyReport_BuildSnapshot(char *buf, uint32_t buf_size)
 uint8_t Send_property(const char *para_buf)
 {
     char json_str[UART_TX_JSON_LEN];
-    /* id = timestamp placeholder; stage 4 replaces with DS1302-derived unix ms */
+    char id_buf[24];
+    int64_t ts;
+
     if (para_buf == NULL)
         return 0u;
+
+    /* same 13-digit ms id as the timeSync request, so the platform sees one
+       consistent id scheme across every uplink */
+    ts = GPRS_RTC_NowMs();
+    (void)snprintf(id_buf, sizeof(id_buf), "%lld", (long long)ts);
+
     (void)snprintf(json_str, sizeof(json_str),
-             "%u,{\"id\":\"%u\",\"productKey\":\"%s\",\"deviceKey\":\"%s\","
+             "%u,{\"id\":\"%s\",\"productKey\":\"%s\",\"deviceKey\":\"%s\","
              "\"type\":\"property\",\"body\":{%s}}",
              TOPIC_PROPERTY_PUB,
-             (unsigned)g_sys_ms,          /* temporary id; stage 4 uses RTC */
+             id_buf,
              GPRS_PRODUCT_KEY, GPRS_DEVICE_KEY,
              para_buf);
     return UartTx_Push_JSON(json_str, (uint16_t)strlen(json_str), "", NULL,
@@ -77,7 +86,7 @@ void PropertyReport_SetPending(void) { s_pending = 1u; }
 
 void PropertyReport_Process(void)
 {
-    if (!gprs_is_ready() || DCMOTOR_IsCalibrating())
+    if (!gprs_is_ready() || DCMOTOR_IsCalibrating() || NetLiveness_IsWaitingTimeSync())
         return;
     if (!s_pending)
         return;

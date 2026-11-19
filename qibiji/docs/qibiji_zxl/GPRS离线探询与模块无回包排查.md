@@ -158,10 +158,17 @@ static void s_offline_probe(void)
 
 ### 3.7 `HARDWARE/GPRS/gprs_at.c`：打印原始帧内容
 
-`GPRS_AT_RxPump()` 里原来只打长度，收不到内容就无法判断“有没有数据 / 是不是乱码”：
+`GPRS_AT_RxPump()` 里原来只打长度，收不到内容就无法判断“有没有数据 / 是不是乱码”。现在直接打内容，且因为 `GPRS_Printf` 内部缓冲只有 256 B（`+MQTTPUBTP` 回包有 428 B），超过 200 B 的帧按 200 B 分块输出：
 
 ```c
-        GPRS_Printf("[GPRS] RX[%u] %.*s\r\n", (unsigned)len, (int)len, buf);
+        if (len > 200u)
+        {
+            /* [GPRS] RX[428] +++  /  200 B 一块  /  --- end --- */
+        }
+        else
+        {
+            GPRS_Printf("[GPRS] RX[%u] %.*s\r\n", (unsigned)len, (int)len, buf);
+        }
 ```
 
 ## 4. 日志判读表

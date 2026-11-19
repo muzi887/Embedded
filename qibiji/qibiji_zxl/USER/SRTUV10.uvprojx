@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS;..\HARDWARE\DS1302</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -695,9 +695,29 @@
               <FilePath>..\HARDWARE\GPRS\property_report.c</FilePath>
             </File>
             <File>
-              <FileName>netliveness.c</FileName>
+              <FileName>ds1302.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\HARDWARE\GPRS\netliveness.c</FilePath>
+              <FilePath>..\HARDWARE\DS1302\ds1302.c</FilePath>
+            </File>
+            <File>
+              <FileName>ds1302.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\DS1302\ds1302.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_rtc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_rtc.h</FilePath>
+            </File>
+            <File>
+              <FileName>net_liveness.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\net_liveness.c</FilePath>
             </File>
           </Files>
         </Group>

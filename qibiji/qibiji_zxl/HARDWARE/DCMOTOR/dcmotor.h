@@ -56,6 +56,13 @@ void                DCMOTOR_SetMaxTurns(uint16_t turns); /* pulses for full trav
 /* auto calibration (RAM only) */
 void    DCMOTOR_StartCalibration(void);   /* ignored unless STOP + ADC ready */
 uint8_t DCMOTOR_IsCalibrating(void);      /* 1 while calibration owns the motor */
+uint8_t DCMOTOR_IsCalibrated(void);       /* 1 if a full-travel cal is done (s_max_turns != 0) */
 uint8_t DCMOTOR_GetCalResult(void);       /* return CAL_RESULT_* */
+
+/* target opening control (closed loop on encoder feedback) */
+uint8_t  DCMOTOR_SetTarget(uint16_t target);  /* 1 = accepted, 0 = rejected */
+void     DCMOTOR_CancelTarget(void);
+uint16_t DCMOTOR_GetTarget(void);             /* 0..100 */
+uint8_t  DCMOTOR_IsTargetActive(void);        /* 1 = driving to a target */
 
 #endif

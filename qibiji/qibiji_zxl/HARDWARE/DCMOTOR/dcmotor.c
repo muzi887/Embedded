@@ -55,6 +55,10 @@ static uint8_t  s_cal_active;   /* 1 = calibration owns the motor */
 static uint8_t  s_cal_phase;    /* CAL_PHASE_* */
 static uint8_t  s_cal_result;   /* CAL_RESULT_* */
 
+/* ---- target-opening control ---- */
+static uint16_t s_target;        /* requested opening 0..100 */
+static uint8_t  s_target_active; /* 1 = target loop owns the direction */
+
 static void DCMOTOR_RelayInit(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -193,6 +197,8 @@ void DCMOTOR_Init(void)
     s_stall_pending = 0u;
     s_max_turns = 0u;
     s_opening = 0u;
+    s_target = 0u;
+    s_target_active = 0u;
 
     DCMOTOR_RelayInit();
 
@@ -219,12 +225,14 @@ void DCMOTOR_StartCalibration(void)
     s_run_ms = 0u;
     s_cal_phase = CAL_PHASE_SEEK_CLOSE;
     s_cal_result = CAL_RESULT_RUNNING;
+    s_target_active = 0u;   /* calibration takes over the motor */
     s_cal_active = 1u;
     s_state = MOTOR_DOWN;   /* internal set: bypasses Request guard */
 }
 
 uint8_t DCMOTOR_IsCalibrating(void) { return s_cal_active; }
 uint8_t DCMOTOR_GetCalResult(void)  { return s_cal_result; }
+uint8_t DCMOTOR_IsCalibrated(void) { return (s_max_turns != 0u) ? 1u : 0u; }
 
 void DCMOTOR_Request(uint8_t state)
 {
@@ -235,7 +243,10 @@ void DCMOTOR_Request(uint8_t state)
     if ((state == MOTOR_DOWN) && (s_at_close != 0u)) return;
 
     if ((state == MOTOR_UP) || (state == MOTOR_DOWN) || (state == MOTOR_STOP))
+    {
+        s_target_active = 0u;   /* manual command wins over a pending target */
         s_state = state;
+    }
 }
 
 /* Advance calibration at the end of Process(), after edge handling, so the
@@ -288,7 +299,28 @@ void DCMOTOR_Process(void)
         DCMOTOR_DriveStop();     /* immediate physical cut, do not wait */
     }
 
-    /* 3) limit interlock 限位联锁: never keep driving into a tripped limit.
+    /* 3) target-opening loop: choose direction from the encoder feedback.
+     *    Runs before the limit interlock so a limit still wins. */
+    if ((s_target_active != 0u) && (s_cal_active == 0u))
+    {
+        if (s_opening == s_target)
+        {
+            s_target_active = 0u;      /* arrived */
+            s_state = MOTOR_STOP;
+        }
+        else if (s_opening < s_target)
+        {
+            if (s_state != MOTOR_UP)
+                s_state = MOTOR_UP;
+        }
+        else
+        {
+            if (s_state != MOTOR_DOWN)
+                s_state = MOTOR_DOWN;
+        }
+    }
+
+    /* 4) limit interlock 限位联锁: never keep driving into a tripped limit.
      *    Reason is set here; the STOP edge below will not overwrite it
      *    (it only defaults to MANUAL when reason is still NONE). */
     if ((s_at_open != 0u) && (s_state == MOTOR_UP))
@@ -304,7 +336,7 @@ void DCMOTOR_Process(void)
         s_opening = 0u;
     }
 
-    /* 4) edge-triggered action */
+    /* 5) edge-triggered action */
     if (s_old != s_state)
     {
         switch (s_state)
@@ -334,6 +366,7 @@ void DCMOTOR_Process(void)
                 s_stop_reason = MOTOR_STOP_MANUAL;
             }
             s_run_ms = 0u;
+            s_target_active = 0u;      /* any stop cancels the target drive */
             DCMOTOR_DriveStop();
             break;
         }
@@ -387,3 +420,27 @@ void DCMOTOR_SetMaxTurns(uint16_t turns)
     s_max_turns = turns;
     DCMOTOR_UpdateOpening();
 }
+
+/* Accept a target only when the travel span is known: without s_max_turns the
+ * opening value is meaningless, so closed-loop driving would never terminate. */
+uint8_t DCMOTOR_SetTarget(uint16_t target)
+{
+    if (target > 100u)
+        return 0u;
+    if (s_cal_active != 0u)
+        return 0u;
+    if (s_max_turns == 0u)
+        return 0u;              /* not calibrated: caller must reply an error */
+
+    s_target = target;
+    s_target_active = 1u;
+    return 1u;
+}
+
+void DCMOTOR_CancelTarget(void)
+{
+    s_target_active = 0u;
+}
+
+uint16_t DCMOTOR_GetTarget(void)      { return s_target; }
+uint8_t  DCMOTOR_IsTargetActive(void) { return s_target_active; }

@@ -240,7 +240,7 @@ void NetLiveness_Process(void)
 
 > **顺序不能反**：平台对极简心跳只回 `{}`，它没有 `id`/`productKey`，过不了严格信封校验。所以心跳识别必须在校验之前。这也是原工程的明确设计。
 
-> **首帧门槛为什么存在**：心跳一旦通了 `s_miss` 就清零，会掩盖校时失败。校时失败会让之后所有上报带错时间戳，比"晚几分钟上线"糟得多。所以顺序硬性固定：3 条 AT → 校时 → 心跳。**阶段三先保留这个门槛**（`s_wait_timesync=1`），如果暂时不做阶段四的对时，需要临时在 NORMAL 后手动调一次 `NetLiveness_OnTimeSyncOk()` 放行心跳，否则心跳永远不发——这是阶段三单独验证时的注意点。
+> **首帧门槛为什么存在**：心跳一旦通了 `s_miss` 就清零，会掩盖校时失败。校时失败会让之后所有上报带错时间戳，比"晚几分钟上线"糟得多。所以顺序硬性固定：3 条 AT → 校时 → 心跳。**阶段三单独验证时**，`s_wait_timesync=1` 会挡住心跳，需要在 NORMAL 后临时手动调一次 `NetLiveness_OnTimeSyncOk()` 放行，否则心跳永远不发。阶段四落地后这条门槛由 `GPRS_ClockSync` 自动打开：NORMAL → `GPRS_ClockSync_OnNormal()`（热身 2 s）→ 发 `sys.timeSync` → 收到 `request_reply` 里 `OnReply()` 写完 DS1302 后调 `NetLiveness_OnTimeSyncOk()`，**不需要再手动放行**。
 
 ## 2. `property_report.h/.c` —— 属性上报
 
@@ -284,6 +284,8 @@ uint8_t Send_property(const char *para_buf);
 #include <stdio.h>
 #include <string.h>
 #include "uart_queue.h"
+#include "gprs_rtc.h"        /* GPRS_RTC_NowMs() for the uplink id */
+#include "net_liveness.h"    /* NetLiveness_IsWaitingTimeSync() */
 
 static uint8_t  s_pending = 0u;
 static uint16_t s_last_opening = 0xFFFFu;
@@ -305,14 +307,23 @@ uint8_t PropertyReport_BuildSnapshot(char *buf, uint32_t buf_size)
 uint8_t Send_property(const char *para_buf)
 {
     char json_str[UART_TX_JSON_LEN];
-    /* id = timestamp placeholder; stage 4 replaces with DS1302-derived unix ms */
+    char id_buf[24];
+    int64_t ts;
+
     if (para_buf == NULL)
         return 0u;
+
+    /* same 13-digit ms id as the timeSync request, so every uplink shares one
+       id scheme (stage 4 brings the DS1302 backend; before that this is just
+       the local RTC value) */
+    ts = GPRS_RTC_NowMs();
+    (void)snprintf(id_buf, sizeof(id_buf), "%lld", (long long)ts);
+
     (void)snprintf(json_str, sizeof(json_str),
-             "%u,{\"id\":\"%u\",\"productKey\":\"%s\",\"deviceKey\":\"%s\","
+             "%u,{\"id\":\"%s\",\"productKey\":\"%s\",\"deviceKey\":\"%s\","
              "\"type\":\"property\",\"body\":{%s}}",
              TOPIC_PROPERTY_PUB,
-             (unsigned)g_sys_ms,          /* temporary id; stage 4 uses RTC */
+             id_buf,
              GPRS_PRODUCT_KEY, GPRS_DEVICE_KEY,
              para_buf);
     return UartTx_Push_JSON(json_str, (uint16_t)strlen(json_str), "", NULL,
@@ -355,7 +366,10 @@ void PropertyReport_SetPending(void) { s_pending = 1u; }
 
 void PropertyReport_Process(void)
 {
-    if (!gprs_is_ready() || DCMOTOR_IsCalibrating())
+    /* gate #1 link down | gate #2 calibrating | gate #3 timeSync not yet ok:
+       the first property uplink must wait for sys.timeSync, otherwise the id
+       is built from a garbage DS1302 value (observed as a negative id). */
+    if (!gprs_is_ready() || DCMOTOR_IsCalibrating() || NetLiveness_IsWaitingTimeSync())
         return;
     if (!s_pending)
         return;
@@ -368,6 +382,8 @@ void PropertyReport_Process(void)
 ```
 
 > **接线**：`PropertyReport_SetPending()` 要在开度变化时被调用——原工程在 `switch.c` 的 `ChangeReality()` 里调。新工程要在 `DCMOTOR` 更新开度的地方（`DCMOTOR_UpdateOpening()` 或 `DCMOTOR_Tick()` 里检测到开度变化处）加一句 `PropertyReport_SetPending()`。**这属于跨模块接线，本轮只在这里点明位置，不铺开改 DCMOTOR 文档**。
+
+> **对时门槛**：`PropertyReport_Process()` 第三个条件 `NetLiveness_IsWaitingTimeSync()` 让首帧属性上报等 `sys.timeSync` 成功后再发。因为 id 由 `GPRS_RTC_NowMs()` 生成，对时完成前 DS1302 是上电垃圾值，曾观测到 `id:"-286297738"` 这种负 id 帧。对时失败/卡住时不会永久阻塞——`net_liveness.c` 会走 hard reset 4G 自愈、重连后重新对时，行为与首帧心跳的对时门槛一致。
 
 ## 3. `event_pub.h/.c` —— 事件上报
 

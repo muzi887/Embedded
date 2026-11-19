@@ -46,7 +46,7 @@ void NetLiveness_OnTimeSyncOk(void)
 {
     if (!s_wait_timesync)
         return;
-    s_wait_timesync = 0u;
+    s_wait_timesync = 0u; /* 清 0 之后，下一次`NetLiveness_Process()` 才会开始计时、发`2,{}` 。 */
     s_wait_logged = 0u;
     s_ts_fail = 0u;
     s_ts_fast = 1u;
@@ -90,6 +90,26 @@ static void s_send(void)
         return;
     }
     s_pending = 1u;
+}
+
+/**
+ * @brief Send one liveness ping "2,{}" immediately, bypassing the 120 s period.
+ * Diagnostic helper: verifies the downlink quickly after entering NORMAL.
+ * It also arms the normal pending state, so a returning "{}" is reported as
+ * "[LIVE] heartbeat ack ok" through NetLiveness_OnAck().
+ */
+void GPRS_SendLivenessPing(void)
+{
+    if (!UartTx_Push_JSON(NET_LIVENESS_FRAME, NET_LIVENESS_FRAME_LEN, "", NULL,
+                          NET_LIVENESS_TX_TIMEOUT_MS, 0u))
+    {
+        GPRS_Printf("[LIVE] forced ping dropped: queue full\r\n");
+        return;
+    }
+    s_pending     = 1u;
+    s_ever_sent   = 1u;
+    s_last_send_ms = g_sys_ms;
+    GPRS_Printf("[LIVE] forced ping sent: 2,{}\r\n");
 }
 
 static void s_tick(void)

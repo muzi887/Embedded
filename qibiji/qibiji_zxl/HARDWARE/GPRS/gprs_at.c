@@ -5,6 +5,7 @@
 #include "uart_queue.h"
 #include <string.h>
 #include "timer.h"
+#include "gprs_json.h"
 
 /*==================== Link state machine states ====================*/
 #define ST_OFFLINE      1u  /* wait for LINKA up */               /* wait for LINKA up */
@@ -115,9 +116,10 @@ static void s_on_csq(char *data, uint16_t len)
 }
 
 /**
- * @brief 离线探询：LINKA 为低时状态机不会发任何 AT，导致永远看不到模块信息。
- * 每 OFFLINE_PROBE_MS 轮询一条命令，先确认串口/波特率/模块是否在线，
- * 同时打印 PC4/PC5 电平，用于判断 LINKA 引脚定义是否与实际硬件一致。
+ * @brief 离线探询：LINKA 为低时状态机不会发任何 AT。
+ * 第一轮一次性连发 4 条 MQTT 配置查询（趁 banner 到 link up 的约 11 秒窗口），
+ * 第二轮再做原来的 ICCID/MQTTCID/CSQ 探测。
+ * 内容由 GPRS_AT_RxPump 的 "[GPRS] RX[..]" 原样打印，回调传 NULL 即可。
  */
 static void s_offline_probe(void)
 {
@@ -126,7 +128,7 @@ static void s_offline_probe(void)
 
     if ((uint32_t)(g_sys_ms - s_probe_tick) < OFFLINE_PROBE_MS)
         return;
-    if (!UartTx_IsEmpty())
+    if (!UartTx_IsEmpty())          /* 队列里还有在途项，下一轮再说 */
         return;
 
     s_probe_tick = g_sys_ms;
@@ -136,25 +138,30 @@ static void s_offline_probe(void)
                 (unsigned)GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_5),
                 (unsigned)g_atflag_online);
 
-    switch (s_probe_idx)
+    if (s_probe_idx == 0u)
     {
-    case 0u:   /* 裸 AT：回 OK 说明串口通、模块在 AT 命令模式 */
-        (void)UartTx_Push_AT(GPRS_AT_PING, GPRS_AT_PING_LEN, "OK", NULL, 2000u, 0u);
-        break;
-    case 1u:
-        (void)UartTx_Push_AT(GPRS_AT_MQTTCID, GPRS_AT_MQTTCID_LEN, "+MQTTCID",
-                             s_on_mqttcid, 2000u, 0u);
-        break;
-    case 2u:
-        (void)UartTx_Push_AT(GPRS_AT_ICCID, GPRS_AT_ICCID_LEN, "+ICCID",
-                             s_on_iccid, 2000u, 0u);
-        break;
-    default:
-        (void)UartTx_Push_AT(GPRS_AT_CSQ, GPRS_AT_CSQ_LEN, "+CSQ",
-                             s_on_csq, 2000u, 0u);
-        break;
+        /* 一轮把配置全查完：队列深度 8，四条一起入队，
+           由 TX 队列的"一发一收"机制串行发出 */
+        (void)UartTx_Push_AT(GPRS_AT_MQTTSVR, GPRS_AT_MQTTSVR_LEN,
+                             "+MQTTSVR", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_MQTTMOD, GPRS_AT_MQTTMOD_LEN,
+                             "+MQTTMOD", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_MQTTSUBTP, GPRS_AT_MQTTSUBTP_LEN,
+                             "+MQTTSUBTP", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_MQTTPUBTP, GPRS_AT_MQTTPUBTP_LEN,
+                             "+MQTTPUBTP", NULL, 1500u, 0u);
     }
-    s_probe_idx = (uint8_t)((s_probe_idx + 1u) % 4u);
+    else
+    {
+        (void)UartTx_Push_AT(GPRS_AT_MQTTCID, GPRS_AT_MQTTCID_LEN,
+                             "+MQTTCID", s_on_mqttcid, 2000u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_ICCID, GPRS_AT_ICCID_LEN,
+                             "+ICCID", s_on_iccid, 2000u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_CSQ, GPRS_AT_CSQ_LEN,
+                             "+CSQ", s_on_csq, 2000u, 0u);
+    }
+
+    s_probe_idx = (uint8_t)((s_probe_idx + 1u) % 2u);
 }
 
 /**
@@ -177,6 +184,7 @@ void GPRS_AT_StateMachine(void)
         g_at_flag_csq = 0u;
         s_retry_cnt = 0u;
         UartTx_Queue_Init();   /* drop in-flight AT/JSON items */
+        GPRS_ClockSync_Reset();  /* drop in-flight timeSync */
         GPRS_Printf("[GPRS] Link down confirmed -> State1\r\n");
     }
 
@@ -202,7 +210,8 @@ void GPRS_AT_StateMachine(void)
             GPRS_4G_ResetAllowed(RESET_MIN_INTERVAL_MS))
         {
             UartTx_Queue_Init();
-            GPRS_4G_Reset();
+            GPRS_ClockSync_Reset();  /* drop in-flight timeSync */   
+            GPRS_4G_Reset();   
             s_offline_since = g_sys_ms;
             g_atflag_online = 0u;
             s_link_down_occurred = 1u;
@@ -236,6 +245,8 @@ void GPRS_AT_StateMachine(void)
                 s_state = ST_NORMAL;
                 s_retry_cnt = 0u;
                 GPRS_Printf("[GPRS] State3->4: AT init done, NORMAL\r\n");
+                GPRS_ClockSync_OnNormal();   /* issue first timeSync request */
+                // GPRS_SendLivenessPing(); 
             }
             else
             {
@@ -314,7 +325,27 @@ void GPRS_AT_RxPump(void)
         }
         UartRx_Append(buf, len);
         __set_PRIMASK(primask);
-        GPRS_Printf("[GPRS] RX[%u] %.*s\r\n", (unsigned)len, (int)len, buf);
+
+        /* GPRS_Printf's internal buffer is 256 bytes: a long AT reply such as
+           +MQTTPUBTP (428 B) would be cut off. Print in 200-byte chunks. */
+        if (len > 200u)
+        {
+            uint16_t off = 0u;
+            GPRS_Printf("[GPRS] RX[%u] +++\r\n", (unsigned)len);
+            while (off < len)
+            {
+                uint16_t n = (uint16_t)(len - off);
+                if (n > 200u)
+                    n = 200u;
+                GPRS_Printf("%.*s", (int)n, buf + off);
+                off = (uint16_t)(off + n);
+            }
+            GPRS_Printf("\r\n--- end ---\r\n");
+        }
+        else
+        {
+            GPRS_Printf("[GPRS] RX[%u] %.*s\r\n", (unsigned)len, (int)len, buf);
+        }
     }
     UartRx_Extract();
 

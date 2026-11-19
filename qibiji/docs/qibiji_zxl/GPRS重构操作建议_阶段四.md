@@ -9,87 +9,26 @@
 
 ## 1. 对时（sys.timeSync）
 
-**作用**：从平台拿 `serverTime`（13 位毫秒），写进 DS1302 硬件 RTC，让所有上报带正确时间戳。原工程直接调 `ds1302_settime()` 写芯片；本版保持同样硬件路径，但通过一个**薄抽象层**隔离 DS1302 寄存器细节——将来换 STM32 内置 RTC 或其他芯片时，只要改后端文件，对时逻辑一行不动。
+**作用**：从平台拿 `serverTime`（13 位毫秒），写进 DS1302 硬件 RTC，让所有上报带正确时间戳。
 
-### 新增文件清单
+> **完整实现已独立成篇**：[DS1302重构操作建议.md](./DS1302重构操作建议.md)。
+> 那里包含驱动拷贝清单与三处已知缺陷修正、`gprs_rtc.h/.c` 全部源码（unix ↔ BCD ↔ 时区 ↔ 周计算）、对时状态机完整代码、验证清单。本节只保留要点。
 
-| 文件 | 职责 | 来源 |
-|---|---|---|
-| `HARDWARE/DS1302/ds1302.h` / `.c` | DS1302 GPIO + 字节级读写 | **直接从原工程 `qibiji/HARDWARE/DS1302/` 拷贝**，引脚 PC6(RST)/PC7(DAT)/PC8(CLK) 与原工程一致 |
-| `HARDWARE/GPRS/gprs_rtc.h` | 统一时钟后端接口（抽象层） | 新建 |
-| `HARDWARE/GPRS/gprs_rtc.c` | DS1302 后端实现 | 新建 |
+### 四条要点
 
-> **注意**：zxl 工程里曾有一个 typo 文件 `gpsr_rtc.h`（gpsr → gprs），用本版 `gprs_rtc.h` 替换它。
-
-### `gprs_rtc.h`（抽象层接口）
-
-```c
-#ifndef __GPRS_RTC_H
-#define __GPRS_RTC_H
-
-#include "gprs_config.h"
-
-/* 从 unix 秒写 RTC（后端调 ds1302_settime 前先做 unix → BCD 转换） */
-void     GPRS_RTC_Set(uint32_t unix_sec);
-/* 读当前 unix 秒（后端从 ds1302_dataread 读 BCD → 转 unix） */
-uint32_t GPRS_RTC_GetUnixSec(void);
-/* 返回当前秒内的毫秒值（用 g_sys_ms 与上一次秒边界的差计算） */
-uint16_t GPRS_RTC_GetMsOfSec(void);
-
-/* 硬件初始化（调 ds1302_init），放在 main 初始化阶段 */
-void GPRS_RTC_Init(void);
-
-#endif
-```
-
-三个函数**全部走 DS1302 后端**，没有软件桩 fallback——因为这块板确实有 DS1302。软件 fallback 只有在将来某块板不带 DS1302 时才需要，到那时在 `gprs_rtc.c` 里用 `#ifdef HAS_DS1302` 分支隔离即可。
-
-### `gprs_rtc.c`（DS1302 后端实现要点）
-
-核心是两个转换：`unix_sec → ds1302 BCD`（Set 方向）和 `ds1302 BCD → unix_sec`（Get 方向）。原工程的 `ds1302_settime()` / `ds1302_dataread()` 已经处理了 BCD ↔ 十进制的低位字节，我们需要在外面包一层 unix 转换：
-
-```
-GPRS_RTC_Set(unix_sec):
-    unix_sec → (year, mon, day, hour, min, sec)     // 纯算法，不依赖任何硬件
-    → 调 ds1302_settime([sec, min, hour, day, mon, week, year])
-
-GPRS_RTC_GetUnixSec():
-    调 ds1302_dataread(ttt)     // ttt[0..6] = 秒/分/时/日/月/周/年（已转十进制）
-    → (year, mon, day, hour, min, sec) → unix_sec    // 纯算法
-    返回值
-```
-
-`GPRS_RTC_GetMsOfSec()` 用 `g_sys_ms` 与"本次 `GetUnixSec` 返回的秒值被读取时的毫秒基准"做差，范围 0–999。需要一个内部静态变量记录上一次秒边界的 `g_sys_ms`。
-
-### main 初始化顺序调整
-
-DS1302 初始化要放在 GPRS 之前（对时成功才放行心跳），放在 timer 之后（需要 `g_sys_ms`）：
-
-```c
-int main(void)
-{
-    /* ... 已有外设 init ... */
-    TIM4_Init();                 // g_sys_ms 开始走
-    GPRS_PORT_Init(115200);
-    GPRS_RTC_Init();             // 新增：ds1302_init()
-    GPRS_4G_Init();
-    /* ... */
-}
-```
-
-### 对时逻辑（放进 `gprs_json.c`）三条要点（照搬原工程，避开原工程 F1）
-
-1. **发**：进 NORMAL 热身 2s 后发一轮 `request` 帧（`requestCode="sys.timeSync"`，id 用新时间戳）。模块开 `AT+CACHEN=OFF` 不缓存上行，发早了会被丢——所以必须等 MQTT 会话建好。
-2. **收**：平台回 `type="request_reply"`，`body.output.serverTime` 是 13 位毫秒。解析后 `GPRS_RTC_Set(serverTime/1000)`，然后调 `NetLiveness_OnTimeSyncOk()` 放行首帧心跳。
-3. **失败处理**（**这里修掉 F1**）：`body.code != 0`（业务失败）时，也要 `NetLiveness_OnTimeSyncFail()` 并重试，否则心跳被锁死 24 小时。超时重试节奏 15s/30s/60s，每次换**新的 id**（避免平台去重吃掉重发）。
+1. **发**：进 `ST_NORMAL` 后**先热身 2s**，再发一轮 `request`（`requestCode="sys.timeSync"`，id 用 13 位时间戳）。模块 `AT+CACHEN=OFF` 不缓存上行，发早了会被丢。热身由 `GPRS_ClockSync_OnNormal()` 起计时，`Process()` 到点才 `Start()`。
+2. **收**：回执 `type="request_reply"`，`body.output.serverTime` 是 13 位毫秒，**必须用 `cJSON_GetNumberValue()` 读成 double**（`valueint` 会溢出）。写入 RTC 后调 `NetLiveness_OnTimeSyncOk()` 放行首帧心跳。
+3. **失败**（修掉原工程 F1）：`body.code != 0` 时也要 `NetLiveness_OnTimeSyncFail()` 并重试，否则心跳被锁死 24 小时。重试节奏 15/30/60s，每次换新 id。
+4. **通道未确认时不烧重试次数**：任何一帧下行（心跳 ack 也算）都会调 `GPRS_ClockSync_OnDownlink()` 把 `s_clock_chan_ok` 置 1，之后才走 15/30/60 正式重试；在此之前按 60s 一帧单发探测，最多 5 次后交给 `NetLiveness` 的 `timeSync stuck` 看门狗。这样即使整轮都撞在模块重连窗口里，也不会 105 秒就 `give up`。
 
 ### 为什么要有心跳门槛
 
-心跳一旦通了 `s_miss` 就清零，会掩盖校时失败。校时失败会让之后所有上报带错时间戳，比"晚几分钟上线"糟得多。所以顺序硬性固定：3 条 AT → 校时 → 心跳。
+心跳一旦通了 `s_miss` 就清零，会掩盖校时失败。校时失败会让之后所有上报带错时间戳，比"晚几分钟上线"糟得多。顺序硬性固定：3 条 AT → 校时 → 心跳。
 
-### 实施位置
+### 依赖
 
-对时的"发"侧放在 `gprs_at.c` NORMAL 状态进入后的 2s 热身窗口（或放在 `GPRS_Process` 末尾）；"收"侧的 `request_reply` 分发要补进 `GPRS_JSON_ParseProcess` 的 switch 分支里，在 stage 2 留下的占位注释处。
+- `GPRS_RTC_*` 四个接口来自本阶段新增的抽象层（见独立文档 §6/§7）；
+- `GPRS_RTC_GetUnixSec()` 在未校时时返回 0，调用方必须判断，不能把 1970 年的时间戳发给平台。
 
 ## 2. 远程配置 / 版本号 / ReSet
 

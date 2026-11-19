@@ -10,6 +10,7 @@
  * =========================================================================== */
 #include "lcd_pages.h"
 #include "lcd12864.h"
+#include "dcmotor.h"
 
 /* ----------------------------- Page ids --------------------------------- */
 typedef enum
@@ -84,10 +85,13 @@ static const uint8_t s_lbl_stall[6] = {      /* stall label + colon+space */
     0xb6, 0xc2, 0xd7, 0xaa, 0x3a, 0x20 };
 static const uint8_t s_lbl_auto[6] = {       /* calibration label + colon */
     0xd0, 0xa3, 0xd7, 0xbc, 0x3a, 0x20 };
-static const uint8_t s_txt_off[4] = {        /* "closed"                 */
-    0xb9, 0xd8, 0xb1, 0xd5 };
-static const uint8_t s_txt_on[4] = {         /* "open"                   */
-    0xbf, 0xaa, 0xc6, 0xf4 };
+/* calibration status text reflects the real motor state, not the trigger flag */
+static const uint8_t s_txt_cal_none[6] = {   /* not calibrated  */
+    0xce, 0xb4, 0xd0, 0xa3, 0xd7, 0xbc };
+static const uint8_t s_txt_cal_run[6]  = {   /* calibrating  */
+    0xd0, 0xa3, 0xd7, 0xbc, 0xd6, 0xd0 };
+static const uint8_t s_txt_cal_ok[6]   = {   /* calibrated   */
+    0xd2, 0xd1, 0xd0, 0xa3, 0xd7, 0xbc };
 
 /* ------------------- Top graphic zone (GDRAM) assets ---------------------
  * Banner glyph bitmaps: Each glyph is 12 rows x 2 bytes, drawn into GDRAM
@@ -119,7 +123,7 @@ static const uint8_t s_line_full[16] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /* byte offset of the edit marker '*' in each row */
-static const uint8_t s_star_pos[SET_ITEMS] = { 13u, 14u, 12u };
+static const uint8_t s_star_pos[SET_ITEMS] = { 13u, 14u, 14u };
 
 static void s_RowClear(uint8_t *row)
 {
@@ -178,10 +182,13 @@ static void s_FormatSetRow(uint8_t item)
     case 2u:                                  /* 校准开关 calibration on/off     */
     default:
         s_BytesCopy(&row[2], s_lbl_auto, 6u);
-        s_BytesCopy(&row[8],
-                    (s_param[LCD_PARAM_AUTO_FLAG] != 0u) ? s_txt_on
-                                                         : s_txt_off,
-                    4u);
+        if (DCMOTOR_IsCalibrating())
+            s_BytesCopy(&row[8], s_txt_cal_run, 6u);   /* 校准中 */
+        else if (DCMOTOR_IsCalibrated())
+            s_BytesCopy(&row[8], s_txt_cal_ok, 6u);    /* 已校准 */
+        else
+            s_BytesCopy(&row[8], s_txt_cal_none, 6u);  /* 未校准 */
+        break;
         break;
     }
 
@@ -450,6 +457,36 @@ void LCD_PAGES_Process(key_code_t key)
     {
         s_DrawPage(s_page);
     }
+}
+
+/* Refresh rows whose content changes without a key press.
+ * The calibration row reflects DCMOTOR state (未校准 / 校准中 / 已校准),
+ * which transitions while the set page is idle, so it must be polled.
+ * Only re-sends the row when the displayed state actually changes, so this
+ * is cheap to call every main-loop turn. Skipped while editing a row.      */
+void LCD_PAGES_Refresh(void)
+{
+    /* 0 = 未校准, 1 = 校准中, 2 = 已校准, 0xFF = force first sync */
+    static uint8_t s_last_cal_state = 0xFFu;
+    uint8_t st;
+
+    if (s_page != PAGE_SET)
+        return;
+    if (s_set_mode == SET_EDIT)
+        return;                       /* key handlers own the row now */
+
+    if (DCMOTOR_IsCalibrating())
+        st = 1u;
+    else if (DCMOTOR_IsCalibrated())
+        st = 2u;
+    else
+        st = 0u;
+
+    if (st == s_last_cal_state)
+        return;
+    s_last_cal_state = st;
+    s_FormatSetRow(2u);
+    s_FlushSetRow(2u);
 }
 
 uint8_t LCD_PAGES_IsHome(void)

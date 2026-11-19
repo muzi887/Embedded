@@ -14,9 +14,9 @@
  * --------------------------------------------------------------------------- */
 
 /* ---- device identity (replace with persistent storage later) ---- */
-#define GPRS_PRODUCT_KEY   "your_product_key"
-#define GPRS_DEVICE_KEY    "your_device_key"
-#define GPRS_CLIENT_ID     "your_client_id"
+#define GPRS_PRODUCT_KEY   "pk001"
+#define GPRS_DEVICE_KEY    "dev001"
+#define GPRS_CLIENT_ID     "dev001"
 
 /* ---- MQTT topic slots (module MQTTPUBTP/MQTTSUBTP indices) ---- */
 #define TOPIC_SUB           1u
@@ -36,6 +36,16 @@
 /* 裸 AT：模块若本来就处于 AT 命令模式，回 OK；用它与带前缀的命令做区分 */
 #define GPRS_AT_PING       "AT\r\n"
 #define GPRS_AT_PING_LEN   4u
+
+/* ---- module MQTT configuration queries (diagnostic only) ---- */
+#define GPRS_AT_MQTTSVR    "usr.cn#AT+MQTTSVR?\r\n"
+#define GPRS_AT_MQTTSVR_LEN 20u
+#define GPRS_AT_MQTTMOD    "usr.cn#AT+MQTTMOD?\r\n"
+#define GPRS_AT_MQTTMOD_LEN 20u
+#define GPRS_AT_MQTTSUBTP  "usr.cn#AT+MQTTSUBTP?\r\n"
+#define GPRS_AT_MQTTSUBTP_LEN 22u
+#define GPRS_AT_MQTTPUBTP  "usr.cn#AT+MQTTPUBTP?\r\n"
+#define GPRS_AT_MQTTPUBTP_LEN 22u
 
 /* ---- log helper: implemented in gprs_port.c (C90-safe, no variadic macro) ---- */
 void GPRS_Printf(const char *fmt, ...);
