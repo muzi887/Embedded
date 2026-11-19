@@ -33,12 +33,12 @@
 
 | 堆 | 文件 | 动作 | 内容 |
 |---|---|---|---|
-| 改 | `HARDWARE/LCD12864/lcd_pages.h` | **整文件替换** | 增加 `lcd_param_t` 枚举和 2 个参数 API 声明 |
+| 改 | `HARDWARE/LCD12864/lcd_pages.h` | **整文件替换** | 增加 `lcd_param_t` 枚举、2 个参数 API 声明，以及 `LCD_PAGES_Refresh()` 声明 |
 | 改 | `HARDWARE/LCD12864/lcd_pages.c` | **整文件替换** | 行缓存 + 编辑状态机 + 参数 API |
-| 不动 | `USER/main.c` | 不改 | 第 1 轮已把 `LCD_PAGES_Process(key)` 接进 `APP_DispatchKey`，本轮行为自动升级 |
-| 不动 | `USER/SRTUV10.uvprojx` | 不改 | 没有新文件，IncludePath 不动 |
+| 改 | `USER/main.c` | 主循环加 1 行 | 调 `LCD_PAGES_Refresh()`（在校准标志消费之后、`DCMOTOR_Process()` 之前），让校准状态行无按键也能刷新；`LCD_PAGES_Process(key)` 仍在 `APP_DispatchKey` 里调，不动 |
+| 不动 | `USER/SRTUV10.uvprojx` | 不改 | 没有新文件，`dcmotor.h` 已在 IncludePath |
 
-落地顺序：替换 `.h` → 替换 `.c` → Keil 里 Build。共 2 个文件。
+落地顺序：替换 `.h` → 替换 `.c` → `main.c` 加 `LCD_PAGES_Refresh();` → Keil 里 Build。共 3 个文件（`main.c` 只加 1 行）。
 
 ---
 
@@ -52,12 +52,16 @@
  * Owns: page state machine + the GB2312 text rows drawn on each page,
  *       plus set-page parameter editing (cursor + value edit) and a
  *       per-row RAM cache so only changed rows are re-sent to the LCD.
- * Reacts to key events only; no periodic refresh in this round.
+ * Reacts to key events; plus a per-loop Refresh() for rows that change
+ * without a key press (e.g. the calibration status row).
  * Depends on: key.h (key_code_t) and lcd12864.h (driver layer only). */
 #include "key.h"
 
 void LCD_PAGES_Init(void);
 void LCD_PAGES_Process(key_code_t key);
+void LCD_PAGES_Refresh(void);   /* call each main loop: redraws rows whose
+                                   content changes without a key press
+                                   (e.g. the calibration status row) */
 
 /* Editable parameters, kept in RAM. EEPROM persistence is NOT in this
  * round - the module only guarantees the in-RAM value. */
@@ -98,6 +102,7 @@ void     LCD_PAGES_SetParam(lcd_param_t p, uint16_t v);
  * =========================================================================== */
 #include "lcd_pages.h"
 #include "lcd12864.h"
+#include "dcmotor.h"        /* DCMOTOR_IsCalibrating / DCMOTOR_IsCalibrated */
 
 /* ----------------------------- Page ids --------------------------------- */
 typedef enum
@@ -175,13 +180,17 @@ static const uint8_t s_lbl_stall[6] = {      /* stall label + colon+space */
     0xb6, 0xc2, 0xd7, 0xaa, 0x3a, 0x20 };
 static const uint8_t s_lbl_auto[6] = {       /* calibration label + colon */
     0xd0, 0xa3, 0xd7, 0xbc, 0x3a, 0x20 };
-static const uint8_t s_txt_off[4] = {        /* "closed"                 */
-    0xb9, 0xd8, 0xb1, 0xd5 };
-static const uint8_t s_txt_on[4] = {         /* "open"                   */
-    0xbf, 0xaa, 0xc6, 0xf4 };
+/* calibration status text reflects the real motor state, not the trigger flag */
+static const uint8_t s_txt_cal_none[6] = {   /* "未校准" not calibrated   */
+    0xce, 0xb4, 0xd0, 0xa3, 0xd7, 0xbc };
+static const uint8_t s_txt_cal_run[6]  = {   /* "校准中" calibrating      */
+    0xd0, 0xa3, 0xd7, 0xbc, 0xd6, 0xd0 };
+static const uint8_t s_txt_cal_ok[6]   = {   /* "已校准" calibrated       */
+    0xd2, 0xd1, 0xd0, 0xa3, 0xd7, 0xbc };
 
-/* byte offset of the edit marker '*' in each row */
-static const uint8_t s_star_pos[SET_ITEMS] = { 13u, 14u, 12u };
+/* byte offset of the edit marker '*' in each row.
+ * item2 status text is 6 bytes at row[8..13], so the star must sit at 14. */
+static const uint8_t s_star_pos[SET_ITEMS] = { 13u, 14u, 14u };
 
 static void s_RowClear(uint8_t *row)
 {
@@ -234,13 +243,15 @@ static void s_FormatSetRow(uint8_t item)
         row[12] = ' ';
         row[13] = 'A';
         break;
-    case 2u:                                  /* calibration on/off     */
+    case 2u:                                  /* calibration status row */
     default:
         s_BytesCopy(&row[2], s_lbl_auto, 6u);
-        s_BytesCopy(&row[8],
-                    (s_param[LCD_PARAM_AUTO_FLAG] != 0u) ? s_txt_on
-                                                         : s_txt_off,
-                    4u);
+        if (DCMOTOR_IsCalibrating())
+            s_BytesCopy(&row[8], s_txt_cal_run, 6u);   /* 校准中 */
+        else if (DCMOTOR_IsCalibrated())
+            s_BytesCopy(&row[8], s_txt_cal_ok, 6u);    /* 已校准 */
+        else
+            s_BytesCopy(&row[8], s_txt_cal_none, 6u);  /* 未校准 */
         break;
     }
 
@@ -440,6 +451,36 @@ void LCD_PAGES_Process(key_code_t key)
         s_DrawPage(s_page);
     }
 }
+
+/* Refresh rows whose content changes without a key press.
+ * The calibration row reflects DCMOTOR state (未校准 / 校准中 / 已校准),
+ * which transitions while the set page is idle, so it must be polled.
+ * Only re-sends the row when the displayed state actually changes, so this
+ * is cheap to call every main-loop turn. Skipped while editing a row.      */
+void LCD_PAGES_Refresh(void)
+{
+    /* 0 = 未校准, 1 = 校准中, 2 = 已校准, 0xFF = force first sync */
+    static uint8_t s_last_cal_state = 0xFFu;
+    uint8_t st;
+
+    if (s_page != PAGE_SET)
+        return;
+    if (s_set_mode == SET_EDIT)
+        return;                       /* key handlers own the row now */
+
+    if (DCMOTOR_IsCalibrating())
+        st = 1u;
+    else if (DCMOTOR_IsCalibrated())
+        st = 2u;
+    else
+        st = 0u;
+
+    if (st == s_last_cal_state)
+        return;
+    s_last_cal_state = st;
+    s_FormatSetRow(2u);
+    s_FlushSetRow(2u);
+}
 ```
 
 ---
@@ -463,12 +504,12 @@ void LCD_PAGES_Process(key_code_t key)
 ```
 行0: "->上限位:2000 "    字节: [0-1]=标记  [2-7]=上限位(GB2312)  [8]=':'  [9-12]=4位数字  [13]=编辑标记
 行1: "->堵转: 30.0 A"    字节: [0-1]=标记  [2-7]=堵转:+空格      [8-11]="30.0"    [12]=' ' [13]='A' [14]=编辑标记
-行2: "->校准: 关闭"      字节: [0-1]=标记  [2-7]=校准:+空格      [8-11]=关闭/开启 [12]=编辑标记
+行2: "->校准: 未校准"    字节: [0-1]=标记  [2-7]=校准:+空格      [8-13]=未校准/校准中/已校准 [14]=编辑标记
 ```
 
 - 选中行 `[0-1]` = `'-'','>'`，未选中 = 两个空格。
 - **编辑中的行**在标记位之后多一个 `'*'`（位置见 `s_star_pos[]`），确认/取消后消失。
-- 所有汉字字节沿用原工程数组：上限位 `0xc9,0xcf,0xcf,0xde,0xce,0xbb`、堵转 `0xb6,0xc2,0xd7,0xaa`、校准 `0xd0,0xa3,0xd7,0xbc`、关闭 `0xb9,0xd8,0xb1,0xd5`、开启 `0xbf,0xaa,0xc6,0xf4`。
+- 所有汉字字节沿用原工程数组：上限位 `0xc9,0xcf,0xcf,0xde,0xce,0xbb`、堵转 `0xb6,0xc2,0xd7,0xaa`、校准 `0xd0,0xa3,0xd7,0xbc`；校准状态行**不再用**关闭/开启，改用三组：未校准 `0xce,0xb4,0xd0,0xa3,0xd7,0xbc`、校准中 `0xd0,0xa3,0xd7,0xbc,0xd6,0xd0`、已校准 `0xd2,0xd1,0xd0,0xa3,0xd7,0xbc`（显示电机真实状态，见 §5.4）。
 
 ### 5.3 参数范围与步距
 
@@ -476,7 +517,7 @@ void LCD_PAGES_Process(key_code_t key)
 |---|---|---|---|---|---|---|
 | 上限位 | `LCD_PARAM_GATE_MAX` | 无（位置值） | 2000 | 10 | 0~9999 | 4 位十进制 |
 | 堵转阈值 | `LCD_PARAM_STALL_010A` | 0.1 A | 300（=30.0A） | 1 | 0~999 | `"dd.d A"` |
-| 校准开关 | `LCD_PARAM_AUTO_FLAG` | 0/1 | 0（关） | UP=开 / DOWN=关 | 0~1 | 关闭 / 开启 |
+| 校准状态 | `LCD_PARAM_AUTO_FLAG` | 0/1 | 0 | UP=触发 / DOWN=0 | 0~1 | 未校准 / 校准中 / 已校准（**显示**取自 DCMOTOR 状态，非参数值） |
 
 越界即钳位（到顶再加不动，到底再减不动）。原工程对应值：`gate_maxheight`、`motor_warning_curr_upper`（原工程存的是 mA，本模块存 0.1A，接 EEPROM 时换算）、`autoFlag`。
 
@@ -485,6 +526,7 @@ void LCD_PAGES_Process(key_code_t key)
 - `LCD_PAGES_SetParam()` 在设置页显示期间被调用（比如以后 4G 下发参数），会立即格式化并重发那一行（25 帧）；在首页调用则只改 RAM，不发任何帧。
 - 进设置页时**光标复位到第 0 项、退出编辑模式**（对应原工程进页时 `SetPageNum=0xff; setParaflag=0` 的复位动作）。
 - 光标移动 = 重发 2 行（50 帧）；改值/进编辑/确认/取消 = 重发 1 行（25 帧）；整页 Clear 只在进页时出现。这是和第 1 轮「整页重画」的本质区别。
+- 校准状态行（第 2 项）显示的是 DCMOTOR 真实状态：`DCMOTOR_IsCalibrating()` → 校准中，否则 `DCMOTOR_IsCalibrated()`（`s_max_turns != 0`）→ 已校准，否则 → 未校准。**不是** `AUTO_FLAG` 的值——`AUTO_FLAG` 只是一次性触发标志（`main.c` 消费后清 0，见 DCMotor 文档 §7.3.1）。这一行会在无按键时变化，由 `main()` 每轮调用 `LCD_PAGES_Refresh()` 刷新：仅当状态真变了才重发该行（25 帧），平时空转；编辑该行时跳过刷新（按键处理器接管）。
 
 ---
 
@@ -506,10 +548,11 @@ void LCD_PAGES_Process(key_code_t key)
 
 1. 用第 3 节代码**整文件替换** `qibiji_zxl/HARDWARE/LCD12864/lcd_pages.h`。
 2. 用第 4 节代码**整文件替换** `qibiji_zxl/HARDWARE/LCD12864/lcd_pages.c`。
-3. Keil Build（0 error / 0 warning 预期），烧录。
-4. 上板走一遍第 9 节的操作序列。
+3. 在 `USER/main.c` 主循环里加一行 `LCD_PAGES_Refresh();`（放在校准标志消费块之后、`DCMOTOR_Process();` 之前，详见 §5.4 与 DCMotor 文档 §7.3.1）。
+4. Keil Build（0 error / 0 warning 预期），烧录。
+5. 上板走一遍第 9 节的操作序列。
 
-`main.c` 和 `uvprojx` **本轮都不用动**。
+`uvprojx` 本轮不用动（无新文件，`dcmotor.h` 已在 IncludePath）；`main.c` 只加上面那 1 行。
 
 ---
 
@@ -517,11 +560,11 @@ void LCD_PAGES_Process(key_code_t key)
 
 与第 1 轮同一套方法：桩环境回放 PE3/PE4/PE5 引脚波形 → 解码出每一帧 3 字节 → 逐帧断言。覆盖：
 
-- 进入设置页整页绘制 3 行（含光标标记与默认值 2000 / 30.0A / 关闭）逐字节比对；
+- 进入设置页整页绘制 3 行（含光标标记与默认值 2000 / 30.0A / 未校准）逐字节比对；
 - UP/DOWN 光标移动恰好重发 2 行（50 帧）且 **0 次 Clear**；UP 在第 0 项环绕到第 2 项；
 - STOP 进编辑 = 1 行 + 星号；UP/DOWN 改值实时写入 `GetParam`；
 - 高位钳位：9995 再加 → 9999 不动；低位钳位：5 再减 → 0 不动；
-- 堵转行格式 `29.9 A → 30.0 A`；校准行 开启/关闭 切换；
+- 堵转行格式 `29.9 A → 30.0 A`；校准行状态切换（未校准 → 校准中 → 已校准，由电机状态驱动，非按键）；
 - CANCEL 取消恢复进入编辑前的值（改了也能退回去）；
 - 编辑模式封锁翻页：编辑中 CAN 是取消编辑而不是翻页；
 - `SetParam` 在设置页立即重发 1 行、在首页 0 帧；

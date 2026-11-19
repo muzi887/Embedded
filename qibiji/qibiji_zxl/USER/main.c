@@ -14,6 +14,9 @@
 #include "gprs_json.h"
 #include "gprs.h"
 #include "gprs_rtc.h"
+#include "dcmotor_param.h"
+#include "eeprom_drv.h"
+#include "gprs_config_store.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -50,43 +53,38 @@ static void APP_DispatchKey(key_code_t key)
     /* only on the home page, same gating as the original PageSta==0 */
     if (LCD_PAGES_IsHome())
     {
-        if (key == KEY_UP)
-            DCMOTOR_Request(MOTOR_UP);
-        else if (key == KEY_DOWN)
-            DCMOTOR_Request(MOTOR_DOWN);
-        else if (key == KEY_STOP)
-            DCMOTOR_Request(MOTOR_STOP);
-    }
-
-		if (LCD_PAGES_IsHome())
-    {
 			if (key == KEY_UP)
-					DCMOTOR_Request(MOTOR_UP);
+				DCMOTOR_Request(MOTOR_UP);
 			else if (key == KEY_DOWN)
-					DCMOTOR_Request(MOTOR_DOWN);
+				DCMOTOR_Request(MOTOR_DOWN);
 			else if (key == KEY_STOP)
-					DCMOTOR_Request(MOTOR_STOP);
-    }
+				DCMOTOR_Request(MOTOR_STOP);
+	}
 }
 
 int main(void)
 {
 	key_code_t key;
 
-	NVIC_Configuration(); // 配置NVIC中断分组2:2位抢占优先级，2位响应优先级
-	DEBUG_UART_Init();      /* USART1 115200 8N1，PA9 = TX，只发不收 */
+	NVIC_Configuration();																	/* 配置NVIC中断分组2:2位抢占优先级，2位响应优先级 */
+	DEBUG_UART_Init();     																/* USART1 115200 8N1，PA9 = TX，只发不收 */
 	KEY_Init();
 	delay_init();
 	LCD12864_Init();
-	LCD_BACKLIGHT_Init();   /* 点亮背光、启动 30s 计时 */
+	LCD_BACKLIGHT_Init();   															/* 点亮背光、启动 30s 计时 */
 	LCD_PAGES_Init(); 
 	ADC1_Init();
-	GATEIO_Init();                     /* hardware layer: GPIO + JTAG + seeds */
-	DCMOTOR_Init();                    /* decision layer: relays off, state reset */
-	DCMOTOR_SetMaxTurns(0u);           /* run calibration or measure */
-	GPRS_PORT_Init(115200); 					 /* USART2 to 4G module: check your module's actual baud */
-	GPRS_RTC_Init();				 					 /* DS1302 RTC: bit-bang GPIO, no interrupts */
-	GPRS_4G_Init();         					 /* module reset + LINKA EXTI -- after UART so the boot banner is captured */
+	GATEIO_Init();                     										/* hardware layer: GPIO + JTAG + seeds */
+	DCMOTOR_Init();                    										/* decision layer: relays off, state reset */
+	AT24CXX_Init();
+	AT24CXX_Check();             			 										/* 真空白 EEPROM 时播种闸门默认值 */
+	dcmotor_param_load();        			 										/* EEPROM → g_gate_maxturns / g_motor_warning_curr_upper */
+	gprs_config_load();           												/* MQTT 凭据 → RAM（EEPROM 有效则用，否则用编译期宏） */
+	DCMOTOR_SetMaxTurns(g_gate_maxturns);           			/* run calibration or measure */
+	ADC_SetStallThresholdMa(g_motor_warning_curr_upper);  /* 堵转阈值推给 adc */
+	GPRS_PORT_Init(115200); 					 										/* USART2 to 4G module: check your module's actual baud */
+	GPRS_RTC_Init();				 					 										/* DS1302 RTC: bit-bang GPIO, no interrupts */
+	GPRS_4G_Init();         					 										/* module reset + LINKA EXTI -- after UART so the boot banner is captured */
 	UartTx_Queue_Init();
 	UartRx_Queue_Init();
 	TIM3_10ms_Init();

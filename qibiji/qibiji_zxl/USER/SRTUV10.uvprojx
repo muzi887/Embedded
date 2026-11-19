@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS;..\HARDWARE\DS1302</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS;..\HARDWARE\DS1302;..\HARDWARE\EEPROM;..\HARDWARE\IIC</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -718,6 +718,46 @@
               <FileName>net_liveness.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\GPRS\net_liveness.c</FilePath>
+            </File>
+            <File>
+              <FileName>myiic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IIC\myiic.c</FilePath>
+            </File>
+            <File>
+              <FileName>myiic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\IIC\myiic.h</FilePath>
+            </File>
+            <File>
+              <FileName>eeprom_drv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\EEPROM\eeprom_drv.c</FilePath>
+            </File>
+            <File>
+              <FileName>eeprom_drv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\EEPROM\eeprom_drv.h</FilePath>
+            </File>
+            <File>
+              <FileName>dcmotor_param.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\DCMOTOR\dcmotor_param.c</FilePath>
+            </File>
+            <File>
+              <FileName>dcmotor_param.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\DCMOTOR\dcmotor_param.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_config_store.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_config_store.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_config_store.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_config_store.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -17,6 +17,8 @@
 #define GPRS_PRODUCT_KEY   "pk001"
 #define GPRS_DEVICE_KEY    "dev001"
 #define GPRS_CLIENT_ID     "dev001"
+#define GPRS_DEVICE_SECRET  "d9fb85a1c0134c3c9f6bd94e8d474e27"
+#define GPRS_MQTT_ADDR      "www.huanghe-ceshi.top,59165"
 
 /* ---- MQTT topic slots (module MQTTPUBTP/MQTTSUBTP indices) ---- */
 #define TOPIC_SUB           1u
@@ -46,6 +48,14 @@
 #define GPRS_AT_MQTTSUBTP_LEN 22u
 #define GPRS_AT_MQTTPUBTP  "usr.cn#AT+MQTTPUBTP?\r\n"
 #define GPRS_AT_MQTTPUBTP_LEN 22u
+
+/* 说明WH-LTE-7S1 Socket A 稳定性的参数 */
+#define GPRS_AT_HEARTEN    "usr.cn#AT+HEARTEN?\r\n"
+#define GPRS_AT_HEARTEN_LEN 20u
+#define GPRS_AT_SOCKASL    "usr.cn#AT+SOCKASL?\r\n"
+#define GPRS_AT_SOCKASL_LEN 20u
+#define GPRS_AT_WKMOD      "usr.cn#AT+WKMOD?\r\n"
+#define GPRS_AT_WKMOD_LEN   18u
 
 /* ---- log helper: implemented in gprs_port.c (C90-safe, no variadic macro) ---- */
 void GPRS_Printf(const char *fmt, ...);

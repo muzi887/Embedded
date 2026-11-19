@@ -41,6 +41,31 @@ static uint32_t s_fail_tick = 0u;
 static uint32_t s_backoff_tick = 0u;
 static uint32_t s_csq_tick = 0u;
 
+/*==================== ST_NORMAL 一次性 MQTT 配置诊断 ====================*/
+#define DIAG_NORM_WAIT_MS      500u             /* 进 NORMAL 后等多久开始诊断（必须在 timeSync 之前跑） */
+#define DIAG_AT_TIMEOUT_MS     1500u            /* 每条 AT 的超时 */
+#define DIAG_AT_MAX_RETRY      0u               /* 不重试 */
+static const uint8_t s_diag_cmd_cnt = 7u;
+static uint8_t  s_diag_run_once = 0u;           /* 进 NORMAL 后跑过了就不再跑 */
+static uint8_t  s_diag_idx = 0u;                /* 当前发送到第几条 */
+static uint32_t s_diag_start_ms = 0u;           /* 进 NORMAL 的时刻 */
+
+/* 7 条只读诊断 AT，按顺序 */
+typedef struct {
+    const char *cmd;
+    uint8_t     cmd_len;
+    const char *resp_key;
+} diag_cmd_t;
+
+static const diag_cmd_t s_diag_cmds[7] = {
+    { GPRS_AT_WKMOD,   GPRS_AT_WKMOD_LEN,   "OK"   },
+    { GPRS_AT_MQTTMOD, GPRS_AT_MQTTMOD_LEN, "OK"   },
+    { GPRS_AT_HEARTEN, GPRS_AT_HEARTEN_LEN, "OK"   },
+    { GPRS_AT_SOCKASL, GPRS_AT_SOCKASL_LEN, "OK"   },
+    { GPRS_AT_MQTTSVR, GPRS_AT_MQTTSVR_LEN, "OK"   },
+    { GPRS_AT_MQTTCID, GPRS_AT_MQTTCID_LEN, "OK"   },
+};
+
 /*==================== LINKA debounce state ====================*/
 static uint8_t  s_link_state = 0u;
 static uint8_t  s_link_raw_prev = 0u;
@@ -150,6 +175,12 @@ static void s_offline_probe(void)
                              "+MQTTSUBTP", NULL, 1500u, 0u);
         (void)UartTx_Push_AT(GPRS_AT_MQTTPUBTP, GPRS_AT_MQTTPUBTP_LEN,
                              "+MQTTPUBTP", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_WKMOD, GPRS_AT_WKMOD_LEN,
+                             "+WKMOD", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_HEARTEN, GPRS_AT_HEARTEN_LEN,
+                             "+HEARTEN", NULL, 1500u, 0u);
+        (void)UartTx_Push_AT(GPRS_AT_SOCKASL, GPRS_AT_SOCKASL_LEN,
+                             "+SOCKASL", NULL, 1500u, 0u);
     }
     else
     {
@@ -204,6 +235,8 @@ void GPRS_AT_StateMachine(void)
             s_link_down_occurred = 0u;
             s_state = ST_AT_PUSH;
             GPRS_Printf("[GPRS] State1->2: link up, start AT init\r\n");
+            /* 清掉 probe 残留的 AT，避免 MQTT CONNECT 被干扰 */
+            UartTx_Queue_Init();
             break;
         }
         if (((uint32_t)(g_sys_ms - s_offline_since) >= OFFLINE_HARD_RESET_MS) &&
@@ -219,6 +252,10 @@ void GPRS_AT_StateMachine(void)
             g_at_flag_mqttcid = 0u;
             g_at_flag_csq = 0u;
             s_retry_cnt = 0u;
+            /* 重置 ST_NORMAL 诊断状态：下次重进 NORMAL 会重新跑 */
+            s_diag_run_once = 0u;
+            s_diag_idx = 0u;
+            s_diag_start_ms = 0u;
             GPRS_Printf("[GPRS] State1: offline long, hard reset 4G\r\n");
         }
         break;
@@ -290,6 +327,35 @@ void GPRS_AT_StateMachine(void)
             UartTx_Push_AT(GPRS_AT_CSQ, GPRS_AT_CSQ_LEN, "+CSQ",
                            s_on_csq, UART_TX_AT_TIMEOUT_MS, UART_TX_AT_MAX_RETRY);
         }
+
+        /* ---- 一次性 MQTT 配置诊断----
+        进 NORMAL 后等 DIAG_NORM_WAIT_MS，依次发 7 条 AT 查询当前配置，
+        找出 Socket A 掉线的根因（HEARTEN=ON / SOCKASL=SHORT / MQTTMOD!=1 等）。 */
+        if (s_diag_run_once == 0u)
+        {
+            if (s_diag_idx == 0u)
+                s_diag_start_ms = g_sys_ms;  /* 记时间点 */
+
+            if ((uint32_t)(g_sys_ms - s_diag_start_ms) >= DIAG_NORM_WAIT_MS
+                && UartTx_IsEmpty())         /* 等前面的 AT 发完，又抢在 timeSync 的 2000ms warmup 之前 */
+            {
+                const diag_cmd_t *d = &s_diag_cmds[s_diag_idx];
+                GPRS_Printf("[DIAG] %u/%u push: %s",
+                            (unsigned)(s_diag_idx + 1u),
+                            (unsigned)s_diag_cmd_cnt,
+                            d->cmd);
+                UartTx_Push_AT(d->cmd, d->cmd_len, d->resp_key,
+                               NULL, DIAG_AT_TIMEOUT_MS, DIAG_AT_MAX_RETRY);
+                s_diag_idx++;
+                if (s_diag_idx >= s_diag_cmd_cnt)
+                {
+                    s_diag_run_once = 1u;
+                    GPRS_Printf("[DIAG] all %u queries pushed\r\n",
+                                (unsigned)s_diag_cmd_cnt);
+                }
+            }
+        }
+
         break;
 
     default:

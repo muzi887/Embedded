@@ -9,6 +9,7 @@
 #include "timer.h"
 #include "gprs_rtc.h"
 #include "net_liveness.h"
+#include "uart_queue.h"
 
 #define GPRS_CLOCK_MAX_ATTEMPTS     3u
 #define GPRS_CLOCK_TX_TIMEOUT_MS    3000u

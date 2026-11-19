@@ -401,6 +401,7 @@ uint8_t  DCMOTOR_IsTargetActive(void);        /* 1 = driving to a target */
 | `DCMOTOR_SetMaxRunMs(ms)` | 可选，初始化后 | 改最长运行时长，默认 30000ms（30s）；校准时兼作"找不到限位"的失败判据 |
 | `DCMOTOR_StartCalibration()` | 设置页"校准开关"触发（见 §7.3.1） | 启动自动校准；**仅在 STOP 且 ADC 已 ready 时有效**，否则直接忽略。校准期间 `DCMOTOR_Request()` 被屏蔽 |
 | `DCMOTOR_IsCalibrating()` | 调试 / 显示 | 校准是否正在进行（1=电机被校准接管） |
+| `DCMOTOR_IsCalibrated()` | 调试 / 显示 | 是否已校准（`s_max_turns != 0`）；zxl 未做 EEPROM，上电为 0，校准成功后置位。供 LCD 校准状态行显示"已校准" |
 | `DCMOTOR_GetCalResult()` | 校准结束后查询 | 返回 `CAL_RESULT_IDLE/RUNNING/OK/FAIL` |
 
 > **拿到全行程脉冲数的两种方式**：① 调 `DCMOTOR_StartCalibration()` 自动跑一遍（推荐，v5）；② 照 §12.3 手动测再 `DCMOTOR_SetMaxTurns()`（校准失败时的备选）。两者最终都是写 `s_max_turns`，效果一样。
@@ -904,9 +905,9 @@ void DCMOTOR_SetMaxTurns(uint16_t turns)
 
 **这里用到的 `LCD_PAGES_IsHome()` 已经存在**（`lcd_pages.c` / `lcd_pages.h` 里已提供），本轮不用改 LCD 模块，直接调用即可。它只判断当前页是不是 `PAGE_HOME`，不涉及任何显示逻辑。
 
-#### 7.3.1 校准触发（v5 新增，不改 LCD 模块）
+#### 7.3.1 校准触发（v5 新增，复用 `AUTO_FLAG` 作一次性标志）
 
-LCD 设置页第 3 行已有"校准开关"（`LCD_PARAM_AUTO_FLAG`，0/1，用户按 SET 页把它置 1）。`main()` 每轮检测这个标志即可触发校准——**不用加按键、不用改 LCD 模块**，并且语义和原工程 `autoFlag` 一致。在 `DCMOTOR_Process();` 之前加：
+LCD 设置页第 3 行用 `LCD_PARAM_AUTO_FLAG`（0/1）作一次性触发标志：光标停该行 → STOP 进编辑 → UP 把它置 1。`main()` 每轮检测这个标志即可触发校准——不用加按键，触发语义和原工程 `autoFlag` 一致；该行的**显示**已单独改成电机真实状态（见 LCD 文档 §5.2/§5.4）。在 `DCMOTOR_Process();` 之前加：
 
 ```c
     /* calibration trigger: set-page "auto" flag acts like a one-shot */
@@ -919,7 +920,7 @@ LCD 设置页第 3 行已有"校准开关"（`LCD_PARAM_AUTO_FLAG`，0/1，用�
 
 **为什么先把标志清 0 再启动**：`StartCalibration()` 只在 STOP 且 ADC ready 时有效；若此刻不满足（比如电机正在跑），这次请求被忽略、标志也已清掉——避免用户以为"排上队了"结果过一会儿突然开始校准。要重发就在设置页再置一次。若你希望"排队等条件满足再校准"，可改成只在 `DCMOTOR_GetCalResult()` 返回 `OK/FAIL` 后再清标志，但那样语义更复杂，本版从简。
 
-**注意**：`LCD_PARAM_AUTO_FLAG` 相关代码（`lcd_pages.c/.h`）已经存在，本轮直接读/写即可；这里只是把它从"一个显示用的开关"变成"真正触发校准的开关"。
+**注意**：`LCD_PARAM_AUTO_FLAG` 只是一次性触发标志（被这里消费后清 0），**不是**该行的显示值。设置页第 3 行现在显示电机真实状态：`DCMOTOR_IsCalibrating()` → 校准中、`DCMOTOR_IsCalibrated()`（`s_max_turns != 0`）→ 已校准、否则 → 未校准（见 LCD 文档 §5.2/§5.4）。因为状态会在无按键时变化，`main()` 每轮还要调一次 `LCD_PAGES_Refresh()`——放在本触发块之后、`DCMOTOR_Process()` 之前（见 §7.4）。
 
 ### 7.4 主循环两处：节拍里加两个 Tick，循环里加 Process
 
@@ -944,6 +945,8 @@ LCD 设置页第 3 行已有"校准开关"（`LCD_PARAM_AUTO_FLAG`，0/1，用�
             DCMOTOR_StartCalibration();
         }
 
+        LCD_PAGES_Refresh();        /* redraw rows whose state changes w/o a key
+                                       (e.g. calibration status: 未校准/校准中/已校准) */
         DCMOTOR_Process();          /* interlock + stall + limits + relay edge */
 ```
 
@@ -1044,6 +1047,7 @@ int main(void)
             DCMOTOR_StartCalibration();
         }
 
+        LCD_PAGES_Refresh();        /* new: redraw rows changing w/o a key (calibration status) */
         DCMOTOR_Process();          /* new */
     }
 }

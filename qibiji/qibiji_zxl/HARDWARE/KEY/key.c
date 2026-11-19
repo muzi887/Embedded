@@ -9,7 +9,8 @@
 
 /* ---------------------------- 可调参数 ---------------------------- */
 #define KEY_COUNT          5
-#define KEY_DEBOUNCE_TICKS 3      /* 3 x 10ms = 30ms，由 TIM3 提供节拍 */
+#define KEY_DEBOUNCE_TICKS 5      /* 按下确认 5 x 10ms = 50ms */
+#define KEY_RELEASE_TICKS  3      /* 松开确认 3 x 10ms = 30ms */
 #define KEY_QUEUE_SIZE     4      /* 环形事件队列深度 */
 
 /* ------------------------- 引脚映射（本文件私有） -------------------------
@@ -45,6 +46,7 @@ typedef struct
 {
     uint8_t state;
     uint8_t cnt;          /* 连续检测到按下的拍数，数到 3 就停止增加（饱和），不会溢出。 */
+    uint8_t rel_cnt;      /* 松开确认计数 */
 } key_fsm_t;
 
 static key_fsm_t s_fsm[KEY_COUNT];
@@ -176,10 +178,20 @@ void KEY_Tick(void)
 				break;
 
 			case KEY_ST_PRESSED:
-				if(!down)                       /* 松开后退回 IDLE */
+				if (down)                           /* 仍按住：清掉松开计数 */
 				{
-					f -> state = KEY_ST_IDLE;
-					f -> cnt = 0;
+						f->rel_cnt = 0;
+				}
+				else
+				{
+						if (f->rel_cnt < KEY_RELEASE_TICKS)
+								f->rel_cnt++;
+						if (f->rel_cnt >= KEY_RELEASE_TICKS)   /* 连续 3 拍松开才认 */
+						{
+								f->state   = KEY_ST_IDLE;
+								f->cnt     = 0;
+								f->rel_cnt = 0;
+						}
 				}
 				break;
 			
@@ -190,24 +202,3 @@ void KEY_Tick(void)
 			}
 		}
 }
-
-// void KeyLed_Ctl(u8 state)
-// {
-// 	switch (state)
-// 	{
-// 	case 0x00: // 停止
-// 		LED_UP = 0;
-// 		LED_DN = 0;
-// 		break;
-// 	case 0x01: // 上升
-// 		LED_UP = 1;
-// 		LED_DN = 0;
-// 		break;
-// 	case 0x02: // 下降
-// 		LED_UP = 0;
-// 		LED_DN = 1;
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// }

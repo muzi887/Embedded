@@ -12,8 +12,7 @@
  *  - stop only drops main power (direction relay untouched)
  *  - request (state) vs executed (old) separation, action only on edge
  *  - limit switches (active-low) force stop; encoder pulses adjust a baseline count
- * Removed: armReg, remote flag, key-check (keys arrive via explicit Request), 
- * EEPROM persistence, auto-stop return travel.
+ * Removed: armReg, remote flag, key-check (keys arrive via explicit Request),  auto-stop return travel.
  * Added: current-zero interlock + stall stop via ADC, max-run fallback,
  *  opening percentage from encoder count / full-travel pulse countt,
  *  auto full-travel calibration (RAM only, reuses the existing state machine).

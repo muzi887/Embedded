@@ -7,6 +7,7 @@
 #include "uart_queue.h"
 #include "timer.h"
 #include "net_liveness.h"   
+#include "gprs_rtc.h"
 
 static uint8_t  s_pending = 0u;
 static uint16_t s_last_opening = 0xFFFFu;
@@ -29,15 +30,21 @@ uint8_t Send_property(const char *para_buf)
 {
     char json_str[UART_TX_JSON_LEN];
     char id_buf[24];
-    int64_t ts;
+    uint32_t sec;
+    uint16_t ms;
 
     if (para_buf == NULL)
         return 0u;
 
-    /* same 13-digit ms id as the timeSync request, so the platform sees one
-       consistent id scheme across every uplink */
-    ts = GPRS_RTC_NowMs();
-    (void)snprintf(id_buf, sizeof(id_buf), "%lld", (long long)ts);
+    /* 13 位 id = unix 秒(10) + 毫秒(3)，与 timeSync 一致。
+       用 %lu/%03u 拼接，避免 64 位返回值和 %lld 带来的兼容问题。 */
+    sec = GPRS_RTC_GetUnixSec();
+    ms  = GPRS_RTC_GetMsOfSec();
+    ms  = GPRS_RTC_GetMsOfSec();
+    if (sec == 0u)          /* RTC 未同步：保证 id 非 0、非负 */
+        sec = 1u;
+    (void)snprintf(id_buf, sizeof(id_buf), "%lu%03u",
+                   (unsigned long)sec, (unsigned)ms);
 
     (void)snprintf(json_str, sizeof(json_str),
              "%u,{\"id\":\"%s\",\"productKey\":\"%s\",\"deviceKey\":\"%s\","
