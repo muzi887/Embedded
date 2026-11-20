@@ -17,6 +17,7 @@
 #include "dcmotor_param.h"
 #include "eeprom_drv.h"
 #include "gprs_config_store.h"
+#include "wdg.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -68,6 +69,13 @@ int main(void)
 
 	NVIC_Configuration();																	/* 配置NVIC中断分组2:2位抢占优先级，2位响应优先级 */
 	DEBUG_UART_Init();     																/* USART1 115200 8N1，PA9 = TX，只发不收 */
+	WDG_Init();																						/* 3.18s@40kHz，最坏 2.12s */
+	WDG_Feed();
+
+	DEBUG_UART_SendString(g_wdg_reset_cause != 0u
+	                      ? "[WDG] reset by IWDG\r\n"
+	                      : "[WDG] no IWDG reset\r\n");
+
 	KEY_Init();
 	delay_init();
 	LCD12864_Init();
@@ -95,6 +103,8 @@ int main(void)
 
 	while (1)
 	{
+		WDG_Feed();                  /* 每轮一次，不随节拍条件跳 */
+		
 		/* 1) 固定节拍：每 10ms 采样一次，去抖时间与主循环速度无关；消费式，取走即清 */
 		if (Tick_10ms_Take())
 		{

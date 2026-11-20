@@ -132,11 +132,39 @@ static void s_on_mqttcid(char *data, uint16_t len)
     /* device id parsing from +MQTTCID can be added here when EEPROM is available */
     GPRS_Printf("[GPRS] MQTTCID: %.*s\r\n", (int)len, data); 
 }
+
+/* 解析 +CSQ 回包里的 rssi 数值。
+ * 3GPP 27.007：0 = ≤-113dBm（基本无服务），1~31 有效，99 = 未知/不可测。
+ * 返回 1 表示信号可用，0 表示无信号或解析失败。 */
+static uint8_t s_csq_signal_ok(const char *data)
+{
+    const char *p = strstr(data, "+CSQ:");
+    uint16_t v = 0u;
+    uint8_t  digits = 0u;
+
+    if (p == NULL)
+        return 0u;
+    p += 5;                                  /* 跳过 "+CSQ:" */
+    while (*p == ' ')
+        p++;
+    while (*p >= '0' && *p <= '9')
+    {
+        v = (uint16_t)(v * 10u + (uint16_t)(*p - '0'));
+        p++;
+        digits++;
+        if (digits > 3u)                     /* 防止异常长数字溢出 */
+            return 0u;
+    }
+    if (digits == 0u)
+        return 0u;
+    return (v >= 1u && v <= 31u) ? 1u : 0u;
+}
+
 /** @brief AT callback: set g_at_flag_csq when the reply contains "+CSQ". */
 static void s_on_csq(char *data, uint16_t len)
 {
-    if (strstr(data, "+CSQ") != NULL)
-        g_at_flag_csq = 1u;
+    if (strstr(data, "+CSQ") != NULL)          /* 只处理确实是 CSQ 回包的帧 */
+        g_at_flag_csq = s_csq_signal_ok(data) ? 1u : 0u;
     GPRS_Printf("[GPRS] CSQ: %.*s\r\n", (int)len, data);
 }
 

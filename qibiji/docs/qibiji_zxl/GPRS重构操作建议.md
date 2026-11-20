@@ -476,6 +476,7 @@ uint8_t GPRS_4G_ResetAllowed(uint32_t min_interval_ms);
 #include "gprs_4g.h"
 #include "gprs_config.h"
 #include "delay.h"
+#include "wdg.h"                 /* WDG_Feed()：复位脉冲后喂狗 */
 
 static volatile uint32_t s_last_reset_ms = 0u;
 static volatile uint8_t  s_reset_ever = 0u;
@@ -528,6 +529,7 @@ void GPRS_4G_Init(void)
     GPRS_RST_ON();
     delay_ms(500);
     GPRS_RST_OFF();
+    WDG_Feed();                  /* 500ms 复位脉冲后喂狗，见《看门狗重构操作建议》§3.4 */
 }
 
 void GPRS_4G_Reset(void)
@@ -538,6 +540,7 @@ void GPRS_4G_Reset(void)
     GPRS_RST_ON();
     delay_ms(1000);
     GPRS_RST_OFF();
+    WDG_Feed();                  /* 运行期复位 1s，复位脉冲后喂狗 */
     GPRS_4G_Init();
 }
 

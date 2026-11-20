@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "gprs_config_store.h"
 #include "debug_uart.h"
+#include "wdg.h"
 
 /* 初始化IIC接口 */
 void AT24CXX_Init(void)
@@ -63,8 +64,9 @@ void AT24CXX_WriteOneByte(uint16_t WriteAddr, uint8_t DataToWrite)
 	IIC_Wait_Ack();
 	IIC_Send_Byte(DataToWrite); 		// 发送字节
 	IIC_Wait_Ack();
-	IIC_Stop(); 										// 产生一个停止条件
-	delay_ms(10);delay_ms(10); /* EEPROM 单字节写周期：必须等待，否则下一次读写会失败 */
+	IIC_Stop();                  /* 产生一个停止条件 */
+	delay_ms(10);                /* AT24C02 最大写周期 5ms，10ms 已是 2 倍余量 */
+	WDG_Feed();                  /* 单字节 10ms；32B 槽 320ms、四槽连续 1.28s，必须在此喂狗 */
 }
 
 /*

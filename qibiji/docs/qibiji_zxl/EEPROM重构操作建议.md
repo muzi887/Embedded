@@ -29,7 +29,7 @@
 | 文件 | 职责 | 来源 |
 |---|---|---|
 | `HARDWARE/IIC/myiic.h` + `.c` | GPIO 模拟 I²C（PB10=SCL / PB11=SDA），`IIC_Init/Start/Stop/Send_Byte/Read_Byte/Wait_Ack` | **直接从原工程 `HARDWARE/IIC/` 拷贝**，不改 |
-| `HARDWARE/EEPROM/eeprom_drv.h` + `.c` | AT24C02 字节级/字级读写 + Check 播种 | **从原工程 `HARDWARE/24CXX/` 拷贝**，改名（24cxx → eeprom_drv），去掉看门狗与 reg.h 依赖（见 §1） |
+| `HARDWARE/EEPROM/eeprom_drv.h` + `.c` | AT24C02 字节级/字级读写 + Check 播种 | **从原工程 `HARDWARE/24CXX/` 拷贝**，改名（24cxx → eeprom_drv），去掉 reg.h 依赖、保留喂狗（改为 `WDG_Feed()`，见 §1 与《看门狗重构操作建议》§3.2） |
 | `HARDWARE/GPRS/gprs_config_store.h` + `.c` | MQTT 凭据读写（PK/DK/Secret/Addr） | 新建，内部调 eeprom_drv |
 | `HARDWARE/DCMOTOR/dcmotor_param.h` + `.c` | 闸门参数读写（maxheight / warning_curr / maxturns） | 新建，内部调 eeprom_drv |
 | `HARDWARE/GPRS/ota_store.h` + `.c` | OTA Info 读写（阶段四才用，先占位） | 新建 |
@@ -85,7 +85,7 @@ void     AT24CXX_Init(void);
 #endif
 ```
 
-`eeprom_drv.c` 拷自原工程 `24cxx.c`，**仅以下改动**：① 去掉 `IWDG_Feed()`（本阶段不启用看门狗）；② `#include` 由 `reg.h` / `wdg.h` / `adc.h` 改为 `dcmotor_param.h` + `gprs_config_store.h`（`reg.h` 已删除，符号迁入新模块）；③ 空白播种分支补一行 `printf` 便于上电验证。其余逐字保留，包括：
+`eeprom_drv.c` 拷自原工程 `24cxx.c`，**仅以下改动**：① 保留原工程的喂狗动作，`IWDG_Feed()` 改名为 `WDG_Feed()`（IWDG 已启用，见《看门狗重构操作建议》§3.2）；② `#include` 由 `reg.h` / `adc.h` 改为 `dcmotor_param.h` + `gprs_config_store.h` + `wdg.h`（`reg.h` 已删除，符号迁入新模块）；③ 空白播种分支补一行 `printf` 便于上电验证。其余逐字保留，包括：
 - `IIC_Start/Stop/Send_Byte/Read_Byte/Wait_Ack`（来自 `myiic.h`，GPIO 模拟 I²C，PB10=SCL / PB11=SDA，见文件清单）
 - `AT24CXX_Check()` 里的"marker 丢失但数据有效 → 不播种"逻辑（`paraToEeprom` 已迁入 `dcmotor_param.c`，见 §2，仅在真空白时调用）
 - `AT24CXX_WriteOneByte` 里的 `delay_ms(10)`（EEPROM 写周期，必须保留）
@@ -96,6 +96,7 @@ void     AT24CXX_Init(void);
 ```c
 #include "eeprom_drv.h"
 #include "delay.h"               /* delay_ms */
+#include "wdg.h"                 /* WDG_Feed()：单字节写周期后喂狗 */
 #include "dcmotor_param.h"       /* paraToEeprom()：闸门参数播种 */
 #include "gprs_config_store.h"   /* MQTT_PRODUCTKEY_BYTE_ADDR 等地址宏 */
 #include "uart_queue.h"          /* UartRx_PumpFromDma */
@@ -157,6 +158,7 @@ void AT24CXX_WriteOneByte(uint16_t WriteAddr, uint8_t DataToWrite)
 	IIC_Wait_Ack();
 	IIC_Stop(); // 产生一个停止条件
 	delay_ms(10); /* EEPROM 单字节写周期：必须等待，否则下一次读写会失败 */
+	WDG_Feed();   /* 单字节 10ms，32B 槽 320ms、四槽连续 1.28s：这里喂狗避免越过 2.1s 窗口 */
 }
 // 在AT24CXX里面的指定地址开始写入长度为Len的数据
 // 该函数可以写入16bit或者32bit的数据.
@@ -597,6 +599,9 @@ int main(void)
     TIM3_10ms_Init();             /* g_sys_ms 开始走（TIMER/timer.c） */
     GPRS_PORT_Init(115200);
 
+    /* ---- 看门狗（见《看门狗重构操作建议》）---- */
+    WDG_Init();                   /* 必须在 EEPROM 长写与 LCD 上电等待之前启动 */
+
     /* ---- EEPROM 层 ---- */
     AT24CXX_Init();               /* I²C 初始化 */
     AT24CXX_Check();              /* 自检 + 闸门参数播种（仅真空白时） */
@@ -615,6 +620,8 @@ int main(void)
 
 关键点：**AT24CXX_Check() 必须在第一次写入之前**——它的播种逻辑内部会调 `paraToEeprom`，如果先调了 `dcmotor_param_load()` 把参数读完了再播种，会导致 `paraToEeprom` 覆盖 load 读出来的值。
 
+另外，`WDG_Init()` 必须先于 `AT24CXX_Init()` / `AT24CXX_Check()`：EEPROM 单字节写要等 10ms，`AT24CXX_Check()` 播种会连续写多个字，看门狗需要覆盖这段阻塞；每字节写完后的 `WDG_Feed()` 见《看门狗重构操作建议》§3.2。
+
 ## §6 删掉原工程的哪些东西
 
 原工程 `reg.h` / `reg.c` 里这些在新工程里**不再需要**：
@@ -630,7 +637,7 @@ int main(void)
 - I²C 所有 GPIO 操作
 - `AT24CXX_Check()` 的播种判定
 - 每 8 字节的 `UartRx_PumpFromDma(0)`（长写期间搬帧）
-- `AT24CXX_WriteOneByte` 里的 `delay_ms(10)`（EEPROM 写周期等待，本阶段不启用看门狗）
+- `AT24CXX_WriteOneByte` 里的 `delay_ms(10)`（EEPROM 写周期等待）+ `WDG_Feed()`（写周期后喂狗，窗口见《看门狗重构操作建议》）
 
 ## §7 验证清单
 
@@ -638,3 +645,4 @@ int main(void)
 2. **闸门参数**：设堵转电流 4000mA，重启后读回确认；闸门上限 1200mm，重启后确认。
 3. **MQTT 凭据空白槽保护**：第一次烧入后 EEPROM 空白 → `gprs_config_load()` 走编译期宏 fallback；如果有人手动在 EEPROM 里写了真实 DK，重启后再调 `gprs_store_write_str()` 写默认值应**跳过不覆盖**。
 4. **长写期间不丢帧**：用 USB 口模拟模块在 EEPROM 长写期间发下行命令，确认命令不丢（`AT24CXX_Write` 里每 8 字节 `UartRx_PumpFromDma(0)` 起作用）。
+5. **看门狗不误触发**：连续写四个 32B 凭据槽（约 1.28s），确认不复位、串口不出现 `reset cause: IWDG`；若复位，检查 `AT24CXX_WriteOneByte()` 末尾是否漏了 `WDG_Feed()`。

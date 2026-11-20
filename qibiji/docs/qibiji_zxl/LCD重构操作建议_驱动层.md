@@ -28,7 +28,7 @@
 
 ### 1.3 为什么不能整包搬 `Dispaly.c`
 
-`qibiji/HARDWARE/Lcd12864/Dispaly.c` 开头就包含 12 个头文件（`:1-13`）：`display.h`、`Lcd12864.h`、`timer.h`、`usart.h`、`key.h`、`delay.h`、`adc.h`、`24cxx.h`、`dc_motor.h`、`main.h`、`wdg.h`、`net_liveness.h`、`string.h`；并引用 `autoFlag`、`ViewNum`、`displayCache`、`armReg`、`sys_moter_state`、`gprsonlineflag`、`KeyNum`、`flag300ms`、`IWDG_Feed()` 等一大片全局状态。这些在 `qibiji_zxl` 里都不存在。
+`qibiji/HARDWARE/Lcd12864/Dispaly.c` 开头就包含 12 个头文件（`:1-13`）：`display.h`、`Lcd12864.h`、`timer.h`、`usart.h`、`key.h`、`delay.h`、`adc.h`、`24cxx.h`、`dc_motor.h`、`main.h`、`wdg.h`、`net_liveness.h`、`string.h`；并引用 `autoFlag`、`ViewNum`、`displayCache`、`armReg`、`sys_moter_state`、`gprsonlineflag`、`KeyNum`、`flag300ms`、`IWDG_Feed()` 等一大片全局状态。这些在 `qibiji_zxl` 里都不存在（喂狗能力例外，已由目标工程的 `WDG_Feed()` 提供）。
 
 真正和「把字节送到屏上」有关的只有两块，本轮只抽这两块：
 
@@ -110,6 +110,7 @@ void LCD12864_SetBacklight(uint8_t on);
 #include "delay.h"
 #include "sys.h"
 #include "stm32f10x.h"
+#include "wdg.h"      /* WDG_Feed(): feed after each 500 ms power-on slice */
 
 /* --------------------- Pins (private to this file) ---------------------
  * Keep the original project's assignment: PE3=CS, PE4=SID, PE5=SCLK,
@@ -276,11 +277,13 @@ void LCD12864_Init(void)
 
     /* ST7920 needs about 1.5 s after power-on before accepting commands.
      * delay_ms() saturates at ~1864 ms @72 MHz, so wait in three 500 ms
-     * slices. The original code split it to feed the watchdog; qibiji_zxl
-     * has no watchdog, the split is kept only to stay inside the limit. */
+     * slices and feed the watchdog after each slice. */
     delay_ms(500);
+    WDG_Feed();
     delay_ms(500);
+    WDG_Feed();
     delay_ms(500);
+    WDG_Feed();
 
     s_WriteCmd(LCD_CMD_BASIC);
     s_WriteCmd(LCD_CMD_ENTRY);
@@ -310,7 +313,7 @@ void LCD12864_Init(void)
 ### 4.3 相对原工程的两个显式修正
 
 1. **清 GDRAM 后回到基本指令集**。原 `CLEARGDRAMH()`（`Lcd12864.C:164-180`）发 `0x34 / 0x36` 后结束，屏停在扩展指令集 + 绘图显示开的状态；原工程靠每个页面函数里 `ShowQQCharH()` 开头补一句 `WRCommandH(0x30)` 兜底（`Lcd12864.C:65`），属于隐式约定。目标版在 `LCD12864_ClearGDRAM()` 末尾显式发 `0x34`（关绘图）+ `0x30`（回基本集），并在 `LCD12864_ShowString()` 开头也发一次 `0x30`，任何调用顺序都成立。
-2. **去掉喂狗**。原 `Lcd_Init()`（`Dispaly.c:147-160`）在 3 段 `delay_ms(500)` 之间插 `IWDG_Feed()`，`qibiji_zxl` 没有初始化独立看门狗，去掉；分段保留是因为 `delay_ms()` 单次上限约 1864 ms。
+2. **恢复喂狗**。原 `Lcd_Init()`（`Dispaly.c:147-160`）在 3 段 `delay_ms(500)` 之间插 `IWDG_Feed()`；目标工程已启用 IWDG（见《看门狗重构操作建议》§3.3），改为每段后调用 `WDG_Feed()`。分段既满足 `delay_ms()` 单次上限约 1864 ms，也把单段阻塞压到 500 ms。
 
 ### 4.4 背光极性（上板后需要确认一处）
 
@@ -334,6 +337,7 @@ void LCD12864_Init(void)
 ```c
 #include "delay.h"
 #include "lcd12864.h"
+#include "wdg.h"
 ```
 
 ### 5.2 改动 2：加 `delay_init()`（**最容易漏、后果最严重的一处**）
@@ -381,6 +385,7 @@ void LCD12864_Init(void)
 #include "debug_uart.h"
 #include "delay.h"
 #include "lcd12864.h"
+#include "wdg.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -415,8 +420,9 @@ int main(void)
 	NVIC_Configuration();   /* NVIC 分组 2，须在所有中断初始化之前 */
 	delay_init();           /* 必须先于 LCD12864_Init()：初始化 delay_us/ms 的倍乘数 */
 	DEBUG_UART_Init();      /* USART1 115200 8N1，PA9 = TX，只发不收 */
+	WDG_Init();             /* 先于 LCD12864_Init()：让看门狗覆盖 1.5 s 上电等待 */
 	KEY_Init();
-	LCD12864_Init();        /* 含 1.5 s 上电等待，放在 TIM3 启动之前 */
+	LCD12864_Init();        /* 含 1.5 s 上电等待（三段间各喂一次），放在 TIM3 启动之前 */
 	TIM3_10ms_Init();
 
 	DEBUG_UART_SendString("qibiji_zxl KEY test ready\r\n");
@@ -434,6 +440,8 @@ int main(void)
 	}
 }
 ```
+
+> `WDG_Init()` 的源码与窗口配置见《看门狗重构操作建议》§1；`LCD12864_Init()` 内部在三段 500 ms 后各调用一次 `WDG_Feed()`，因此看门狗必须先于 LCD 初始化启动。
 
 ---
 
@@ -533,10 +541,10 @@ lcd12864.c
 
 | # | 原工程 | 目标版 | 原因 |
 |---|---|---|---|
-| 1 | `Lcd12864.C` + `Dispaly.c` + `DispalyPara.c` 三个文件、12 个 include | 一个 `lcd12864.c`，只依赖 `sys.h / delay.h / stm32f10x.h` | 驱动层与页面层分离，不引入 ADC / 电机 / EEPROM / 4G / 看门狗依赖 |
+| 1 | `Lcd12864.C` + `Dispaly.c` + `DispalyPara.c` 三个文件、12 个 include | 一个 `lcd12864.c`，只依赖 `sys.h / delay.h / stm32f10x.h / wdg.h` | 驱动层与页面层分离，不引入 ADC / 电机 / EEPROM / 4G 依赖；`wdg.h` 仅用于上电 1.5s 等待分段喂狗 |
 | 2 | `CS/SID/SCLK` 宏在 `Lcd12864.h` 公开，`BackLight` 在 `Display.h` 公开 | 4 个引脚宏收进 `.c`，头文件只有 5 个函数 | 外部不该直接翻引脚，绕过串行帧时序 |
 | 3 | `WRCommandH / WRDataH / SPIWH / SendByteLCDH` 4 个全局函数 | `s_SendByte / s_Write / s_WriteCmd / s_WriteData` 4 个 `static` | 收窄可见范围；命令与数据共用一份帧代码 |
-| 4 | `Lcd_Init()` 里夹 `IWDG_Feed()`、`DisplayCache_Init()`、`homepage()` | `LCD12864_Init()` 只做 GPIO + 等待 + 指令 + 清屏 + 背光，不显示任何业务内容 | 新工程无看门狗、无页面状态；显示内容由调用方决定 |
+| 4 | `Lcd_Init()` 里夹 `IWDG_Feed()`、`DisplayCache_Init()`、`homepage()` | `LCD12864_Init()` 只做 GPIO + 等待 + 指令 + 清屏 + 背光，不显示任何业务内容 | 新工程已启用看门狗（三段等待后各喂一次）、无页面状态；显示内容由调用方决定 |
 | 5 | `CLEARGDRAMH()` 结束停在扩展指令集 / 绘图开 | `LCD12864_ClearGDRAM()` 末尾补 `0x34 + 0x30` | 把原来散落在页面函数里的隐式兜底改成显式 |
 | 6 | `ShowQQCharH(addr, hanzi, count)` 显示 GB2312 汉字 | `LCD12864_ShowString(row, str)` 显示 ASCII | 驱动层最小集；汉字字库数组属于业务层，后续轮次再接 |
 | 7 | `BLight_Ctrl()` 读 `KeyNum`、`flag300ms`，30 秒自动熄屏 | `LCD12864_SetBacklight(on)` 只做电平 | 自动熄屏是策略，不是驱动；以后由上层用 TIM3 节拍实现 |

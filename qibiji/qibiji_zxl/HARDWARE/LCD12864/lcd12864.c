@@ -208,12 +208,14 @@ void LCD12864_Init(void)
     LCD12864_SetBacklight(0u);
 
     /* ST7920 needs about 1.5 s after power-on before accepting commands.
-        * delay_ms() saturates at ~1864 ms @72 MHz, so wait in three 500 ms
-        * slices. The original code split it to feed the watchdog; qibiji_zxl
-        * has no watchdog, the split is kept only to stay inside the limit. */
+    delay_ms() saturates at ~1864 ms @72 MHz, so wait in three 500 ms
+    slices; feed the watchdog after each slice. */
     delay_ms(500);
+    WDG_Feed();
     delay_ms(500);
+    WDG_Feed();
     delay_ms(500);
+    WDG_Feed();
 
     s_WriteCmd(LCD_CMD_BASIC);
     s_WriteCmd(LCD_CMD_ENTRY);

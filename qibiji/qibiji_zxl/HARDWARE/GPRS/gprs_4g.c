@@ -53,6 +53,7 @@ void GPRS_4G_Init(void)
     GPRS_RST_ON();
     delay_ms(500);
     GPRS_RST_OFF();
+    WDG_Feed();                  /* 上电复位脉冲 500ms */
 }
 
 void GPRS_4G_Reset(void)
@@ -63,7 +64,8 @@ void GPRS_4G_Reset(void)
     GPRS_RST_ON();
     delay_ms(1000);
     GPRS_RST_OFF();
-    GPRS_4G_Init();
+    WDG_Feed();                  /* 运行期复位 1s */
+    GPRS_4G_Init();              /* 内部 500ms 脉冲后已喂狗 */
 }
 
 void EXTI9_5_IRQHandler(void)

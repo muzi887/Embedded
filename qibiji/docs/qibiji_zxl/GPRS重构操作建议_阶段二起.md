@@ -130,7 +130,8 @@ void GPRS_Reset_Process(void)
     if (!((elapsed >= GPRS_RESET_MIN_DELAY_MS) &&
           (UartTx_IsEmpty() || elapsed >= GPRS_RESET_MAX_WAIT_MS)))
         return;
-    /* IWDG_Feed();  -- add if your new project enables the watchdog */
+    /* 已启用 IWDG：喂狗点在 GPRS_4G_Init()/GPRS_4G_Reset() 的复位脉冲后
+       （见《看门狗重构操作建议》§3.4）；此处是 MCU 软复位，立即生效，无需再喂 */
     NVIC_SystemReset();
 }
 
@@ -412,6 +413,7 @@ void GPRS_JSON_ParseProcess(void)
 #include "lcd12864.h"
 #include "lcd_pages.h"
 #include "lcd_backlight.h"
+#include "wdg.h"
 #include "adc.h"
 #include "gate_io.h"
 #include "dcmotor.h"
@@ -433,6 +435,7 @@ int main(void)
     DEBUG_UART_Init();
     KEY_Init();
     delay_init();
+    WDG_Init();               /* 必须先于 LCD12864_Init()、AT24CXX_Check()、GPRS_4G_Init() 等长阻塞 */
     LCD12864_Init();
     LCD_BACKLIGHT_Init();
     LCD_PAGES_Init();
@@ -452,6 +455,7 @@ int main(void)
 
     while (1)
     {
+        WDG_Feed();               /* 主循环存活基线：每轮一次，不受节拍条件控制 */
         if (Tick_10ms_Take())
         {
             KEY_Tick();
@@ -608,7 +612,7 @@ cJSON 若拷进 `HARDWARE/GPRS/`，就不用再加 `HARDWARE\cJSON` 路径；若
 4. **F2 窗口**：命令轮次撞掉线确认时回执可能被清队列，需现场观察，必要时调整清队列时机。
 5. **F8 队列满**：入队返回值调用方未检查，队列满时回执静默丢。
 6. **持久化**：productKey/deviceKey、配置参数、OTA 标志目前无 EEPROM，都用常量/RAM。
-7. **看门狗**：若新工程启用 IWDG，`GPRS_Reset_Process()` 复位前要 `IWDG_Feed()`（代码里已注释标出）。
+7. **看门狗**：已按《看门狗重构操作建议》接入 IWDG。喂狗点在 `GPRS_4G_Init()` / `GPRS_4G_Reset()` 的复位脉冲之后（§3.4）；`GPRS_Reset_Process()` 的 MCU 软复位立即生效，无需额外喂狗，主循环每轮照常喂狗。
 8. **对时回执分支**：阶段四的 `request_reply` 分发尚未写进 `GPRS_JSON_ParseProcess()`，做阶段四时补。
 
 ### 14.4 配套文档
