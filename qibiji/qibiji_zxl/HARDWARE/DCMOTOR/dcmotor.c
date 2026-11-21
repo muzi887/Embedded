@@ -3,6 +3,7 @@
 #include "adc.h"
 #include "delay.h"
 #include "property_report.h" 
+#include "event_pub.h"
 
 /* ===========================================================================
  * DC motor implementation
@@ -29,11 +30,12 @@
 
 #define MAX_RUN_MS_DEFAULT  30000u   /* 30s fallback if limit switch fails */
 
-/* internal calibration phases */
+/* --- internal calibration phases --- */
 #define CAL_PHASE_IDLE        0u
 #define CAL_PHASE_SEEK_CLOSE  1u
 #define CAL_PHASE_SEEK_OPEN   2u
 
+/* --- scalar state during motor operation --- */
 static uint8_t  s_state;        /* requested state */
 static uint8_t  s_old;          /* executed state */
 static uint8_t  s_dir;          /* last physical direction */
@@ -42,7 +44,7 @@ static uint16_t s_max_run_ms;
 static uint32_t s_run_ms;       /* ms spent in current run */
 static uint8_t  s_stall_pending;/* stall seen, to be reported on STOP edge */
 
-/* ---- limit + encoder state (replaces FLAG_OPENALL/CLOSEALL, Num_count) ---- */
+/* ---- limit + encoder state ---- */
 static uint8_t  s_at_open;      /* 1 = fully-open limit latched 一个锁存标志，表示位于全开限位*/
 static uint8_t  s_at_close;     /* 1 = fully-close limit latched */
 static uint16_t s_count;        /* encoder pulses from the close baseline */
@@ -51,6 +53,7 @@ static uint16_t s_opening;      /* opening percent 0..100 开度百分比 */
 
 /* ---- auto calibration state ---- */
 static uint8_t  s_cal_active;   /* 1 = calibration owns the motor */
+static uint16_t s_stall_ma;     /* current captured when ADC raised the stall flag */
 static uint8_t  s_cal_phase;    /* CAL_PHASE_* */
 static uint8_t  s_cal_result;   /* CAL_RESULT_* */
 
@@ -236,8 +239,7 @@ uint8_t DCMOTOR_IsCalibrated(void) { return (s_max_turns != 0u) ? 1u : 0u; }
 void DCMOTOR_Request(uint8_t state)
 {
     /* refuse to drive into an already-tripped limit (same as the original
-     * keycheck's "FLAG_OPENALL != 1 / FLAG_CLOSEALL != 1" guard). Without this,
-     * a held UP key at the top would keep re-issuing UP and chatter the relay. */
+     * keycheck's "FLAG_OPENALL != 1 / FLAG_CLOSEALL != 1" guard). */
     if ((state == MOTOR_UP)   && (s_at_open  != 0u)) return;
     if ((state == MOTOR_DOWN) && (s_at_close != 0u)) return;
 
@@ -271,31 +273,55 @@ static void s_CalibrationProcess(void)
     }
 }
 
+/* dcmotor stop reason -> platform event reason code */
+static MotorStopReason s_MapStopReason(motor_stop_reason_t r)
+{
+    switch (r)
+    {
+    case MOTOR_STOP_LIMIT_OPEN:  return STOP_REASON_LIMIT_OPEN;
+    case MOTOR_STOP_LIMIT_CLOSE: return STOP_REASON_LIMIT_CLOSE;
+    case MOTOR_STOP_STALL:       return STOP_REASON_STALL;
+    case MOTOR_STOP_MANUAL:      return STOP_REASON_MANUAL;
+    case MOTOR_STOP_TIMEOUT:     return STOP_REASON_EMERGENCY_STOP;  /* 保护性强停 */
+    default:                     return STOP_REASON_UNKNOWN;         /* NONE / INTERLOCK */
+    }
+}
+
 /* 电机模块的主状态机，10ms 一拍 */
 void DCMOTOR_Process(void)
 {
-    /* 1) current-zero interlock 零点联锁: zero point not ready -> force stop */
-    if (ADC_CurrentIsReady() == 0u) /* ADC 是否完成零点标定 */
+    /* 1) current-zero interlock 零点联锁电机: zero point not ready -> force stop.
+     *    The power-up calibration window is NOT a fault: s_stop_reason is only
+     *    tagged INTERLOCK when the zero point had been valid before and has
+     *    dropped out since. Otherwise the ERR lamp would latch on at every
+     *    boot, because nothing resets s_stop_reason while the gate sits idle. */
+    if (ADC_CurrentIsReady() == 0u)
     {
         s_state = MOTOR_STOP;
         s_old = MOTOR_STOP;      /* sync old: no phantom stop event on ready */
-        s_stop_reason = MOTOR_STOP_INTERLOCK;
+        
+        /* only a forced stop out of a running state is a fault */
+        if ((s_old == MOTOR_UP) || (s_old == MOTOR_DOWN))
+            s_stop_reason = MOTOR_STOP_INTERLOCK;
         if (s_cal_active != 0u)
             s_CalFinish(CAL_RESULT_FAIL);
+        
         ADC_SetMotorRunning(0u); /* 标记电机为停止状态，可以进行零点标定 */
         DCMOTOR_DriveStop();
+        
         return;
     }
 
     /* 2) consume stall flag raised by ADC */
     if (ADC_PopStall() != 0u)
     {
-        s_stall_pending = 1u;   /* 未上报原因的堵转 */
-        s_state = MOTOR_STOP;    /* request stop; reason set on edge below */
+        s_stall_ma = ADC_GetSampleMa();     /* capture before the window moves on */
+        s_stall_pending = 1u;               /* 未上报原因的堵转 */
+        s_state = MOTOR_STOP;               /* request stop; reason set on edge below */
         if (s_cal_active != 0u)
             s_CalFinish(CAL_RESULT_FAIL);
         ADC_SetMotorRunning(0u);
-        DCMOTOR_DriveStop();     /* immediate physical cut, do not wait */
+        DCMOTOR_DriveStop();                /* immediate physical cut, do not wait */
     }
 
     /* 3) target-opening loop: choose direction from the encoder feedback.
@@ -306,6 +332,7 @@ void DCMOTOR_Process(void)
         {
             s_target_active = 0u;      /* arrived */
             s_state = MOTOR_STOP;
+            (void)EventPostSimple(EVT_REMOTE_REACH);  
         }
         else if (s_opening < s_target)
         {
@@ -345,12 +372,14 @@ void DCMOTOR_Process(void)
             s_stop_reason = MOTOR_STOP_NONE;
             ADC_SetMotorRunning(1u);    /* freeze ADC zero tracking while running */
             DCMOTOR_DriveUp();
+            (void)EventPostSimple(EVT_MOTOR_START_UP);  
             break;
         case MOTOR_DOWN:
             s_run_ms = 0u;
             s_stop_reason = MOTOR_STOP_NONE;
             ADC_SetMotorRunning(1u);
             DCMOTOR_DriveDown();
+            (void)EventPostSimple(EVT_MOTOR_START_DOWN);
             break;
         case MOTOR_STOP:
         default:
@@ -367,6 +396,9 @@ void DCMOTOR_Process(void)
             s_run_ms = 0u;
             s_target_active = 0u;      /* any stop cancels the target drive */
             DCMOTOR_DriveStop();
+            (void)EventPostMotorStop(s_MapStopReason(s_stop_reason), s_opening);
+            if (s_stop_reason == MOTOR_STOP_STALL)
+                (void)EventPostMotorStall(s_stall_ma);
             break;
         }
         s_old = s_state;

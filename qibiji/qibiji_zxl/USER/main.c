@@ -18,6 +18,7 @@
 #include "eeprom_drv.h"
 #include "gprs_config_store.h"
 #include "wdg.h"
+#include "led.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -77,6 +78,7 @@ int main(void)
 	                      : "[WDG] no IWDG reset\r\n");
 
 	KEY_Init();
+	LED_Init();
 	delay_init();
 	LCD12864_Init();
 	LCD_BACKLIGHT_Init();   															/* 点亮背光、启动 30s 计时 */
@@ -113,6 +115,7 @@ int main(void)
 			ADC_Tick();
 			GATEIO_Tick();          /* sample first: limits + encoder edges */
 			DCMOTOR_Tick();         /* then consume: states/delta + run time */
+			LED_Tick();							/* mirror direction / online / malfunction */
 		}
 		
 		/* 2) 取走一个事件，取走即清；没有事件就什么都不做 */
