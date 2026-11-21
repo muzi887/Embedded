@@ -1,6 +1,7 @@
 #include "led.h"
-#include "dcmotor.h"    /* DCMOTOR_GetDir / DCMOTOR_GetLastStopReason */
+#include "dcmotor.h"    /* DCMOTOR_GetState / DCMOTOR_GetLastStopReason */
 #include "gprs_at.h"    /* gprs_is_ready */
+#include "adc.h"
 
 #if (LED_ACTIVE_HIGH != 0)
   #define LED_PIN_ON(p)   GPIO_SetBits(LED_PORT, (p))
@@ -39,18 +40,20 @@ void LED_Tick(void)
     if (gprs_is_ready() != 0u) LED_PIN_ON(LED_LINE_PIN);
     else                       LED_PIN_OFF(LED_LINE_PIN);
 
-    /* fault lamp: stall / timeout / interlock-not-calibrated are faults;
+    /* fault lamp: stall / timeout / interlock are faults;
      * reaching a limit (LIMIT_OPEN / LIMIT_CLOSE) is normal and must NOT
-     * light the fault lamp. */
-    switch (DCMOTOR_GetLastStopReason())
+     * light the fault lamp. ADC link lost (chain stopped or sensor open
+     * wire) lights it directly: a link dying while idle never produces a
+     * stop_reason, so without this the fault would be invisible. */
+    if ((ADC_IsLinkLost() != 0u) ||
+        (DCMOTOR_GetLastStopReason() == MOTOR_STOP_STALL) ||
+        (DCMOTOR_GetLastStopReason() == MOTOR_STOP_TIMEOUT) ||
+        (DCMOTOR_GetLastStopReason() == MOTOR_STOP_INTERLOCK))
     {
-        case MOTOR_STOP_STALL:
-        case MOTOR_STOP_TIMEOUT:
-        case MOTOR_STOP_INTERLOCK:
-            LED_PIN_ON(LED_ERR_PIN);
-            break;
-        default:
-            LED_PIN_OFF(LED_ERR_PIN);
-            break;
+        LED_PIN_ON(LED_ERR_PIN);
+    }
+    else
+    {
+        LED_PIN_OFF(LED_ERR_PIN);
     }
 }

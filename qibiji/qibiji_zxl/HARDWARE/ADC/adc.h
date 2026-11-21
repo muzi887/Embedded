@@ -30,6 +30,7 @@ void     ADC1_Init(void);
 void     ADC_Tick(void);                    /* call once per 10 ms system tick */
 uint8_t  ADC_CurrentIsReady(void);          /* zero point calibrated? */
 uint16_t ADC_GetCurrentMa(void);            /* 500 ms smoothed current, mA */
+uint8_t  ADC_IsLinkLost(void);              /* 1 = chain stopped or sensor open */
 uint16_t ADC_GetSampleMa(void);             /* latest 20 ms sample, mA */
 uint16_t ADC_GetSolarMv(void);              /* solar voltage, mV */
 uint16_t ADC_GetBatMv(void);                /* battery voltage, mV */
