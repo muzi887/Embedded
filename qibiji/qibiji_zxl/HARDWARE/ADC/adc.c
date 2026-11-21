@@ -21,22 +21,35 @@
 #define TICKS_PER_SLOT      2u     /* 10ms tick -> 20ms sampling slot      */
 #define SLOW_SLOTS          25u    /* 25 x 20ms = 500ms voltage update     */
 
+/* ---- link-loss detection 掉线检测 ---- */
+#define ADC_LINK_STATIC_SLOTS  25u   /* 25 x 20ms = 500ms CNDTR frozen  */
+#define ADC_LINK_RAIL_SLOTS    50u   /* 50 x 20ms = 1s raw stuck at rail */
+#define ADC_RAIL_LOW           2u    /* <= this  = open wire ：电压几乎 0V */
+#define ADC_RAIL_HIGH          4090u /* >= this  = short / over-range ）：电压几乎满量程 3.3V  */
+
 volatile uint16_t g_adc_buf[ADC_SAMPLE_COUNT][ADC_CHANNEL_COUNT];
 
 /* zero point */
-static uint8_t  s_ready;        // 标定完成的开关。为 0 表示还在标定、电流值不可用
-static u32      s_zero_sum;     // 标定期间 16 次读数的累加和（用 u32 防溢出）
-static uint8_t  s_zero_cnt;     // 已经采了几次
-static uint16_t s_zero_avg;     // 零点平均值
+static uint8_t  s_ready;              // 标定完成的开关。为 0 表示还在标定、电流值不可用
+static u32      s_zero_sum;           // 标定期间 16 次读数的累加和（用 u32 防溢出）
+static uint8_t  s_zero_cnt;           // 已经采了几次
+static uint16_t s_zero_avg;           // 零点平均值
 static u32      s_last_run_ms;
 static u32      s_last_track_ms;
 static u32      s_ms;                 /* local ms from 10ms ticks */
 
-/* smoothing window */
+/* smoothing window：把最近 25 个槽（25×20ms = 500ms）的读数存下来，报平均值。 */
 static uint16_t s_win[AVG_WINDOW];  // 存最近 25 次的电流样本（环形缓冲区）。
 static u32      s_win_sum;          // 25 个电流的总和
 static uint8_t  s_win_cnt;          // 当前已填满几格
 static uint8_t  s_win_idx;          // 写指针，下一个样本该放哪
+
+/* link-loss */
+static uint16_t s_dma_cnt_last;  /* CNDTR 寄存器值 */
+static uint8_t  s_dma_static_cnt;/* CNDTR 连续多少个 20ms 槽没变化的计数器 */
+static uint8_t  s_dma_dead;      /* latched: chain stopped, needs re-init */
+static uint8_t  s_rail_cnt;      /* 读数连续多少个槽贴边 */
+static uint8_t  s_sensor_open;   /* self-clearing when raw comes back 自恢复 */
 
 /* stall + slow path */
 static uint8_t  s_stall_flag;
@@ -110,21 +123,31 @@ void ADC_HwInit(void)     // Hardware initialization: GPIO, DMA, ADC1
 
 void ADC1_Init(void)
 {
+    /* zero point */
     s_ready = 0u;
     s_zero_sum = 0u;
     s_zero_cnt = 0u;
     s_zero_avg = 0u;
     s_last_run_ms = 0u;
     s_last_track_ms = 0u;
+    /* smoothing window */
     s_ms = 0u;
     s_win_sum = 0u;
     s_win_cnt = 0u;
     s_win_idx = 0u;
+    /* stall + slow path */
     s_stall_flag = 0u;
     s_stall_cnt = 0u;
     s_stall_threshold = ADC_STALL_MA_DEFAULT;
     s_slot_cnt = 0u;
-    s_motor_running = 0u;
+    s_motor_running = 0u; 
+    /* link-loss */                      
+    s_dma_cnt_last = 0u;
+    s_dma_static_cnt = 0u;
+    s_dma_dead = 0u;
+    s_rail_cnt = 0u;
+    s_sensor_open = 0u;
+    /* lastest values */
     s_sample_ma = 0u;
     s_current_ma = 0u;
     s_so_mv = 0u;
@@ -141,6 +164,44 @@ static uint16_t ADC_RawAvg(uint8_t ch)
     return (uint16_t)(sum / ADC_SAMPLE_COUNT);
 }
 
+/* DMA-counter watchdog + sensor rail check, once per 20ms slot.
+ * Must run before the value is converted, so a dead chain never feeds
+ * the zero tracker or the stall detector. */
+static void ADC_LinkCheck(uint16_t raw)
+{
+    uint16_t cnt = (uint16_t)DMA_GetCurrDataCounter(DMA1_Channel1);   /* 读当前 CNDTR */
+
+    /* 1) circular DMA walks the whole buffer in ~16ms, so two slots 20ms
+     *    apart can never read the same CNDTR unless the chain stopped. */
+    if (cnt == s_dma_cnt_last)
+    {
+        if (s_dma_static_cnt < 0xFFu)
+            s_dma_static_cnt++;
+        if (s_dma_static_cnt >= 25u) /* 连续 500ms 都不动 */
+            s_dma_dead = 1u;         /* 锁存 */
+    }
+    else
+    {
+        s_dma_static_cnt = 0u;       /* 静止计数清零，重新计时 */
+        s_dma_cnt_last = cnt;
+    }
+
+    /* 2) open wire or shorted sensor parks the input at a rail.
+     *    This one is recoverable: a sane reading clears both counters. */
+    if ((raw <= ADC_RAIL_LOW) || (raw >= ADC_RAIL_HIGH))
+    {
+        if (s_rail_cnt < 0xFFu)
+            s_rail_cnt++;
+        if (s_rail_cnt >= 50u)            /* 连续 1 秒 */
+            s_sensor_open = 1u;           /* 判传感器断线 */
+    }
+    else
+    {
+        s_rail_cnt = 0u;
+        s_sensor_open = 0u;               /* 两个都清 —— 自恢复 */
+    }
+}
+
 /* One 20ms sampling slot: zero calibration / conversion + stall detect. */
 static void ADC_SampleSlot(void)
 {
@@ -149,6 +210,7 @@ static void ADC_SampleSlot(void)
 
     s_slot_cnt++;
     raw = ADC_RawAvg(0u);   /* channel 10 = current */
+    ADC_LinkCheck(raw);      /* must precede zero tracking + stall detect */
 
     if (s_ready == 0u)
     {
@@ -255,7 +317,18 @@ void ADC_Tick(void)
     }
 }
 
-uint8_t  ADC_CurrentIsReady(void) { return s_ready; }
+uint8_t ADC_CurrentIsReady(void)
+{
+    return ((s_ready != 0u) && (s_dma_dead == 0u) && (s_sensor_open == 0u))
+           ? 1u : 0u;
+}
+
+/* 1 = acquisition chain or sensor is down. Led / telemetry can read this. */
+uint8_t ADC_IsLinkLost(void)
+{
+    return ((s_dma_dead != 0u) || (s_sensor_open != 0u)) ? 1u : 0u;
+}
+
 uint16_t ADC_GetCurrentMa(void)   { return s_current_ma; }
 uint16_t ADC_GetSampleMa(void)    { return s_sample_ma; }
 uint16_t ADC_GetSolarMv(void)     { return s_so_mv; }

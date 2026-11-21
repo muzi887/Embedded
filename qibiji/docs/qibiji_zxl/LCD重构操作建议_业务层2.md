@@ -85,9 +85,11 @@ void     LCD_PAGES_SetParam(lcd_param_t p, uint16_t v);
 
 ## 4. lcd_pages.c（整文件替换）
 
+> 2026-11-21 同步：代码块已更新为**表驱动版本**。三项参数的标签、`*` 列、上下限、步进、显示格式合并为 `s_items[]` 一张表，`s_param_max[]` / `s_param_step[]` / `s_star_pos[]` 三组并行数组已删除；钳位收进 `s_StepValue()`，光标移动收进 `s_SetMoveCursor()`。行为与下表规格完全一致。
+
 ```c
 /* ===========================================================================
- * LCD pages module - qibiji_zxl (business layer, round 3)
+ * LCD pages module - qibiji_zxl (business layer)
  *
  * Owns: page state machine (which page is on screen) and the GB2312 text
  *        rows drawn on each page; set-page parameter editing (browse with
@@ -95,49 +97,99 @@ void     LCD_PAGES_SetParam(lcd_param_t p, uint16_t v);
  *        cursor moves and edits re-send only the affected rows instead of
  *        repainting the whole page.
  * Depends on: key.h (key_code_t) and lcd12864.h (driver layer only).
- *
- * Text bytes are copied verbatim from the original project
- * (qibiji/HARDWARE/Lcd12864/Dispaly.c:29-75) - GB2312 hand-coded arrays,
- * kept byte-for-byte, do not re-type them.
  * =========================================================================== */
 #include "lcd_pages.h"
 #include "lcd12864.h"
-#include "dcmotor.h"        /* DCMOTOR_IsCalibrating / DCMOTOR_IsCalibrated */
+#include "dcmotor.h"
 
 /* ----------------------------- Page ids --------------------------------- */
 typedef enum
 {
-    PAGE_HOME = 0,   /* home: version / motor / opening / flow            */
-    PAGE_SET,        /* settings: 3 editable items                        */
-    PAGE_COUNT       /* number of pages, used for wrap-around             */
+    PAGE_HOME = 0,   /* 控制: motor / opening / flow                    */
+    PAGE_SET,        /* 配置: limits / stall / calibration              */
+    PAGE_G4G,        /* 4G:   signal / CCID / link state                */
+    PAGE_DEV,        /* 设备: device id / version / upgrade             */
+    PAGE_OP,         /* 限位: open limit / close limit highlight        */
+    PAGE_COUNT       /* number of pages, used for wrap-around           */
 } page_id_t;
 
 static page_id_t s_page = PAGE_HOME;
 
-/* ---------------- GB2312 text rows (from Dispaly.c:29-75) ----------------
- * Each row = 8 DDRAM address cells x 2 bytes = 16 bytes on screen.       */
-static const uint8_t s_home_l1[16] = {         /* "version:" + blanks      */
-    0xb0, 0xe6, 0xb1, 0xbe, 0x3a, 0x20,
-    0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-static const uint8_t s_home_l2[16] = {         /* "motor: 1.6A 12.6V"      */
+/* ---------------- GB2312 text rows  ----------------
+ * Each row = 8 DDRAM address cells x 2 bytes = 16 bytes on screen.         */
+static const uint8_t s_home_l2[16] = {         /* "motor: 1.6A 12.6V"       */
     0xb5, 0xe7, 0xbb, 0xfa, 0x3a, 0x20,
     0x31, 0x2e, 0x36, 0x41, 0x20, 0x31, 0x32, 0x2e, 0x36, 0x56 };
-static const uint8_t s_home_l3[16] = {         /* "opening: 100% full-open"*/
+static const uint8_t s_home_l3[16] = {         /* "opening: 100% quan kai"  */
     0xbf, 0xaa, 0xb6, 0xc8, 0x3a, 0x20,
     0x31, 0x30, 0x30, 0x25, 0x20, 0x20, 0xc8, 0xab, 0xbf, 0xaa };
-static const uint8_t s_home_l4[16] = {         /* "flow: 0.0 m3/s"         */
+static const uint8_t s_home_l4[16] = {         /* "flow: 0.0 m3/s"          */
     0xc1, 0xf7, 0xc1, 0xbf, 0x3a, 0x20,
     0x20, 0x30, 0x2e, 0x30, 0x20, 0x6d, 0x33, 0x2f, 0x73, 0x20 };
 
 /* ------------------------- Editable parameters ---------------------------
- * RAM only in this round; EEPROM persistence comes with the EEPROM round. */
+ * RAM */
 static uint16_t s_param[LCD_PARAM_COUNT] = { 2000u, 300u, 0u };
-static const uint16_t s_param_max[LCD_PARAM_COUNT]  = { 9999u, 999u, 1u };
-static const uint16_t s_param_step[LCD_PARAM_COUNT] = {   10u,   1u, 1u };
 
 /* forward declarations - C90 needs them before first use */
 static void s_FormatSetRow(uint8_t item);
 static void s_FlushSetRow(uint8_t item);
+
+/* ------------------------- Set page row cache ----------------------------
+ * The 3 set-page rows live in RAM. Painters format into the cache; only
+ * rows whose bytes actually change are flushed to the LCD.   */
+#define SET_ITEMS 3u        /* 设置页有 3 个可编辑项（上限位 / 堵转 / 校准） */
+typedef enum { SET_BROWSE = 0, SET_EDIT } set_mode_t;  /* 设置页的两态 */
+/* 浏览态：光标上下移，参数不动。UP/DOWN 移光标，STOP 回首页。
+编辑态​：光标锁定不动，UP/DOWN  改当前项的值，STOP 确认保存，CAN 取消退回。 */
+
+static set_mode_t s_set_mode = SET_BROWSE;
+static uint8_t    s_cursor   = 0;      /* selected item, 0..2             */
+static uint16_t   s_edit_backup = 0;   /* value before edit, for cancel   */
+static uint8_t    s_set_rows[SET_ITEMS][16];    /* 设置页的影子缓存 */
+
+/* GB2312 fragments used to build the rows */
+static const uint8_t s_lbl_gate[7] = {       /* up-limit label + colon   */
+    0xc9, 0xcf, 0xcf, 0xde, 0xce, 0xbb, 0x3a };
+static const uint8_t s_lbl_stall[6] = {      /* stall label + colon+space */
+    0xb6, 0xc2, 0xd7, 0xaa, 0x3a, 0x20 };
+static const uint8_t s_lbl_auto[6] = {       /* calibration label + colon */
+    0xd0, 0xa3, 0xd7, 0xbc, 0x3a, 0x20 };
+/* calibration status text reflects the real motor state, not the trigger flag */
+static const uint8_t s_txt_cal_none[6] = {   /* not calibrated  */
+    0xce, 0xb4, 0xd0, 0xa3, 0xd7, 0xbc };
+static const uint8_t s_txt_cal_run[6]  = {   /* calibrating  */
+    0xd0, 0xa3, 0xd7, 0xbc, 0xd6, 0xd0 };
+static const uint8_t s_txt_cal_ok[6]   = {   /* calibrated   */
+    0xd2, 0xd1, 0xd0, 0xa3, 0xd7, 0xbc };
+
+/* --------------------- Set page item table (table-driven) ----------------
+ * 一项参数的全部差异集中在一行里：标签、'*' 列、上下限、步进、显示格式。
+ * 数组下标与 lcd_param_t 一一对应（0=上限位, 1=堵转, 2=校准）。
+ * 新增一项参数时：改这里 + lcd_param_t + s_param 初值，不再散落三处。  */
+typedef enum
+{
+    FMT_DEC4 = 0,   /* 4 位十进制整数，右对齐到第 9 字节 */
+    FMT_STALL,      /* "dd.d A"：0.1A 定点 */
+    FMT_TOGGLE      /* 开/关，UP=1 DOWN=0 */
+} set_item_fmt_t;
+
+typedef struct
+{
+    const uint8_t *label;       /* GB2312 标签（含冒号） */
+    uint8_t        label_len;   /* 标签字节数 */
+    uint8_t        star_pos;    /* 编辑态 '*' 所在字节列 */
+    uint16_t       max;         /* UP 钳位上限 */
+    uint16_t       step;        /* 每次增减量 */
+    uint8_t        fmt;         /* set_item_fmt_t */
+} set_item_t;
+
+static const set_item_t s_items[SET_ITEMS] =
+{
+    { s_lbl_gate,  7u, 13u, 9999u, 10u, FMT_DEC4   },
+    { s_lbl_stall, 6u, 14u,  999u,  1u, FMT_STALL  },
+    { s_lbl_auto,  6u, 14u,    1u,  1u, FMT_TOGGLE },
+};
 
 uint16_t LCD_PAGES_GetParam(lcd_param_t p)
 {
@@ -150,8 +202,8 @@ void LCD_PAGES_SetParam(lcd_param_t p, uint16_t v)
 {
     if ((int)p < 0 || p >= LCD_PARAM_COUNT)
         return;
-    if (v > s_param_max[p])
-        v = s_param_max[p];
+    if (v > s_items[p].max)
+        v = s_items[p].max;
     s_param[p] = v;
     if (s_page == PAGE_SET)
     {
@@ -160,37 +212,88 @@ void LCD_PAGES_SetParam(lcd_param_t p, uint16_t v)
     }
 }
 
-/* ------------------------- Set page row cache ----------------------------
- * The 3 set-page rows live in RAM. Painters format into the cache; only
- * rows whose bytes actually change are flushed to the LCD. This is the
- * row-level seed of the original project's DisplayCache mechanism
- * (Dispaly.c:125-144): "re-send only what changed".                     */
-#define SET_ITEMS 3u
-typedef enum { SET_BROWSE = 0, SET_EDIT } set_mode_t;
+/* ---- 4G page ---- */
+static const uint8_t s_lbl_sig[6]   = { 0xd0, 0xc5, 0xba, 0xc5, 0x3a, 0x20 }; /* 信号： */
+static const uint8_t s_lbl_ccid[6]  = { 'C', 'C', 'I', 'D', ':', ' ' };
+static const uint8_t s_lbl_stat[6]  = { 0xd7, 0xb4, 0xcc, 0xac, 0x3a, 0x20 }; /* 状态： */
+static const uint8_t s_txt_online[4]  = { 0xd4, 0xda, 0xcf, 0xdf };           /* 在线   */
+static const uint8_t s_txt_offline[4] = { 0xc0, 0xeb, 0xcf, 0xdf };           /* 离线   */
 
-static set_mode_t s_set_mode = SET_BROWSE;
-static uint8_t    s_cursor   = 0;      /* selected item, 0..2             */
-static uint16_t   s_edit_backup = 0;   /* value before edit, for cancel   */
-static uint8_t    s_set_rows[SET_ITEMS][16];
+/* ---- device page ---- */
+static const uint8_t s_lbl_num[6] = { 0xb1, 0xe0, 0xba, 0xc5, 0x3a, 0x20 }; /* 编号： */
+static const uint8_t s_lbl_ver[6] = { 0xb0, 0xe6, 0xb1, 0xbe, 0x3a, 0x20 }; /* 版本： */
+static const uint8_t s_lbl_upg[6] = { 0xc9, 0xfd, 0xbc, 0xb6, 0x3a, 0x20 }; /* 升级： */
+static const uint8_t s_txt_no_ota[6] = { 0xce, 0xb4, 0xc6, 0xf4, 0xd3, 0xc3 }; /* 未启用 */
 
-/* GB2312 fragments used to build the rows */
-static const uint8_t s_lbl_gate[7] = {       /* up-limit label + colon   */
-    0xc9, 0xcf, 0xcf, 0xde, 0xce, 0xbb, 0x3a };
-static const uint8_t s_lbl_stall[6] = {      /* stall label + colon+space */
-    0xb6, 0xc2, 0xd7, 0xaa, 0x3a, 0x20 };
-static const uint8_t s_lbl_auto[6] = {       /* calibration label + colon */
-    0xd0, 0xa3, 0xd7, 0xbc, 0x3a, 0x20 };
-/* calibration status text reflects the real motor state, not the trigger flag */
-static const uint8_t s_txt_cal_none[6] = {   /* "未校准" not calibrated   */
-    0xce, 0xb4, 0xd0, 0xa3, 0xd7, 0xbc };
-static const uint8_t s_txt_cal_run[6]  = {   /* "校准中" calibrating      */
-    0xd0, 0xa3, 0xd7, 0xbc, 0xd6, 0xd0 };
-static const uint8_t s_txt_cal_ok[6]   = {   /* "已校准" calibrated       */
-    0xd2, 0xd1, 0xd0, 0xa3, 0xd7, 0xbc };
+/* ---- limit page ---- */
+static const uint8_t s_op_pair[16] = {      /* "上限位  下限位" */
+    0xc9, 0xcf, 0xcf, 0xde, 0xce, 0xbb,
+    0x20, 0x20, 0x20, 0x20,
+    0xcf, 0xc2, 0xcf, 0xde, 0xce, 0xbb };
 
-/* byte offset of the edit marker '*' in each row.
- * item2 status text is 6 bytes at row[8..13], so the star must sit at 14. */
-static const uint8_t s_star_pos[SET_ITEMS] = { 13u, 14u, 14u };
+/* ------------------- Top graphic zone (GDRAM) assets ---------------------
+ * Banner glyph bitmaps: Each glyph is 12 rows x 2 bytes, drawn into GDRAM
+ * rows y=1..12 at one X word column via LCD12864_DrawStrip().           */
+/* 控制 (code[0], code[1]) */
+static const uint8_t s_banner_ctl0[24] = {
+    0x42, 0x00, 0x41, 0x00, 0x4f, 0xe0, 0xe8, 0x20,
+    0x42, 0x80, 0x44, 0x40, 0x68, 0x20, 0xc7, 0xc0,
+    0x41, 0x00, 0x41, 0x00, 0x41, 0x00, 0xcf, 0xe0 };
+static const uint8_t s_banner_ctl1[24] = {
+    0x10, 0x20, 0x50, 0x20, 0x7d, 0x20, 0x91, 0x20,
+    0xff, 0x20, 0x11, 0x20, 0x7d, 0x20, 0x55, 0x20,
+    0x55, 0x20, 0x54, 0x20, 0x5c, 0x20, 0x10, 0xe0 };
+
+/* 配置 (code[2], code[3]) */
+static const uint8_t s_banner_cfg0[24] = {
+    0x00, 0x00, 0xfe, 0xe0, 0x28, 0x20, 0xfe, 0x20,
+    0xaa, 0x20, 0xaa, 0xe0, 0xc6, 0x80, 0x82, 0x80,
+    0xfe, 0x80, 0x82, 0xa0, 0xfe, 0xa0, 0x82, 0x60 };
+static const uint8_t s_banner_cfg1[24] = {
+    0x7f, 0xc0, 0x4a, 0x40, 0x7f, 0xc0, 0x04, 0x00,
+    0xff, 0xe0, 0x04, 0x00, 0x3f, 0x80, 0x20, 0x80,
+    0x20, 0x80, 0x24, 0x80, 0x24, 0x80, 0xff, 0xe0 };
+
+/* 空白 (code[23]) */
+static const uint8_t s_banner_blank[24] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+/* 网络 (code[11], code[12]) */
+static const uint8_t s_banner_net0[24] = {
+    0xff, 0xe0, 0x80, 0x20, 0x80, 0x20, 0xc4, 0x60,
+    0xaa, 0xa0, 0x91, 0x20, 0x91, 0x20, 0xaa, 0xa0,
+    0xc4, 0x60, 0x80, 0x20, 0x80, 0x20, 0x80, 0xe0 };
+static const uint8_t s_banner_net1[24] = {
+    0x22, 0x00, 0x23, 0xc0, 0x44, 0x40, 0x9a, 0x80,
+    0xe1, 0x00, 0x22, 0x80, 0x4c, 0x60, 0xf7, 0xc0,
+    0x04, 0x40, 0x34, 0x40, 0xc7, 0xc0, 0x04, 0x40 };
+
+/* 限位 (code[17], code[18]) */
+static const uint8_t s_banner_lim0[24] = {
+    0xf7, 0xc0, 0x94, 0x40, 0x94, 0x40, 0xa7, 0xc0,
+    0xa4, 0x40, 0x94, 0x40, 0x97, 0xc0, 0x95, 0x20,
+    0x95, 0x40, 0xe4, 0x80, 0x86, 0x40, 0x84, 0x20 };
+static const uint8_t s_banner_lim1[24] = {
+    0x22, 0x00, 0x21, 0x00, 0x40, 0x00, 0x5f, 0xe0,
+    0xc0, 0x00, 0x48, 0x40, 0x48, 0x40, 0x44, 0x40,
+    0x44, 0x80, 0x44, 0x80, 0x41, 0x00, 0x5f, 0xe0 };
+
+/* OTA  (code[19]="OT", code[20]="A ") */
+static const uint8_t s_banner_ota0[24] = {
+    0x00, 0x00, 0x00, 0x00, 0x38, 0x7c, 0x44, 0x10,
+    0x44, 0x10, 0x44, 0x10, 0x44, 0x10, 0x44, 0x10,
+    0x44, 0x10, 0x44, 0x10, 0x38, 0x10, 0x00, 0x00 };
+static const uint8_t s_banner_ota1[24] = {
+    0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x10, 0x00,
+    0x28, 0x00, 0x28, 0x00, 0x28, 0x00, 0x44, 0x00,
+    0x7c, 0x00, 0x44, 0x00, 0x44, 0x00, 0x00, 0x00 };
+
+/* separator line under the top zone: GDRAM y=15, all 128 pixels lit */
+static const uint8_t s_line_full[16] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 static void s_RowClear(uint8_t *row)
 {
@@ -199,6 +302,7 @@ static void s_RowClear(uint8_t *row)
         row[i] = 0x20u;
 }
 
+/* 整数 → 4 个字符 */
 static void s_U16ToDec4(uint16_t v, uint8_t *dst)
 {
     dst[0] = (uint8_t)('0' + ((v / 1000u) % 10u));
@@ -214,9 +318,13 @@ static void s_BytesCopy(uint8_t *dst, const uint8_t *src, uint8_t n)
         dst[i] = src[i];
 }
 
-/* Format one set-page row into the RAM cache (no LCD traffic here). */
+/* Format one set-page row into the RAM cache (no LCD traffic here).
+格子:  0  1  | 2...........7 | 8..........14 | 15
+内容:  光标 | 标签(汉字/冒号) | 数值或开/关    | 空
+标签、'*' 列、数值格式全部取自 s_items[item]。                           */
 static void s_FormatSetRow(uint8_t item)
 {
+    const set_item_t *it = &s_items[item];
     uint8_t *row = s_set_rows[item];
     uint16_t v;
 
@@ -226,16 +334,15 @@ static void s_FormatSetRow(uint8_t item)
         row[0] = '-';
         row[1] = '>';
     }
+    s_BytesCopy(&row[2], it->label, it->label_len);
 
-    switch (item)
+    switch (it->fmt)
     {
-    case 0u:                                  /* up-limit: 4 digits     */
-        s_BytesCopy(&row[2], s_lbl_gate, 7u);
-        s_U16ToDec4(s_param[LCD_PARAM_GATE_MAX], &row[9]);
+    case FMT_DEC4:                            /* 上限位：4 位整数 */
+        s_U16ToDec4(s_param[item], &row[9]);
         break;
-    case 1u:                                  /* stall: "dd.d A"        */
-        s_BytesCopy(&row[2], s_lbl_stall, 6u);
-        v = s_param[LCD_PARAM_STALL_010A];
+    case FMT_STALL:                           /* 堵转：dd.d A */
+        v = s_param[item];
         row[8]  = (uint8_t)('0' + ((v / 100u) % 10u));
         row[9]  = (uint8_t)('0' + ((v / 10u) % 10u));
         row[10] = '.';
@@ -243,9 +350,8 @@ static void s_FormatSetRow(uint8_t item)
         row[12] = ' ';
         row[13] = 'A';
         break;
-    case 2u:                                  /* calibration status row */
+    case FMT_TOGGLE:                          /* 校准：状态文字 */
     default:
-        s_BytesCopy(&row[2], s_lbl_auto, 6u);
         if (DCMOTOR_IsCalibrating())
             s_BytesCopy(&row[8], s_txt_cal_run, 6u);   /* 校准中 */
         else if (DCMOTOR_IsCalibrated())
@@ -256,13 +362,95 @@ static void s_FormatSetRow(uint8_t item)
     }
 
     if ((s_set_mode == SET_EDIT) && (s_cursor == item))
-        row[s_star_pos[item]] = '*';
+        row[it->star_pos] = '*'; /* 进编辑态时，正在编辑的那行加个 *。 */
 }
 
-/* Send one cached row to the LCD - 25 frames, no Clear(). */
+/* 按 s_items 的 max/step 算下一个值；开/关项直接置 0/1 */
+static uint16_t s_StepValue(uint8_t item, uint8_t up)
+{
+    const set_item_t *it = &s_items[item];
+    uint16_t v = s_param[item];
+
+    if (it->fmt == FMT_TOGGLE)
+        return up ? 1u : 0u;
+
+    if (up)
+        return (v > (uint16_t)(it->max - it->step))
+                   ? it->max
+                   : (uint16_t)(v + it->step);
+    return (v <= it->step) ? 0u : (uint16_t)(v - it->step);
+}
+
+/* Light pixels start..end of one 128-pixel GDRAM row, MSB = leftmost. 
+5 段进度条  */
+static void s_ProgressDraw(uint8_t curr, uint8_t all)
+{
+    uint8_t seg[16];
+    uint8_t start;
+    uint8_t end;
+    uint8_t p;
+
+    // 防呆
+    if (all == 0u)  { all = 1u; }
+    if (curr == 0u) { curr = 1u; }
+    if (curr > all) { curr = all; }
+
+    start = (uint8_t)(((uint16_t)(curr - 1u) * 128u) / all);
+    if (curr == all)
+    {
+        end = 127u;
+    }
+    else
+    {
+        end = (uint8_t)((((uint16_t)curr * 128u) / all) - 1u);
+    }
+
+    for (p = 0u; p < 16u; p++)
+    {
+        seg[p] = 0u;
+    }
+    for (p = start; p <= end; p++)
+    {
+        seg[p >> 3] |= (uint8_t)(0x80u >> (p & 7u));  // 像素区间 → 位图
+    } /* p >> 3（除以 8）算出像素落在第几个字节，p & 7 算落在字节内第几位，0x80 >> (p&7) 把那一位点亮 */
+    LCD12864_DrawRow(14u, seg);
+}
+
+/* Draw the top graphic zone of a page: banner strips at X word 2..5
+ * (blank, glyph0, glyph1, blank), separator line at y=15, 5-segment
+ * progress bar at y=14 (home = 1/5, set = 2/5, same as the original).
+ * Every page draws the same spots, so a page switch overwrites the old
+ * banner cleanly - no slow GDRAM clear needed. 翻页时新页直接覆写旧页的字，不用清 GDRAM。*/
+static void s_DrawTopZone(page_id_t page)
+{
+    const uint8_t *g0;
+    const uint8_t *g1;
+
+    if (page == PAGE_SET)
+    {    /* 配置 */
+        g0 = s_banner_cfg0;
+        g1 = s_banner_cfg1;
+    }
+    else
+    {   /* 控制 */
+        g0 = s_banner_ctl0;
+        g1 = s_banner_ctl1;
+    }
+
+    LCD12864_DrawStrip(2u, s_banner_blank);
+    LCD12864_DrawStrip(3u, g0);
+    LCD12864_DrawStrip(4u, g1);
+    LCD12864_DrawStrip(5u, s_banner_blank);
+    LCD12864_DrawRow(15u, s_line_full);  /* 分隔线，128 像素全亮 */
+    s_ProgressDraw((page == PAGE_SET) ? 2u : 1u, 5u);   /* 5 段进度条 */
+}
+
+/* Send one cached row 缓存行 to the LCD. DDRAM row = item + 1: row 0 pixel area
+ * is occupied by the top graphic zone (banner/bar/line), so the three
+ * editable items live on DDRAM rows 0x90/0x88/0x98 (screen lines 2..4). */
 static void s_FlushSetRow(uint8_t item)
 {
-    LCD12864_ShowHanzi(item, s_set_rows[item], 8u);
+    LCD12864_ShowHanzi((uint8_t)(item + 1u), s_set_rows[item], 8u);
 }
 
 static void s_SetPageDrawAll(void)
@@ -275,18 +463,19 @@ static void s_SetPageDrawAll(void)
         s_FormatSetRow(i);
         s_FlushSetRow(i);
     }
+    s_DrawTopZone(PAGE_SET);
 }
 
 /* --------------------------- Page painters -------------------------------
- * Home page is still static text (real data sources come later), drawn
- * with a full Clear + 4 rows. Set page uses the row cache.              */
+ * Clear + redraw all rows. A full redraw is ~100 serial frames, a few ms
+ * per page switch - acceptable while there is no dynamic data.        */
 static void s_DrawHomePage(void)
 {
     LCD12864_Clear();
-    LCD12864_ShowHanzi(0u, s_home_l1, 8u);
     LCD12864_ShowHanzi(1u, s_home_l2, 8u);
     LCD12864_ShowHanzi(2u, s_home_l3, 8u);
     LCD12864_ShowHanzi(3u, s_home_l4, 8u);
+    s_DrawTopZone(PAGE_HOME);
 }
 
 static void s_DrawPage(page_id_t page)
@@ -310,33 +499,11 @@ static void s_DrawPage(page_id_t page)
  * pre-edit value and exits. Page switching is blocked while editing.     */
 static void s_SetPageEditKey(key_code_t key)
 {
-    uint16_t v;
-    uint16_t max;
-    uint16_t step;
-
     switch (key)
     {
     case KEY_UP:
     case KEY_DOWN:
-        v    = s_param[s_cursor];
-        max  = s_param_max[s_cursor];
-        step = s_param_step[s_cursor];
-        if (s_cursor == LCD_PARAM_AUTO_FLAG)
-        {
-            v = (key == KEY_UP) ? 1u : 0u;    /* toggle like row3flag   */
-        }
-        else if (key == KEY_UP)
-        {
-            v = (uint16_t)((v > (uint16_t)(max - step)) ? max : v + step);
-        }
-        else
-        {
-            if (v <= step)
-                v = 0u;
-            else
-                v = (uint16_t)(v - step);
-        }
-        s_param[s_cursor] = v;
+        s_param[s_cursor] = s_StepValue(s_cursor, (key == KEY_UP) ? 1u : 0u);
         s_FormatSetRow(s_cursor);
         s_FlushSetRow(s_cursor);              /* 1 row, 25 frames       */
         break;
@@ -361,30 +528,31 @@ static void s_SetPageEditKey(key_code_t key)
     }
 }
 
+/* 光标上下移一项，只重画"旧行 + 新行"两行，不整屏 Clear。 */
+static void s_SetMoveCursor(uint8_t up)
+{
+    uint8_t old = s_cursor;
+
+    s_cursor = up ? (uint8_t)((s_cursor + SET_ITEMS - 1u) % SET_ITEMS)
+                  : (uint8_t)((s_cursor + 1u) % SET_ITEMS);
+    s_FormatSetRow(old);
+    s_FlushSetRow(old);
+    s_FormatSetRow(s_cursor);
+    s_FlushSetRow(s_cursor);                  /* 2 rows, no Clear()     */
+}
+
 /* Browse mode on the set page. Returns 1 if the key was consumed here,
  * 0 to let the caller continue with page switching.                     */
 static int s_SetPageBrowseKey(key_code_t key)
 {
-    uint8_t old;
-
     switch (key)
     {
     case KEY_UP:
-        old = s_cursor;
-        s_cursor = (uint8_t)((s_cursor + SET_ITEMS - 1u) % SET_ITEMS);
-        s_FormatSetRow(old);
-        s_FlushSetRow(old);
-        s_FormatSetRow(s_cursor);
-        s_FlushSetRow(s_cursor);              /* 2 rows, no Clear()     */
+        s_SetMoveCursor(1u);
         return 1;
 
     case KEY_DOWN:
-        old = s_cursor;
-        s_cursor = (uint8_t)((s_cursor + 1u) % SET_ITEMS);
-        s_FormatSetRow(old);
-        s_FlushSetRow(old);
-        s_FormatSetRow(s_cursor);
-        s_FlushSetRow(s_cursor);
+        s_SetMoveCursor(0u);
         return 1;
 
     case KEY_STOP:                            /* enter edit mode        */
@@ -411,10 +579,13 @@ void LCD_PAGES_Init(void)
     s_DrawPage(s_page);
 }
 
+/* Feed one key event. Only page-switch keys act; the screen is redrawn
+ * only when the page actually changes. */
 void LCD_PAGES_Process(key_code_t key)
 {
     page_id_t old;
 
+    /* 设置页拦截器 */
     if (s_page == PAGE_SET)
     {
         if (s_set_mode == SET_EDIT)
@@ -430,17 +601,17 @@ void LCD_PAGES_Process(key_code_t key)
 
     switch (key)
     {
-    case KEY_SET:      /* previous page, wraps */
+    case KEY_SET:      /* was KEY_LEFT in the original: previous page, wrap */
         s_page = (page_id_t)(((int)s_page + (int)PAGE_COUNT - 1) % (int)PAGE_COUNT);
         break;
-    case KEY_CANCEL:   /* next page, wraps around */
+    case KEY_CANCEL:   /* was KEY_RIGHT: next page, wraps around */
         s_page = (page_id_t)(((int)s_page + 1) % (int)PAGE_COUNT);
         break;
-    case KEY_STOP:     /* back to home page */
+    case KEY_STOP:     /* was KEY_ENTER: back to home page */
         s_page = PAGE_HOME;
         break;
-    case KEY_UP:
-    case KEY_DOWN:
+    case KEY_UP:       /* reserved: cursor / item inside a page  */
+    case KEY_DOWN:     /* reserved */
     case KEY_NONE:
     default:
         break;
@@ -478,8 +649,13 @@ void LCD_PAGES_Refresh(void)
     if (st == s_last_cal_state)
         return;
     s_last_cal_state = st;
-    s_FormatSetRow(2u);
-    s_FlushSetRow(2u);
+    s_FormatSetRow((uint8_t)LCD_PARAM_AUTO_FLAG);
+    s_FlushSetRow((uint8_t)LCD_PARAM_AUTO_FLAG);
+}
+
+uint8_t LCD_PAGES_IsHome(void)
+{
+    return (s_page == PAGE_HOME) ? 1u : 0u;
 }
 ```
 
@@ -520,6 +696,8 @@ void LCD_PAGES_Refresh(void)
 | 校准状态 | `LCD_PARAM_AUTO_FLAG` | 0/1 | 0 | UP=触发 / DOWN=0 | 0~1 | 未校准 / 校准中 / 已校准（**显示**取自 DCMOTOR 状态，非参数值） |
 
 越界即钳位（到顶再加不动，到底再减不动）。原工程对应值：`gate_maxheight`、`motor_warning_curr_upper`（原工程存的是 mA，本模块存 0.1A，接 EEPROM 时换算）、`autoFlag`。
+
+> 上表是面向人的规格说明；代码里的唯一真源是 `s_items[]`（下标与 `lcd_param_t` 一一对应）。改参数范围/步进只改 `s_items[]`，不要再去别处找第二份。
 
 ### 5.4 其他行为细节
 
@@ -592,7 +770,7 @@ void LCD_PAGES_Refresh(void)
 | 光标不动 | `APP_DispatchKey` 是否还在调 `LCD_PAGES_Process(key)`；KEY_UP/DOWN 是否被别处截走 |
 | 改值后不刷新 | `s_FlushSetRow` 是否被改掉；`ShowHanzi` 的 count 是否传 8 |
 | 编辑中按 CAN 直接翻了页 | `LCD_PAGES_Process` 开头 `SET_EDIT` 分支的 `return` 是否漏了 |
-| 数值越界 | `s_param_max/s_param_step` 表是否抄错 |
+| 数值越界 | `s_items[]` 表里的 `max` / `step` 是否抄错 |
 | 编译报 `uint16_t` 未定义 | `key.h` 里 `#include "sys.h"` 是否还在 |
 
 ---

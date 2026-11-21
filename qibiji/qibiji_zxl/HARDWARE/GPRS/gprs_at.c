@@ -40,6 +40,8 @@ static uint8_t  s_retry_cnt = 0u;
 static uint32_t s_fail_tick = 0u;
 static uint32_t s_backoff_tick = 0u;
 static uint32_t s_csq_tick = 0u;
+static int8_t   s_rssi = -1;                    /* -1 = 还没测到有效值 */
+static char     s_iccid[21];                    /* 20 位数字 + '\0'    */
 
 /*==================== ST_NORMAL 一次性 MQTT 配置诊断 ====================*/
 #define DIAG_NORM_WAIT_MS      500u             /* 进 NORMAL 后等多久开始诊断（必须在 timeSync 之前跑） */
@@ -115,12 +117,34 @@ static uint8_t s_link_debounce(void)
 }
 
 /*==================== AT response callbacks ====================*/
+
+/* "+ICCID: 8986..." 里取数字，最多 20 位 */
+static void s_iccid_capture(const char *data)
+{
+    const char *p = strstr(data, "+ICCID:");
+    uint8_t n = 0u;
+
+    if (p == NULL)
+        return;
+    p += 7;
+    while (*p == ' ' || *p == '"')
+        p++;
+    while (*p >= '0' && *p <= '9' && n < 20u)
+    {
+        s_iccid[n++] = *p++;
+    }
+    s_iccid[n] = '\0';
+}
+
 /** @brief AT callback: set g_at_flag_iccid when the reply contains "+ICCID". */
 static void s_on_iccid(char *data, uint16_t len)
 {
     (void)len;
     if (strstr(data, "+ICCID") != NULL)
+    {
         g_at_flag_iccid = 1u;
+        s_iccid_capture(data);
+    }
     GPRS_Printf("[GPRS] ICCID: %.*s\r\n", (int)len, data); 
 }
 /** @brief AT callback: set g_at_flag_mqttcid on "+MQTTCID"; device-id parse goes here later. */
@@ -133,10 +157,9 @@ static void s_on_mqttcid(char *data, uint16_t len)
     GPRS_Printf("[GPRS] MQTTCID: %.*s\r\n", (int)len, data); 
 }
 
-/* 解析 +CSQ 回包里的 rssi 数值。
- * 3GPP 27.007：0 = ≤-113dBm（基本无服务），1~31 有效，99 = 未知/不可测。
- * 返回 1 表示信号可用，0 表示无信号或解析失败。 */
-static uint8_t s_csq_signal_ok(const char *data)
+/* 解析 +CSQ 回包。*rssi_out 回填原始数值（含 99），返回值语义不变：
+ * 1 = 信号可用（1..31），0 = 无信号或解析失败。 */
+static uint8_t s_csq_parse(const char *data, uint8_t *rssi_out)
 {
     const char *p = strstr(data, "+CSQ:");
     uint16_t v = 0u;
@@ -155,8 +178,10 @@ static uint8_t s_csq_signal_ok(const char *data)
         if (digits > 3u)                     /* 防止异常长数字溢出 */
             return 0u;
     }
-    if (digits == 0u)
+    if (digits == 0u|| v > 99u)
         return 0u;
+    if (rssi_out != NULL)
+        *rssi_out = (uint8_t)v;
     return (v >= 1u && v <= 31u) ? 1u : 0u;
 }
 
@@ -164,7 +189,12 @@ static uint8_t s_csq_signal_ok(const char *data)
 static void s_on_csq(char *data, uint16_t len)
 {
     if (strstr(data, "+CSQ") != NULL)          /* 只处理确实是 CSQ 回包的帧 */
-        g_at_flag_csq = s_csq_signal_ok(data) ? 1u : 0u;
+{
+        uint8_t v = 0u;
+        g_at_flag_csq = s_csq_parse(data, &v) ? 1u : 0u;
+        if (v >= 1u && v <= 31u)
+            s_rssi = (int8_t)v;                /* 99 不覆盖上次有效值 */
+    }
     GPRS_Printf("[GPRS] CSQ: %.*s\r\n", (int)len, data);
 }
 
@@ -392,12 +422,6 @@ void GPRS_AT_StateMachine(void)
     }
 }
 
-/** @brief Return 1 when the link is in ST_NORMAL (global TX gate). */
-uint8_t gprs_is_ready(void)
-{
-    return (s_state == ST_NORMAL) ? 1u : 0u;
-}
-
 /**
  * @brief Move staged UART frames into the RX queue and detect the boot banner.
  * Takes at most a few frames per call; the take+append is briefly IRQ-guarded
@@ -448,4 +472,23 @@ void GPRS_AT_RxPump(void)
         g_gprs_banner_seen = 0u;
         GPRS_AT_OnBanner();
     }
+}
+
+/*==================== 公共只读访问器 ====================*/
+/** @brief 链路是否处于 ST_NORMAL。 */
+uint8_t gprs_is_ready(void)
+{
+    return (s_state == ST_NORMAL) ? 1u : 0u;
+}
+
+/** @brief 最近一次 +CSQ 的 rssi，-1 = 尚未测到有效值。 */
+int8_t gprs_get_rssi(void)
+{
+    return s_rssi;
+}
+
+/** @brief 最近一次 +ICCID 解析出的号码，未获取时为空串。 */
+const char *gprs_get_iccid(void)
+{
+    return s_iccid;
 }

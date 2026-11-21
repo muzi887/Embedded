@@ -476,6 +476,24 @@ uint8_t EventPostMotorStall(uint16_t motor_current_ma)
 
 > **事件触发点**：原工程在 `dc_motor.c` / `switch.c` 的各状态迁移处调 `EventPost*`。新工程要在 `DCMOTOR` 的对应点补调用（电机启动/停机/限位/堵转/到位）。同样属于跨模块接线，**本轮只点明，不铺开**。
 
+### 3.1 事件触发点已落地 + 上板验证（2026-11-21 补充）
+
+上面"只点明，不铺开"的触发点接线**已经完成并上板验证通过**：
+
+- 调用位置（`qibiji_zxl/HARDWARE/DCMOTOR/dcmotor.c`）：366 行 `EventPostSimple(EVT_MOTOR_START_UP)`、373 行 `EventPostSimple(EVT_MOTOR_START_DOWN)`、390 行 `EventPostMotorStop(s_MapStopReason(...), s_opening)`、392 行 `EventPostMotorStall(s_stall_ma)`；
+- 7.1 的前置条件均已满足：`event_pub.c` 已 Add 进 Keil 工程（`event_pub.o` 存在）、`#include "event_pub.h"` 已加；
+- 原工程 `event_motor_up_posted` 等去重标志**不需要**：新工程 `if (s_old != s_state)` 本身就是边沿触发；
+- 旧工程 `switch.c:194/221` 的限位事件原本就是注释掉的，未补（维持决策）。
+
+上板日志（`TOPIC_EVENT_PUB=4`）：
+
+```
+send json-->4,{"id":"365860",...,"type":"event","body":{"eventCode":"motor.start.up","output":{}}}
+send json-->4,{"id":"395880",...,"type":"event","body":{"eventCode":"motor.stop","output":{"reason":6,"opening":0}}}
+```
+
+`gprs_is_ready()` + `DCMOTOR_IsCalibrating()` 双闸正常（心跳释放后才发事件）。`reason:6` 当时是超时保护停机（`MOTOR_STOP_TIMEOUT → STOP_REASON_EMERGENCY_STOP`），字段映射正确。细节见《DCMotor重构操作建议.md》§17.2/§17.4。
+
 ## 4. 阶段三接线与验证
 
 `main.c`：

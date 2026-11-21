@@ -15,7 +15,6 @@
  * --------------------------------------------------------------------------- */
 
 /* State-machine interface; semantics are documented in gprs_at.c. */
-
 /*==================== Link / AT result flags ====================*/
 extern volatile uint8_t g_atflag_online;    /* banner seen -> UART ready */
 extern volatile uint8_t g_at_flag_iccid;    /* +ICCID reply seen */
@@ -31,5 +30,12 @@ uint8_t gprs_is_ready(void);
 void GPRS_AT_OnBanner(void);
 /* Move staged UART frames into the RX queue. */
 void GPRS_AT_RxPump(void);
+
+/* ---- display accessors (LCD 4G page) ---- */
+/* Last parsed rssi: 0..31 valid, -1 = unknown / not yet measured.
+ * 99 (not detectable) is NOT reported as 99, it keeps the previous value. */
+int8_t gprs_get_rssi(void);
+/* Last parsed ICCID digits (no prefix/quotes), "" if never received. */
+const char *gprs_get_iccid(void);
 
 #endif

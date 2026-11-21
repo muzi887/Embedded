@@ -277,3 +277,39 @@ void LCD12864_DrawStrip(uint8_t x, const uint8_t *buf)
      /* Same closing rule as DrawRow: basic set only, keep graphic display ON. */
     s_WriteCmd(LCD_CMD_BASIC);
 }
+
+void LCD12864_FillBlock(uint8_t y, uint8_t rows,
+                        uint8_t x_word, uint8_t words, uint8_t value)
+{
+    uint8_t j;
+    uint8_t i;
+    uint8_t py;
+    uint8_t v;
+    uint8_t h;
+
+    if (rows == 0u || words == 0u || words > 8u || x_word > 7u)
+        return;
+    if ((uint16_t)y + (uint16_t)rows > 64u)
+        return;
+
+    s_WriteCmd(LCD_CMD_EXT);
+    s_WriteCmd(LCD_CMD_GDRAM);
+
+    for (j = 0u; j < rows; j++)
+    {
+        py = (uint8_t)(y + j);
+        v  = (uint8_t)(py & 0x1Fu);
+        h  = (uint8_t)(x_word + ((py >= 32u) ? 8u : 0u));
+
+        s_WriteCmd((uint8_t)(0x80u + v));
+        s_WriteCmd((uint8_t)(0x80u + h));
+
+        for (i = 0u; i < words; i++)
+        {
+            s_WriteData(value);   /* 每个 word 16 位 = 16 像素宽 */
+            s_WriteData(value);
+        }
+    }
+
+    s_WriteCmd(LCD_CMD_BASIC);
+}

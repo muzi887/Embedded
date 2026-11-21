@@ -335,7 +335,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS;..\HARDWARE\DS1302;..\HARDWARE\EEPROM;..\HARDWARE\IIC;..\HARDWARE\WDG</IncludePath>
+              <IncludePath>..\USER;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\CORE;..\HARDWARE\DEBUG_UART;..\HARDWARE\KEY;..\HARDWARE\TIMER;..\HARDWARE\LCD12864;..\HARDWARE\ADC;..\HARDWARE\DCMOTOR;..\HARDWARE\GATEIO;..\HARDWARE\GPRS;..\HARDWARE\DS1302;..\HARDWARE\EEPROM;..\HARDWARE\IIC;..\HARDWARE\WDG;..\HARDWARE\LED</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -768,6 +768,21 @@
               <FileName>wdg.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\WDG\wdg.h</FilePath>
+            </File>
+            <File>
+              <FileName>event_pub.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\event_pub.c</FilePath>
+            </File>
+            <File>
+              <FileName>led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LED\led.c</FilePath>
+            </File>
+            <File>
+              <FileName>led.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LED\led.h</FilePath>
             </File>
           </Files>
         </Group>

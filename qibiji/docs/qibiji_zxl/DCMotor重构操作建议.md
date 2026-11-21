@@ -1626,4 +1626,62 @@ PD1~PD6 都在 GPIOD，但分属三个不同职责。**这张表是边界的全�
 
 ---
 
-> 配套文档到此完整：《ADC重构操作建议.md》《RS485重构操作建议.md》与本文档（含 §16 继电器边界）。电机和 ADC 都没有接 LCD 显示（本轮不改显示内容）——把电流、开度、限位状态显示在 LCD 上，属于后续"真数据接线"的独立需求，到时再单独生成建议。
+## 17. 上板联锁误报与超时停机（2026-11-21 上板补充）
+
+### 17.1 ERR 灯上电常亮：上电零点窗口把"临时状态"锁存成"故障"
+
+**现象**：上电静止、电流 0、电机没跑，ERR 灯（PD14）常亮。
+
+**根因**：`DCMOTOR_Process()` 第 1 步在 `ADC_CurrentIsReady()==0` 时**无条件**写 `s_stop_reason = MOTOR_STOP_INTERLOCK`。上电零点标定窗口是 16 × 20ms = **320ms**（`adc.c` 的 `ZERO_SAMPLE_COUNT`），这期间每拍都写一次；而 `s_stop_reason` 在整个工程里只有 UP/DOWN 边沿会清成 NONE（365、370 行），静止时没人复位——上电瞬间的临时状态被永久锁存，`LED_Tick()` 把 INTERLOCK 判为故障 → 常亮。
+
+**已落盘的临时修复**：新增 `s_adc_zero_seen`（dcmotor.c 第 45 行声明、第 201 行 Init 清零），只有"曾经 ready 过、之后掉线"才写 INTERLOCK，上电标定期只强制停机不点灯。
+
+**订正（该方案有缺陷，待替换）**：这个标志不是无害的幂等写——它一旦置 1，就**解锁**了对 `s_stop_reason` 的改写权。此后静止期任何一拍 ADC not-ready 都会把正确的停机原因（MANUAL / LIMIT_OPEN / LIMIT_CLOSE）覆盖成 INTERLOCK；且 `s_MapStopReason()` 的 default 分支把 INTERLOCK 映射成 `STOP_REASON_UNKNOWN`，云端连"这是联锁"都看不出。
+
+**推荐替代（未落盘）**：判据改为"这一拍之前电机是否在运行"——`s_old` 是上一拍**实际执行**的状态（`s_state` 只是请求态，可能刚被 Request 设置而边沿未执行）：
+
+```c
+if (ADC_CurrentIsReady() == 0u)
+{
+    /* only a forced stop out of a running state is a fault */
+    if ((s_old == MOTOR_UP) || (s_old == MOTOR_DOWN))
+        s_stop_reason = MOTOR_STOP_INTERLOCK;
+
+    s_state = MOTOR_STOP;
+    s_old = MOTOR_STOP;      /* 必须在读 s_old 之后赋值 */
+    ...
+    return;
+}
+```
+
+静止时 `s_old == MOTOR_STOP`，此分支反复执行也不碰 reason；上电窗口内 `s_old` 由 Init 设为 STOP，同样安全。替换时删除 `s_adc_zero_seen` 的三处痕迹（45 行声明、201 行清零、311 行置 1）。注意：当前 `adc.c` 的 `s_ready` 从不清零，此分支实际只在 320ms 窗口命中——要让它有真实触发路径，需配合《ADC重构操作建议.md》补充节的掉线检测。
+
+### 17.2 30 秒超时停机（`reason:6`）与 30s 预算
+
+上板时间线：10:41:38.982 按 UP 启动 → 10:42:09.017 收到 `motor.stop, reason:6`，间隔 **30.035s**，正好命中 `MAX_RUN_MS_DEFAULT 30000u`（421 行超时保护）。`reason:6 = STOP_REASON_EMERGENCY_STOP`，即 `MOTOR_STOP_TIMEOUT` 的映射（285 行）。用户的 STOP 按键晚了 0.3 秒，电机已停、无边沿，不再发事件——正常。
+
+待办：限位接好后**实测全行程时间**，把 `s_max_run_ms` 调成实测 × 1.5 左右（接口 `DCMOTOR_SetMaxRunMs()` 已有），或做成 EEPROM 参数与 `maxturns` 同存。
+
+### 17.3 `opening:0`：两条硬件反馈线 30 秒内都无输入
+
+超时停机上报的 `opening` 为 0。全行程 80 脉冲，1 个脉冲即 1.25%——30 秒运行中编码器**一个脉冲都没进来**，同时限位也没触发。两条独立反馈同时哑，指向硬件而非判断逻辑：
+
+| 反馈 | 引脚 | 现象 | 排查 |
+|---|---|---|---|
+| 全开限位 | PD7 | 30s 未触发 → 超时兜底 | 接线、active-low 极性、上拉 |
+| 编码器 | PB4 / PB0 | opening 恒 0 | 接线、脉冲极性；先确认 §15.1 ② 的 AFIO 时钟已补 |
+
+### 17.4 event_pub 上板验证（通过）
+
+`dcmotor.c` 已接入事件发布（366/373 行启动边沿、390 行停机边沿、392 行堵转），`event_pub.o` 已编进工程。上板日志确认两条链路都通：
+
+```
+send json-->4,{...,"eventCode":"motor.start.up","output":{}}
+send json-->4,{...,"eventCode":"motor.stop","output":{"reason":6,"opening":0}}
+```
+
+`TOPIC_EVENT_PUB=4`、`gprs_is_ready()` 与 `DCMOTOR_IsCalibrating()` 双闸工作正常。注意：`DCMOTOR_Request()` 被限位拒绝时是**静默 return**（243/244 行），现场表现为"按了没反应"，建议在两处拦截分支加 `DEBUG_UART_SendString` 提示，避免与按键故障混淆（未落盘，待用户确认）。
+
+---
+
+> 配套文档到此完整：《ADC重构操作建议.md》《RS485重构操作建议.md》与本文档（含 §16 继电器边界、§17 上板补充）。电机和 ADC 都没有接 LCD 显示（本轮不改显示内容）——把电流、开度、限位状态显示在 LCD 上，属于后续"真数据接线"的独立需求，到时再单独生成建议。

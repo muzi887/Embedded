@@ -627,4 +627,183 @@ AD_Value[][0]  (LSB, 0..4095)
 
 ---
 
+## 12. 补充：ADC 掉线检测（2026-11-21 已落盘）
+
+> **状态更新**：本节方案已实施进 `qibiji_zxl/HARDWARE/ADC/adc.c`（用户 2026-11-21 落盘）。12.3 保留原方案文本作对照；实际落盘行号见 12.7 核对表。**尚缺两步收尾**（`adc.h` 声明、`led.c` 联动），见 12.8。
+
+### 12.1 背景与动机
+
+当前 `s_ready` 只有两处：`ADC1_Init()` 清 0（113 行）、零点标定完成置 1（163 行），**之后永不回落**。因此 `ADC_CurrentIsReady()` 在 320ms 标定窗口之后恒为 1，《DCMotor重构操作建议.md》§17.1 的 INTERLOCK 分支只在上电窗口有效——**运行中采集链路挂掉（DMA 停转、传感器断线）无从检测**，电机会在保护全瞎的状态下继续转。
+
+本节给出掉线检测的完整实现。落盘后 `ADC_CurrentIsReady()` 才可能变 0，电机模块的零点联锁才真正闭环。
+
+### 12.2 判据选择：DMA 计数器冻结，不用"采样值不变"
+
+**不用模拟量判据**：本工程 256 点均值把噪声压得很低，电机静止时 `raw` 本来就可能长时间停在同一个数，会误报。
+
+改用 DMA 循环计数器：`256 点 × 3 通道 × 21us ≈ 16.1ms` 转一圈，循环模式下 `CNDTR` 每个 20ms 槽必然变化；连续 500ms 读数完全相同 = 链路停转。
+
+传感器断线/短路另用 rail 判据：`raw ≤ 2`（断线）或 `raw ≥ 4090`（短路/超量程）持续 1s。**前提是零点不贴 rail**：按 `ADC2CURT = 3.3/4.096/(0.05×2)` 推算霍尔零点约 2.5V → raw≈3103，离两端很远，判据安全。**若实际是零点在 0V 的变送器，此判据会常误报，须改为"偏离零点过远"**——落盘前先在标定完成处打印一次 `s_zero_avg` 确认。
+
+### 12.3 代码（四处插入 `adc.c`）
+
+**宏定义（第 23 行 `SLOW_SLOTS` 后）**：
+
+```c
+/* ---- link-loss detection 掉线检测 ---- */
+#define ADC_LINK_STATIC_SLOTS  25u   /* 25 x 20ms = 500ms CNDTR frozen  */
+#define ADC_LINK_RAIL_SLOTS    50u   /* 50 x 20ms = 1s raw stuck at rail */
+#define ADC_RAIL_LOW           2u    /* <= this  = open wire            */
+#define ADC_RAIL_HIGH          4090u /* >= this  = short / over-range   */
+```
+
+**静态变量（第 46 行 `s_motor_running` 后）**：
+
+```c
+/* link-loss */
+static uint16_t s_dma_cnt_last;
+static uint8_t  s_dma_static_cnt;
+static uint8_t  s_dma_dead;      /* latched: chain stopped, needs re-init */
+static uint8_t  s_rail_cnt;
+static uint8_t  s_sensor_open;   /* self-clearing when raw comes back     */
+```
+
+**检测函数（`ADC_RawAvg()` 之后）**：
+
+```c
+/* DMA-counter watchdog + sensor rail check, once per 20ms slot.
+ * Must run before the value is used, so a dead chain never feeds
+ * the zero tracker or the stall detector. */
+static void ADC_LinkCheck(uint16_t raw)
+{
+    uint16_t cnt = (uint16_t)DMA_GetCurrDataCounter(DMA1_Channel1);
+
+    /* 1) circular DMA walks the whole buffer in ~16ms, so two slots 20ms
+     *    apart can never read the same CNDTR unless the chain stopped. */
+    if (cnt == s_dma_cnt_last)
+    {
+        if (s_dma_static_cnt < 0xFFu)
+            s_dma_static_cnt++;
+        if (s_dma_static_cnt >= ADC_LINK_STATIC_SLOTS)
+            s_dma_dead = 1u;
+    }
+    else
+    {
+        s_dma_static_cnt = 0u;
+        s_dma_cnt_last = cnt;
+    }
+
+    /* 2) open wire or shorted sensor parks the input at a rail.
+     *    Recoverable: a sane reading clears both counters. */
+    if ((raw <= ADC_RAIL_LOW) || (raw >= ADC_RAIL_HIGH))
+    {
+        if (s_rail_cnt < 0xFFu)
+            s_rail_cnt++;
+        if (s_rail_cnt >= ADC_LINK_RAIL_SLOTS)
+            s_sensor_open = 1u;
+    }
+    else
+    {
+        s_rail_cnt = 0u;
+        s_sensor_open = 0u;
+    }
+}
+```
+
+**接入（`ADC_SampleSlot()` 第 151 行 `raw = ADC_RawAvg(0u);` 后）**：
+
+```c
+    raw = ADC_RawAvg(0u);
+    ADC_LinkCheck(raw);      /* must precede zero tracking + stall detect */
+```
+
+**接口（第 258 行起）**：
+
+```c
+uint8_t ADC_CurrentIsReady(void)
+{
+    return ((s_ready != 0u) && (s_dma_dead == 0u) && (s_sensor_open == 0u))
+           ? 1u : 0u;
+}
+
+/* 1 = acquisition chain or sensor is down. Led / telemetry can read this. */
+uint8_t ADC_IsLinkLost(void)
+{
+    return ((s_dma_dead != 0u) || (s_sensor_open != 0u)) ? 1u : 0u;
+}
+```
+
+`ADC1_Init()` 里补 5 行清零（第 131 行后）：`s_dma_cnt_last / s_dma_static_cnt / s_dma_dead / s_rail_cnt / s_sensor_open`。
+
+### 12.4 语义分层
+
+| 故障 | 标志 | 恢复方式 | 理由 |
+|---|---|---|---|
+| DMA 停转 | `s_dma_dead` | **锁存**，需重启 | 循环模式 DMA 不会自己复活，链路级故障 |
+| 传感器断线/短路 | `s_sensor_open` | **自动恢复**，raw 回到正常带内即清 | 接回线就好，重启不必要 |
+
+### 12.5 与 LED / 电机的联动（必须同时做，否则静止期漏报）
+
+链路在**静止时**挂掉不会经过电机模块的 INTERLOCK 分支（§17.1 的判据要求 `s_old` 在运行态），只靠 `stop_reason` 看不见。《LED重构操作建议.md》的 ERR 判断需加一条直连：
+
+```c
+if ((ADC_IsLinkLost() != 0u) || ...原有三类...) LED_PIN_ON(LED_ERR_PIN);
+```
+
+`led.c` 需要 `#include "adc.h"`。两条通道分工：`stop_reason` 管"运行中被中断"（带原因、能上报），`IsLinkLost` 管"链路本身坏了"（只点灯，不碰原因）。
+
+### 12.6 验证步骤
+
+| 操作 | 预期 |
+|---|---|
+| 正常上电静止 | ERR 灭，`ADC_IsLinkLost()==0` |
+| 拔掉电流传感器信号线 | 1s 后 ERR 亮，电机拒动 |
+| 插回信号线 | 1s 后 ERR 自动灭（rail 可恢复） |
+| 调 `DMA_Cmd(DMA1_Channel1, DISABLE)` | 500ms 后 ERR 亮且**不自动恢复**（需重启） |
+
+### 12.7 落盘核对表（2026-11-21，按当前 `adc.c` 实测行号）
+
+| 内容 | 方案原位置 | 实际落盘位置 |
+|---|---|---|
+| 4 个宏 `ADC_LINK_STATIC_SLOTS / ADC_LINK_RAIL_SLOTS / ADC_RAIL_LOW / ADC_RAIL_HIGH` | 第 23 行后 | **25–28 行** |
+| 5 个静态变量 `s_dma_cnt_last / s_dma_static_cnt / s_dma_dead / s_rail_cnt / s_sensor_open` | 第 46 行后 | **48–52 行**（`/* link-loss */` 分组） |
+| `ADC1_Init()` 清零 5 行 | 第 131 行后 | **145–149 行**（`s_motor_running` 后、`s_sample_ma` 前，与声明分组顺序一致） |
+| `ADC_LinkCheck()` | `ADC_RawAvg()` 后 | **170–201 行** |
+| 接入点 `ADC_LinkCheck(raw);` | `ADC_SampleSlot()` 第 151 行后 | **213 行**（`raw = ADC_RawAvg(0u);` 之后、零点跟踪/堵转检测之前） |
+| `ADC_CurrentIsReady()` 三条件与 | 第 258 行起 | **322 行** |
+| `ADC_IsLinkLost()` | 第 258 行起 | **327–329 行** |
+
+落盘时的两处小差异（不影响行为）：`ADC_RAIL_LOW/HIGH` 的注释补了中文说明；rail 判据阈值直接写了 `50u` 字面量（等效 `ADC_LINK_RAIL_SLOTS`）。
+
+### 12.8 剩余收尾（截至本文更新时尚未落盘）
+
+1. **`adc.h` 缺 `ADC_IsLinkLost` 声明**（`adc.h` 31 行只有 `ADC_CurrentIsReady`）。`adc.c` 里的定义没有头文件声明，其它模块**无法合法调用**——`led.c` 一旦接入会报 implicit declaration。补一行：
+
+   ```c
+   uint8_t  ADC_IsLinkLost(void);              /* 1 = chain stopped or sensor open */
+   ```
+
+2. **`led.c` 未接 ERR 直连**（`led.c` 头部只有 `dcmotor.h`、`gprs_at.h`，无 `adc.h`；故障判断没有 `ADC_IsLinkLost()` 项）。不接的话静止期链路挂掉**ERR 灯不亮**，只剩"电机拒动"这一个间接现象。接法见 §12.5。
+
+3. **rail 判据前提待确认**：上板后先看一次 `s_zero_avg`（约 3100 才安全）；在 `s_ready = 1u;`（约 163 行）后临时加 `GPRS_Printf("[ADC] zero_avg=%u\r\n", ...)`，确认后删除。
+
+### 12.9 检验步骤（结合当前落盘状态）
+
+前提：先完成 §12.8 的 1、2 两步（声明 + LED 联动），否则 ERR 灯证据链不完整。
+
+| 步骤 | 操作 | 预期现象 | 验证的是 |
+|---|---|---|---|
+| ① 基线 | 正常上电，静置 10s | ERR 灭；串口无异常；电机静止 | 计数器不误报（噪声/巧合不动 CNDTR 不至于积累 25 槽） |
+| ② 零点确认 | 看临时打印的 `s_zero_avg` | ≈3100（远离 0 和 4090） | rail 判据前提成立 |
+| ③ 断线（可恢复） | 拔掉电流传感器信号线，等 2s | **1s 后 ERR 亮**；此时按 UP 电机不转（`CurrentIsReady()==0` → 零点联锁强制停） | rail 判据 + 自恢复语义 |
+| ④ 恢复 | 插回信号线，等 2s | **ERR 自动灭**，无需重启；此后电机可正常启动 | `s_sensor_open` 自清除 |
+| ⑤ 链路死（不可恢复） | 在代码里临时加 `DMA_Cmd(DMA1_Channel1, DISABLE);` 后编译烧录 | **500ms 后 ERR 亮且不灭**；重启才恢复 | `s_dma_dead` 锁存语义 |
+| ⑥ 运行中断线 | 插回线、电机转起来后**再拔线** | ERR 亮；电机立即被零点联锁强制停；下次启动前事件 reason 走 `s_old` 判据（运行中→INTERLOCK） | §17.1 判据与本节联动 |
+
+第 ⑤ 步验证完记得把 `DMA_Cmd(...DISABLE)` 那行删掉再烧正式固件。
+
+判据时间常数速查：CNDTR 冻结判死 = 25 槽 × 20ms = **500ms**（锁存）；rail 贴边判断线 = 50 槽 × 20ms = **1s**（自恢复）。
+
+---
+
 > 下一份《DCMotor重构操作建议.md》在本模块基础上接入电机：按键 UP/DOWN/STOP → `DCMOTOR_Request()`，主循环 `DCMOTOR_Process()`，10ms 节拍里 `DCMOTOR_Tick()`。电流零点联锁和堵转停机都通过本文件的接口完成。

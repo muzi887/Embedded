@@ -252,3 +252,54 @@ if (Tick_10ms_Take())
 1. **实际电平极性**：原理图确认 PD11~14 是共阴（高电平点亮）还是共阳（低电平点亮），据此定 `LED_ACTIVE_HIGH`；
 2. **ERR 语义**：当前定为堵转 / 超时 / 联锁三类。是否还要加入"EEPROM 校验失败""RTC 丢失"等故障？这些状态目前没有统一出口，需要先在对应模块暴露查询接口；
 3. **是否要上电自检全亮**：现场安装时确认灯珠好坏有价值，但会让 `LED_Init` 依赖 `delay_init` 的顺序。默认不做，需要时按 §5 开启。
+
+---
+
+## 补充（2026-11-21 上板验证与两处修正）
+
+LED 模块已编进 Keil 工程并在真机跑通。本轮上板发现两处问题，均已修正；§1–§8 的设计结论不变，以下记录差异与原因。
+
+### ① `main.c` 节拍里误写 `LED_Init()`（已修，上板确认）
+
+§3 要求 10ms 节拍里加 `LED_Tick()`，实际工程里写成了 `LED_Init()`。后果：**每 10ms 重新开关 RCC、重配 GPIO，并把 PD11~14 全部拉灭**——四个灯永远不亮。现象是"上板后 LINE 灯不亮"（当时网络其实已进 NORMAL）。已改为：
+
+```c
+DCMOTOR_Tick();         /* then consume: states/delta + run time */
+LED_Tick();             /* mirror direction / online / malfunction */
+```
+
+修正后上板确认：LINE 灯在 `State3->4: NORMAL` 后常亮（设计预期），ERR 灯行为正常。引脚复核结论：LED 的 PD11~14 与 DCMOTOR（PD1/3/4/5）、GATEIO（PD7/PB3/PB4）、LCD（PE3/4/5 + PA0 背光）互不冲突。
+
+### ② 方向灯改用 `DCMOTOR_GetState()`（已修，上板确认）
+
+§2 原实现用 `DCMOTOR_GetDir()` 判断方向灯。上板实测：按 STOP 停机后 **UP 灯不灭**。原因：`GetDir()` 返回 `s_dir`（dcmotor.c:432），语义是"最后一次物理行驶方向"，停机不清零——限位逻辑要靠它（见下）。§2 那条说明（157 行）的判断不成立，方向灯不能用 `s_dir`。
+
+`led.c` 的方向灯分支改为（`LED_Tick()` 内）：
+
+```c
+uint8_t st = DCMOTOR_GetState();    /* requested state: STOP when idle */
+
+if (st == MOTOR_UP)        { LED_PIN_ON(LED_UP_PIN);  LED_PIN_OFF(LED_DN_PIN); }
+else if (st == MOTOR_DOWN) { LED_PIN_ON(LED_DN_PIN);  LED_PIN_OFF(LED_UP_PIN); }
+else                       { LED_PIN_OFF(LED_UP_PIN); LED_PIN_OFF(LED_DN_PIN); }
+```
+
+**`dcmotor.c` 里的 `s_dir` 本身不动**：`DCMOTOR_UpdateLimits()`（135、146 行）清限位锁存要求"限位电平无效 + 电机正往反方向走"，`s_dir` 提供这个方向。若把它停机清零，下次启动时锁存判断会失去依据。
+
+§4 状态映射表同步订正：
+
+| 灯 | 引脚 | 点亮条件（订正后） | 状态来源 |
+|---|---|---|---|
+| UP | PD11 | `DCMOTOR_GetState() == MOTOR_UP` | `dcmotor.h` |
+| DN | PD12 | `DCMOTOR_GetState() == MOTOR_DOWN` | `dcmotor.h` |
+| LINE | PD13 | `gprs_is_ready() != 0`（不变） | `gprs_at.h` |
+| ERR | PD14 | 停机原因 ∈ {堵转, 超时, 联锁}（不变）；将来加 `ADC_IsLinkLost()`，见《ADC重构操作建议.md》补充节 | `dcmotor.h` |
+
+### ③ 上板验证记录（2026-11-21 上午）
+
+| 现象 | 判定 |
+|---|---|
+| 改 `LED_Tick()` 后 LINE 灯在 MQTT NORMAL 后常亮 | 正常（`gprs_is_ready()` 为真即常亮，非心跳闪烁） |
+| ERR 灯上电常亮 | 非本模块问题：`stop_reason` 被上电零点窗口写入 INTERLOCK 后无人复位，根因与修法见《DCMotor重构操作建议.md》§17 |
+| STOP 后 UP 灯不灭 | §2 原实现缺陷，已按上面改用 `GetState()` |
+| 故障后 ERR 锁存到下次启动 | 预期行为（原因只在 UP/DOWN 边沿清成 NONE） |
