@@ -21,6 +21,8 @@ void GPRS_ReplyServicesPush(int code, const char *message, const char *output, u
 /* command handlers */
 void GPRS_SetValue(int value);
 void GPRS_StopGate(void);
+void GPRS_SetUpdateValue(int enable);
+void GPRS_SyncOtaVersion(void);
 
 /* timeSync */
 void GPRS_ClockSync_Start(void);

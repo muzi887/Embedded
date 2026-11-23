@@ -13,6 +13,7 @@
 #include "app_info.h"
 #include "property_report.h"
 #include "gprs_config_param.h"
+#include "eeprom_drv.h"
 
 #define GPRS_CLOCK_MAX_ATTEMPTS     3u
 #define GPRS_CLOCK_TX_TIMEOUT_MS    3000u
@@ -116,6 +117,81 @@ void GPRS_StopGate(void)
     GPRS_ReplyServicesPush(0, "success", "{\"success\": true}", GPRS_RESET_REPLY_TIMEOUT_MS);
 }
 
+/* ---- OTA update gate (UPDATE_flag @ EEPROM 240) ---- */
+#define OTA_UPDATE_FLAG_ADDR   240u   
+#define OTA_UPDATE_FLAG_ON     1u
+#define OTA_UPDATE_FLAG_OFF    0u
+/* ---- command: setUpdateValue 设置升级标志的值---------------------------------------------
+ * platform opens/closes the OTA update gate remotely.
+ * Single-byte EEPROM write (~10ms): write, verify by read-back, then reply,
+ * so a failed write can honestly answer 500 instead of success.            */
+void GPRS_SetUpdateValue(int enable)
+{
+    uint8_t flag = (enable != 0) ? OTA_UPDATE_FLAG_ON : OTA_UPDATE_FLAG_OFF;
+    uint8_t state = DCMOTOR_GetState();
+
+    /* refuse while motor is moving or calibration owns the machine:
+       the update path resets the device right after */
+    if ((state == MOTOR_UP) || (state == MOTOR_DOWN) || DCMOTOR_IsCalibrating())
+    {
+        GPRS_Printf("[OTA] setUpdateValue rejected: motor busy\r\n");
+        GPRS_ReplyServices(409, "motor busy, command rejected", "{}");
+        return;
+    }
+
+    AT24CXX_WriteOneByte(OTA_UPDATE_FLAG_ADDR, flag);
+
+    /* verify by read-back: replying success with a closed gate is worse
+       than refusing -- the platform would schedule an update that never runs */
+    if (AT24CXX_ReadOneByte(OTA_UPDATE_FLAG_ADDR) != flag)
+    {
+        GPRS_Printf("[OTA] update flag write-verify failed\r\n");
+        GPRS_ReplyServices(500, "eeprom verify failed", "{}");
+        return;
+    }
+
+    GPRS_Printf("[OTA] UPDATE_flag set to %u\r\n", (unsigned)flag);
+    GPRS_ReplyServices(0, "success",
+                       (enable != 0) ? "{\"updateFlag\": true}"
+                                     : "{\"updateFlag\": false}");
+}
+
+/* ---- OTA version sync: APP_FW_VERSION -> EEPROM OTA_ver ---- */
+#define OTA_VER_ADDR   204u   /* OTA_ADDR(200) + OTA_OFF_VER(4), u8[32] */
+#define OTA_VER_LEN    32u
+
+void GPRS_SyncOtaVersion(void)
+{
+    uint8_t ee_ver[OTA_VER_LEN];
+    uint8_t fw_len;
+    uint8_t i;
+    uint8_t match;
+
+    fw_len = (uint8_t)strlen(APP_FW_VERSION);
+    if (fw_len >= OTA_VER_LEN)
+        return;                        /* 槽放不下则不改（当前 APP_FW_VERSION 为短串） */
+
+    AT24CXX_Read(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+    match = (strncmp((const char *)ee_ver, APP_FW_VERSION, fw_len) == 0) &&
+            (ee_ver[fw_len] == 0u);
+    if (match)
+        return;                        /* 已一致：不写，省 EEPROM 擦写 */
+
+    for (i = 0u; i < OTA_VER_LEN; i++)
+        ee_ver[i] = (i < fw_len) ? (uint8_t)APP_FW_VERSION[i] : 0u;   /* 版本串 + 0 填满 32B */
+
+    AT24CXX_Write(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+
+    /* verify by read-back */
+    AT24CXX_Read(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+    match = (strncmp((const char *)ee_ver, APP_FW_VERSION, fw_len) == 0) &&
+            (ee_ver[fw_len] == 0u);
+    if (match)
+        GPRS_Printf("[OTA] OTA_ver synced to %s\r\n", APP_FW_VERSION);
+    else
+        GPRS_Printf("[OTA] OTA_ver sync write-verify failed\r\n");
+}
+
 /* ---- parse & dispatch ---- */
 void GPRS_JSON_ParseProcess(void)
 {
@@ -124,7 +200,8 @@ void GPRS_JSON_ParseProcess(void)
   uint16_t json_len;
   cJSON *root;
   const char *err;
-  cJSON *type, *body, *serviceCode, *params, *val;
+  cJSON *type, *body, *params, *val;
+  cJSON *configCode, *serviceCode;   
 
   while (!UartRx_IsEmpty())
   {
@@ -221,7 +298,7 @@ void GPRS_JSON_ParseProcess(void)
             }
             else if (strcmp(serviceCode->valuestring, "getFirmware") == 0)
             {
-                GPRS_ReplyServices(0, "success", "{\"version\": " APP_FW_VERSION "}");
+                GPRS_ReplyServices(0, "success", "{\"version\": \"" APP_FW_VERSION "\"}");
             }
             else if (strcmp(serviceCode->valuestring, "property_get") == 0)
             {
@@ -262,10 +339,34 @@ void GPRS_JSON_ParseProcess(void)
                 else
                     GPRS_ReplyServices(500, "build failed", "{}");
             }
-            /* stage 3/4 add: setUpdateValue */
         }
     }
     /* stage 3 adds: request_reply / property_get / config branches here */
+    
+    /* ---- config channel: thing-model config push. OTA gate flag arrives
+       here as configCode OTAEnableFlagConfig (down/config/push) ---- */
+    if (type && cJSON_IsString(type) && type->valuestring &&
+        strcmp(type->valuestring, "config") == 0)
+    {
+        body = cJSON_GetObjectItem(root, "body");
+        configCode = body ? cJSON_GetObjectItem(body, "configCode") : NULL;
+
+        if (configCode && cJSON_IsString(configCode) && configCode->valuestring &&
+            strcmp(configCode->valuestring, "OTAEnableFlagConfig") == 0)
+        {
+            /* echo configCode in the reply envelope's serviceCode field */
+            strncpy(g_json_service.serviceCode, configCode->valuestring,
+                    sizeof(g_json_service.serviceCode) - 1u);
+
+            params = cJSON_GetObjectItem(body, "params");
+            val = params ? cJSON_GetObjectItem(params, "OTAEnableFlag") : NULL;
+            if (cJSON_IsBool(val))
+                GPRS_SetUpdateValue(cJSON_IsTrue(val) ? 1 : 0);
+            else
+                GPRS_ReplyServices(400, "params.OTAEnableFlag(bool) required", "{}");
+        }
+        /* unknown configCode: ignore silently (same policy as unknown serviceCode) */
+    }
 
     cJSON_Delete(root);   /* ALWAYS free -- valuestring pointers die here */
   }

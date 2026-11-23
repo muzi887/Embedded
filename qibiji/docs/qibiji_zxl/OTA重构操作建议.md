@@ -63,7 +63,7 @@ bootloader 跳转 A1 时只做「设 MSP + 跳复位向量」（总纲 P0-4：�
 | 1 | IROM1 起始 0x0800E000 | **✗ 未满足**：链接在 0x08000000 | `USER/SRTUV10.uvprojx:275` `<StartAddress>0x8000000</StartAddress>`（Size 已是 0x32000）；`USER/QIBIJI.map:1972` `LR_IROM1 (Base: 0x08000000 ... Max: 0x32000)` |
 | 2 | VECT_TAB_OFFSET 0x0E000 | **✗ 未满足**：仍是默认 0x0 | `USER/system_stm32f10x.c:128` `#define VECT_TAB_OFFSET  0x0`；main.c 无其它 VTOR 设置 |
 | 3 | 看门狗 3.18s + 早期喂狗 | ✓ 已满足 | `USER/main.c:73-74`（Init + Feed）、108 行主循环喂 |
-| 4 | UPDATE_flag 写入通道 | **✗ 未迁移** | qibiji_zxl 无 `sbf20.c/sbf20_app.c`（`USER/QIBIJI.map` 与 `rebuild_a1.log` 里的 sbf20 是**历史构建残留**，当前 HARDWARE 下无此文件、未参与链接）；EEPROM OTA 组（200~243）无任何代码访问 |
+| 4 | UPDATE_flag 写入通道 | **✓ 已实现并实测通过（2026-11-23）** | 4G config 通道 `OTAEnableFlagConfig`，gprs_json.c 宏+`GPRS_SetUpdateValue()`+分发分支（坐标见阶段二），真机验证 UPDATE_flag 置 1 成功。历史遗留：`USER/QIBIJI.map` 与 `rebuild_a1.log` 里的 sbf20 为陈旧构建产物，当前 HARDWARE 下无此文件 |
 | 5 | 版本字符串 | 部分 | `USER/app_info.h:4` `APP_FW_VERSION "V1.0.0"`（LCD 显示用，`lcd_pages.c:525`）；与 EEPROM OTA_ver **无联动** |
 
 补充说明（避免误读）：`USER/PWM.map`、`USER/rebuild_a1.log`、`OBJ/PWM.lnp` 中出现的 `sbf20.o/sbf20_app.o` 来自早期某次带 SBF-20 的构建，**对应源文件现已不在工程里**，属陈旧产物，核对时以 `QIBIJI.map`（当前产物）为准。
@@ -72,7 +72,7 @@ bootloader 跳转 A1 时只做「设 MSP + 跳复位向量」（总纲 P0-4：�
 
 ---
 
-## 四、重构操作建议（分三阶段，每阶段一个变化，未动任何代码）
+## 四、重构操作建议（分三阶段，每阶段一个变化；阶段二、阶段三均已落盘并实测通过）
 
 ### 阶段一：地址与向量表（最小改动，2 处，照抄旧工程）
 
@@ -103,35 +103,199 @@ Size 行（276 行 `0x32000`）不动——它正好等于 A1 的 200KB 上限�
 
 **验证**：重编后看 `QIBIJI.map` 的 `LR_IROM1 Base` 应为 0x0800E000；SWD 同时烧 boot + app，上电串口应看到 boot 打印 `jump to a1!` 后进入应用，且应用里 `SCB->VTOR` 读数 = 0x0800E000（可临时 printf 一次验证）。
 
-### 阶段二：UPDATE_flag 写入通道（SBF-20 参数协议迁移）
+#### SWD 烧写配置（F103VET6，实测可用）
 
-bootloader 的升级闸门（UPDATE_flag）目前**没有任何代码能打开**——旧应用里的 SBF-20 参数协议（`sbf20.c` + `sbf20_app.c`，经蓝牙 DX-BT24 / USART3，PD8/PD9 全重映射 9600）带 `ota` 组，可读写 EEPROM 的 OTA_flag / OTA_ver / UPDATE_flag（协议定义见 `qibiji_init/README.md` 的 SBF-20 章与 EEPROM 分配表，产线工具和 `tools/sbf20_cli.ps1` 已实测通过）。
+目标芯片 STM32F103VET6（512K 大容量 Flash，64K RAM），调试器 ST-LINK/V2，SWD 四线（SWDIO=PA13 / SWCLK=PA14 / GND / 3V3）。boot 和 app 两个工程**各自**配好下面三处，然后各点一次 Download（IROM1 起始不同，互不覆盖对方地盘）：
 
-之前迁移盘点把 sbf20 归为"设计上放弃"，是基于业务功能视角；**从 OTA 闭环看它是 UPDATE_flag 的现成开闸通道**，需要重新决策。两个方案：
+1. **Options → Debug**：Use 选 `ST-LINK Debugger` → Settings → Port 选 **SW**（不是 JTAG），应能读到 IDCODE（Cortex-M3 为 `0x1BA01477`）。Connect=Normal / Reset=Autodetect 即可；
+2. **Options → Debug → Settings → Flash Download**：Download Function 选 **Erase Sectors**（绝不能 Erase Full Chip，否则会把另一块分区一起擦掉）+ Program + Verify；
+3. **Flash Download 的 Programming Algorithm**：选 `STM32F10x High-density Flash`（512K，0x08000000~0x0807FFFF，与 VET6 匹配）；**RAM for Algorithm 必须为 `Start: 0x20000000 / Size: 0x5000`**——VET6 有 64K RAM，这个算法需要 20KB 运行内存，给小了（如 0x1000）会报 `Flash Download failed - Cortex-M3`。
 
-- **方案 A（推荐）**：从旧工程迁移 `HARDWARE/USART/sbf20.c`、`sbf20_app.c`、`usart3.c` 三件套，协议与上位机已验证，改动是纯搬运 + 接到新工程的 reg/eeprom 模块；
-- **方案 B**：不开近场通道，改为在现有 4G JSON 下行指令里加一条"写 UPDATE_flag"的 op。不用加 USART3，但需要服务端协议配合，且绕过了产线工具已有的验证成果。
+烧写成功的标志：Build Output 依次出现 `Erase: OK / Program: OK / Verify: OK`。先烧 boot（0x08000000）再烧 app（0x0800E000），顺序无强制但缺一不可。
 
-#### 阶段二补充：方案 B 的实现路径（`setUpdateValue` 走 4G 下行，2026-11-21 增补）
+### 阶段二：UPDATE_flag 写入通道（4G 下行，与原工程同方案）
 
-方案 B 落在 `qibiji_zxl/HARDWARE/GPRS/gprs_json.c` 的 serviceCode 分发段（201-220 行），与《远程下发重构操作建议.md》阶段三对应。四个要点：
+bootloader 的升级闸门（UPDATE_flag）目前**没有任何代码能打开**——无变更前 OTA 只能靠产线把 UPDATE_flag 预置为 1 出厂（qibiji_init 固件默认值就是 1），**每台设备只会自动升级一次**，之后闸门关闭、再也升不了。
 
-1. **分发分支**：仿照 212-218 行 `ReSet` 的"应答先行 + 动作延后"模式——写 EEPROM 耗时，先 `GPRS_ReplyServicesPush(0, "success", "{\"updateFlag\": true}", ...)`，再延迟执行写入；
-2. **标志必须落 EEPROM，不能存 RAM**：目标地址是 **EEPROM 240**（UPDATE_flag，与 bootloader `OtaCloseUpdateGate()` 同一地址，见本文 §二④）。驱动用 `AT24CXX_WriteOneByte()` / `AT24CXX_ReadOneByte()`（`HARDWARE/EEPROM/eeprom_drv.h:23-24`）；
-3. **写后读回确认**：写入后必须回读一次，值不符时改应答 500 并打调试输出——"回了 success 但闸没开"比不开闸更危险（平台会误判升级已排期）；
-4. **写入前置检查**：仿照 `GPRS_SetValue()` 的校准中拒绝（gprs_json.c:92-96）——电机运行中/校准中不宜触发升级流程，应答 409 拒绝。
+**选定方案：UPDATE_flag 走 4G 下行远程开闸（2026-11-23 定）。** 按本工程物模型设计，OTA 使能开关归属**配置（config）通道**；写入动作本身沿用原工程已验证的链路逻辑——`qibiji/HARDWARE/GPRS/gprs_JSON.c:1257` 的 `reply_cjson_update()`：收到开/关指令 → 置 UPDATE_flag → 写 EEPROM（`AT24CXX_Write(OTA_BYTE_ADDR, ...)`）→ 写后读回确认 → 应答上行。qibiji_zxl 不迁蓝牙 sbf20 通道，仿照此逻辑实现 config 通道的 `OTAEnableFlagConfig` 处理即可。
 
-方案 B 的验证补充到本文 §五：平台下发 `setUpdateValue` → 应答 0 → SWD 或产线工具读 EEPROM 240 确认为 1 → 复位后 boot 打印 `OTA is running!` 进入升级状态机。
+#### 实现路径与完整代码（config 通道 `OTAEnableFlagConfig`）
 
-> 两个方案**二选一**，不叠加。若选 B，服务端需先确认下发指令的 serviceCode 命名与参数结构（列入总纲 §8 的待确认清单）。
+落在 `qibiji_zxl/HARDWARE/GPRS/gprs_json.c`，共五处改动（C90、ASCII 注释，与工程现状一致）。与《远程下发重构操作建议.md》阶段三对应。要点：
 
-无变更前，OTA 只能靠产线把 UPDATE_flag 预置为 1 出厂（qibiji_init 固件默认值就是 1），**每台设备只会自动升级一次**，之后闸门关闭、再也升不了——这是阶段二要解决的本质问题。
+1. **写入量只有 1 字节**（UPDATE_flag @ EEPROM 240，约 10ms），可在同一拍内完成"写 → 读回确认 → 应答"，无需像 `ReSet` 那样应答先行、延迟动作——这样读回失败才能如实回 500。若以后改成整块写 OTA 组（44B）再考虑应答先行；
+2. **标志必须落 EEPROM，不能存 RAM**：EEPROM 240 与 bootloader `OtaCloseUpdateGate()` 同址（见本文 §二④）；
+3. **写后读回确认**：读回不符时改应答 500——"回了 success 但闸没开"比不开闸更危险（平台会误判升级已排期）；
+4. **前置检查**：电机运行中/校准中拒绝（409），升级流程随即复位，不宜带着运动状态进。
+
+**① 宏 + 命令函数**（✓ 已落盘：gprs_json.c 宏 120-123 行、`GPRS_SetUpdateValue()` 129-158 行，位于 `GPRS_StopGate()` 之后）：
+
+```c
+/* ---- OTA update gate (UPDATE_flag @ EEPROM 240) ---- */
+#define OTA_UPDATE_FLAG_ADDR   240u    /* same byte as boot OtaCloseUpdateGate() */
+#define OTA_UPDATE_FLAG_ON     1u
+#define OTA_UPDATE_FLAG_OFF    0u
+
+/* ---- command: setUpdateValue ---------------------------------------------
+ * platform opens/closes the OTA update gate remotely.
+ * Reference: old app reply_cjson_update() (qibiji/HARDWARE/GPRS/gprs_JSON.c:1257).
+ * Single-byte EEPROM write (~10ms): write, verify by read-back, then reply,
+ * so a failed write can honestly answer 500 instead of success.            */
+void GPRS_SetUpdateValue(int enable)
+{
+    uint8_t flag = (enable != 0) ? OTA_UPDATE_FLAG_ON : OTA_UPDATE_FLAG_OFF;
+    uint8_t state = DCMOTOR_GetState();
+
+    /* refuse while motor is moving or calibration owns the machine:
+       the update path resets the device right after */
+    if ((state == MOTOR_UP) || (state == MOTOR_DOWN) || DCMOTOR_IsCalibrating())
+    {
+        GPRS_Printf("[OTA] setUpdateValue rejected: motor busy\r\n");
+        GPRS_ReplyServices(409, "motor busy, command rejected", "{}");
+        return;
+    }
+
+    AT24CXX_WriteOneByte(OTA_UPDATE_FLAG_ADDR, flag);
+
+    /* verify by read-back: replying success with a closed gate is worse
+       than refusing -- the platform would schedule an update that never runs */
+    if (AT24CXX_ReadOneByte(OTA_UPDATE_FLAG_ADDR) != flag)
+    {
+        GPRS_Printf("[OTA] update flag write-verify failed\r\n");
+        GPRS_ReplyServices(500, "eeprom verify failed", "{}");
+        return;
+    }
+
+    GPRS_Printf("[OTA] UPDATE_flag set to %u\r\n", (unsigned)flag);
+    GPRS_ReplyServices(0, "success",
+                       (enable != 0) ? "{\"updateFlag\": true}"
+                                     : "{\"updateFlag\": false}");
+}
+```
+
+**② 头文件声明**（✓ 已落盘：gprs_json.h:24）：
+
+```c
+void GPRS_SetUpdateValue(int enable);
+```
+
+**③ include**（✓ 已落盘：gprs_json.c:16）：
+
+```c
+#include "eeprom_drv.h"   /* AT24CXX_WriteOneByte / ReadOneByte */
+```
+
+**OTA 开闸在物模型里归属配置（config）通道**——物模型同时设计了服务（service invoke）与配置（config push）两条下行通道：服务承载动作类指令（setValue/stopGate 等），配置承载参数与开关类下发，OTA 使能开关属于后者。平台实际格式（2026-11-23 真机日志实测确认）：
+
+- 类型：`type:"config"`，投到订阅主题 2 `down/config/push`；
+- 指令名：`body.configCode = "OTAEnableFlagConfig"`（配置通道用 configCode，服务通道才用 serviceCode）；
+- 参数：`body.params.OTAEnableFlag`（bool）。
+
+```json
+{"id":"...","productKey":"pk001","deviceKey":"dev001","type":"config",
+ "body":{"configCode":"OTAEnableFlagConfig","configVersion":"1.3","params":{"OTAEnableFlag":true}}}
+```
+
+该帧能通过 `GPRS_ValidateServerJson()`（只查 id/type/pk/dk 信封）。当前分发只有 `type=="service"` 入口，config 帧会被静默丢弃、不应答（真机日志：10:01:00 收到该帧后无回包，平台超时）——所以要在 service 分发段**并列**加一个 config 分支。
+
+**④ 函数头部声明区**（✓ 已落盘：gprs_json.c:204，与 serviceCode 合并成一条声明；原 124 行文件级全局已删）：
+
+```c
+  cJSON *configCode, *serviceCode;   /* config push: thing-model configCode */
+```
+
+**⑤ 分发分支**（✓ 已落盘：gprs_json.c 345-369 行——与 `type=="service"` 的 if 并列、`cJSON_Delete(root)` 统一出口之前；声明区落盘后行号已下移）：
+
+```c
+    /* ---- config channel: thing-model config push. OTA gate flag arrives
+       here as configCode OTAEnableFlagConfig (down/config/push) ---- */
+    if (type && cJSON_IsString(type) && type->valuestring &&
+        strcmp(type->valuestring, "config") == 0)
+    {
+        body = cJSON_GetObjectItem(root, "body");
+        configCode = body ? cJSON_GetObjectItem(body, "configCode") : NULL;
+
+        if (configCode && cJSON_IsString(configCode) && configCode->valuestring &&
+            strcmp(configCode->valuestring, "OTAEnableFlagConfig") == 0)
+        {
+            /* echo configCode in the reply envelope's serviceCode field */
+            strncpy(g_json_service.serviceCode, configCode->valuestring,
+                    sizeof(g_json_service.serviceCode) - 1u);
+
+            params = cJSON_GetObjectItem(body, "params");
+            val = params ? cJSON_GetObjectItem(params, "OTAEnableFlag") : NULL;
+            if (cJSON_IsBool(val))
+                GPRS_SetUpdateValue(cJSON_IsTrue(val) ? 1 : 0);
+            else
+                GPRS_ReplyServices(400, "params.OTAEnableFlag(bool) required", "{}");
+        }
+        /* unknown configCode: ignore silently (same policy as unknown serviceCode) */
+    }
+```
+
+> 下发格式（实测确认，总纲 §8 该项可勾）：`type:"config"` / `configCode:"OTAEnableFlagConfig"` / `params.OTAEnableFlag`（bool），帧内另带 `configVersion`（实测 "1.3"，设备不校验）。
+> **应答格式已实测确认（2026-11-23）**：回现有 `service_reply`（topic 6 `up/service/reply`）平台接受并判定成功，无需专门的 config 确认格式。
+> 实测细节：应答 `serviceCode` 被 16 字节缓冲截断为 `"OTAEnableFlagCo"`，平台未拒绝；若日后平台强校验完整 configCode，需调整回包字段来源。
+
+验证见本文 §五：平台下发 OTAEnableFlagConfig → 应答 0 → SWD 或产线工具读 EEPROM 240 确认为 1 → 复位后 boot 打印 `OTA is running!` 进入升级状态机。
 
 ### 阶段三：版本号联动（可选，改动很小）
 
 现状两个版本来源互不相干：`APP_FW_VERSION`（app_info.h，LCD 显示）与 EEPROM `OTA_ver`（bootloader 上报给平台的）。若不同步，平台看到的版本和设备实际固件会对不上，升级判据（strcmp 比较 EEPROM 版本与服务端 version）随之失真。
 
-建议策略：应用启动早期（EEPROM 可用后）比较 `APP_FW_VERSION` 与 EEPROM OTA_ver，不一致时把 OTA_ver 写成 APP_FW_VERSION（一次 32B 槽写入，走 `AT24CXX` 驱动）。这样 boot 的 putVersion 上报值永远与 A1 实际固件一致，LCD 显示与上报也天然统一。
+策略：应用启动早期（EEPROM 自检通过后）比较两者，不一致时把 OTA_ver 写成 APP_FW_VERSION。boot 的 putVersion 上报值（flag=A1 时）随之永远与 A1 实际固件一致。
+
+**① 同步函数**（gprs_json.c，插在 `GPRS_SetUpdateValue()` 结束的 158 行 `}` 与 160 行 `/* ---- parse & dispatch ---- */` 之间）：
+
+```c
+/* ---- OTA version sync: APP_FW_VERSION -> EEPROM OTA_ver ---- */
+#define OTA_VER_ADDR   204u   /* OTA_ADDR(200) + OTA_OFF_VER(4), u8[32] */
+#define OTA_VER_LEN    32u
+
+void GPRS_SyncOtaVersion(void)
+{
+    uint8_t ee_ver[OTA_VER_LEN];
+    uint8_t fw_len;
+    uint8_t i;
+    uint8_t match;
+
+    fw_len = (uint8_t)strlen(APP_FW_VERSION);
+    if (fw_len >= OTA_VER_LEN)
+        return;                        /* 槽放不下则不改（当前 APP_FW_VERSION 为短串） */
+
+    AT24CXX_Read(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+    match = (strncmp((const char *)ee_ver, APP_FW_VERSION, fw_len) == 0) &&
+            (ee_ver[fw_len] == 0u);
+    if (match)
+        return;                        /* 已一致：不写，省 EEPROM 擦写 */
+
+    for (i = 0u; i < OTA_VER_LEN; i++)
+        ee_ver[i] = (i < fw_len) ? (uint8_t)APP_FW_VERSION[i] : 0u;   /* 版本串 + 0 填满 32B */
+
+    AT24CXX_Write(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+
+    /* verify by read-back */
+    AT24CXX_Read(OTA_VER_ADDR, ee_ver, OTA_VER_LEN);
+    match = (strncmp((const char *)ee_ver, APP_FW_VERSION, fw_len) == 0) &&
+            (ee_ver[fw_len] == 0u);
+    if (match)
+        GPRS_Printf("[OTA] OTA_ver synced to %s\r\n", APP_FW_VERSION);
+    else
+        GPRS_Printf("[OTA] OTA_ver sync write-verify failed\r\n");
+}
+```
+
+**② 头文件声明**（gprs_json.h，24 行 `GPRS_SetUpdateValue` 声明的下一行）：
+
+```c
+void GPRS_SyncOtaVersion(void);
+```
+
+**③ 调用点**（main.c，92 行 `GprsCfg_Init();` 之后加一行）：
+
+```c
+GPRS_SyncOtaVersion();   /* APP_FW_VERSION 同步到 EEPROM OTA_ver（boot putVersion 上报用） */
+```
 
 ---
 
@@ -139,7 +303,9 @@ bootloader 的升级闸门（UPDATE_flag）目前**没有任何代码能打开**
 
 1. **阶段一验证**：map 的 LR_IROM1 Base = 0x0800E000；boot + app 双镜像烧写后上电 `jump to a1!` → 应用正常运行；VTOR 读数正确；断电重启正常。
 2. **看门狗接管验证**：UPDATE_flag=1 进 OTA 路径 → 中途放弃/失败跳回 A1 → 应用不被 3.18s 内复位（阶段一的跳转场景下必测，因为此时 IWDG 已在跑）。
-3. **SBF-20 开闸验证**（阶段二后）：`tools/sbf20_cli.ps1 -Action write -OtaUpdateflag 1` → 读回确认 → 重启后 boot 走 OTA 状态机（打印 `OTA is running!`）。
+3. **4G 开闸验证**（阶段二后）：平台经 **config 通道**下发 `OTAEnableFlagConfig`（`params.OTAEnableFlag=true`）→ 应答 0 且读回 EEPROM 240 确认为 1 → 重启后 boot 走 OTA 状态机（打印 `OTA is running!`）。
+   - **状态（2026-11-23）**：✅ **全链路已实测通过**——阶段三版本联动首启 `[OTA] OTA_ver synced to V1.0.0`，重启后 boot 打印 `OTA_ver = V1.0.0,a1a1a1a1,255`（版本号持久化 + A1 魔数 + UPDATE_flag 空白值 0xFF）；阶段二开闸 14:06 真机实测：收到 config 帧后 `[OTA] UPDATE_flag set to 1`，`service_reply`（output `updateFlag:true`）上行，平台判定成功。此前"回包格式是否被平台接受"的待确认项关闭。
+   - **开闸后重启端到端确认（14:0x）**：重启后 boot 读到 UPDATE_flag=1，LCD 进入 OTA 状态机文案（"在线升级 → 连接成功 → 申请最新固件中"，即 ota_step1/step2），putVersion 上报 EEPROM 版本等待服务器比对——开闸链路端到端生效。两个已知行为：① boot 在线判断只靠 LINKA 边沿中断（P1-7），上电时模块已在线无跳变会等约 40s 超时再跳 A1；② 无升级/放弃升级**不关闸**（防弱网复位循环的设计），UPDATE_flag 保持 1，之后每次上电都重走 OTA 流程——需要关闭时平台下发 `OTAEnableFlagConfig=false`（写 0），或等一次真实升级成功后 boot 自动置 0。
 4. **OTA 全链路**：boot putVersion → 服务端判定升级 → 分包下载 A2 → 复位搬运 A2→A1（`loading progarm file A1`）→ 进新固件 → EEPROM OTA_flag 回 A1、UPDATE_flag 已被自动置 0。
 5. **回滚保护验证**：升级中途断电 → 再次上电 boot 应能自愈或重试（总纲 §10.1 的护栏 + 重试限流已实现），不会变砖。
 

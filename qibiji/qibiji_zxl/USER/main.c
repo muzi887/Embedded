@@ -19,6 +19,7 @@
 #include "gprs_config_store.h"
 #include "wdg.h"
 #include "led.h"
+#include "gprs_config_param.h"
 
 /* 调试观察用：最后一次被分发出去的键码，调试器里可直接查看 */
 volatile key_code_t g_last_key = KEY_NONE;
@@ -88,6 +89,8 @@ int main(void)
 	DCMOTOR_Init();                    										/* decision layer: relays off, state reset */
 	AT24CXX_Init();
 	AT24CXX_Check();             			 										/* 真空白 EEPROM 时播种闸门默认值 */
+	GprsCfg_Init();   																		/* 从 EEPROM 恢复远程参数并生效（stallMa/reportCycleMs/railLow） */
+	GPRS_SyncOtaVersion();   															/* APP_FW_VERSION 同步到 EEPROM OTA_ver（boot putVersion 上报用） */
 	dcmotor_param_load();        			 										/* EEPROM → g_gate_maxturns / g_motor_warning_curr_upper */
 	gprs_config_load();           												/* MQTT 凭据 → RAM（EEPROM 有效则用，否则用编译期宏） */
 	DCMOTOR_SetMaxTurns(g_gate_maxturns);           			/* run calibration or measure */
