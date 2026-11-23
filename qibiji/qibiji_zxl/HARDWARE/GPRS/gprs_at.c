@@ -16,15 +16,15 @@
 #define ST_AT_BACKOFF   6u  /* long backoff after max retries */  /* long backoff after max retries */
 
 /*==================== State machine timing ====================*/
-#define AT_MAX_RETRY          3u                      /* AT init rounds before backoff */       /* AT init rounds before backoff */
-#define AT_RETRY_MS           10000u                  /* delay between AT rounds */             /* delay between AT rounds */
-#define AT_BACKOFF_MS         (30UL * 60UL * 1000UL)  /* 30 min backoff */                      /* 30 min backoff */
-#define CSQ_PERIOD_MS         (10UL * 60UL * 1000UL)  /* periodic CSQ period in NORMAL */       /* periodic CSQ period in NORMAL */
+#define AT_MAX_RETRY          3u                      /* AT init rounds before backoff */     
+#define AT_RETRY_MS           10000u                  /* delay between AT rounds */          
+#define AT_BACKOFF_MS         (30UL * 60UL * 1000UL)  /* 30 min backoff */                   
+#define CSQ_PERIOD_MS         (10UL * 60UL * 1000UL)  /* periodic CSQ period in NORMAL */      
 #define OFFLINE_PROBE_MS      5000u                   /* 离线时主动探询模块的周期 */
-#define LINK_DOWN_DEBOUNCE_MS 2000u                   /* LINKA low this long = down */          /* LINKA low this long = down */
-#define LINK_UP_DEBOUNCE_MS   500u                    /* LINKA high this long = up */           /* LINKA high this long = up */
-#define OFFLINE_HARD_RESET_MS 60000u                  /* offline this long -> hard reset 4G */  /* offline this long -> hard reset 4G */
-#define RESET_MIN_INTERVAL_MS (5UL * 60UL * 1000UL)   /* min gap between hard resets */         /* min gap between hard resets */
+#define LINK_DOWN_DEBOUNCE_MS 2000u                   /* LINKA low this long = down */          
+#define LINK_UP_DEBOUNCE_MS   500u                    /* LINKA high this long = up */         
+#define OFFLINE_HARD_RESET_MS 60000u                  /* offline this long -> hard reset 4G */  
+#define RESET_MIN_INTERVAL_MS (5UL * 60UL * 1000UL)   /* min gap between hard resets */       
 
 /*==================== Public link / AT result flags ====================*/
 volatile uint8_t g_atflag_online = 0u;
@@ -33,15 +33,16 @@ volatile uint8_t g_at_flag_mqttcid = 0u;
 volatile uint8_t g_at_flag_csq = 0u;
 
 /*==================== State machine runtime state ====================*/
-static uint8_t  s_state = ST_OFFLINE;
-static uint8_t  s_offline_entry = 1u;
-static uint8_t  s_link_down_occurred = 0u;
-static uint8_t  s_retry_cnt = 0u;
-static uint32_t s_fail_tick = 0u;
-static uint32_t s_backoff_tick = 0u;
-static uint32_t s_csq_tick = 0u;
-static int8_t   s_rssi = -1;                    /* -1 = 还没测到有效值 */
-static char     s_iccid[21];                    /* 20 位数字 + '\0'    */
+static uint8_t  s_state = ST_OFFLINE;             /* 状态机当前状态（离线/探活/退避/正常） */
+static uint8_t  s_offline_entry = 1u;             /* 刚进 OFFLINE 的第一轮标志，只做一次入状态动作 */
+static uint8_t  s_link_down_occurred = 0u;        /* 本次在线期间发生过掉线沿；作放行条件之一，进 NORMAL 后清零 */
+static uint8_t  s_retry_cnt = 0u;                 /* 探活连续失败次数，攒满 AT_MAX_RETRY 转退避 */
+static uint32_t s_fail_tick = 0u;                 /* 上次探活失败时刻，隔 AT_RETRY_MS 才发起下一次重试 */
+static uint32_t s_backoff_tick = 0u;              /* 进入退避的时刻，退避满 AT_BACKOFF_MS 才重新探活 */
+static uint32_t s_csq_tick = 0u;                  /* 上次信号测量的时刻，每 CSQ_PERIOD_MS(10分钟) 测一次 */
+static int8_t   s_rssi = -1;                      /* 信号强度 dBm 原始值；-1 = 还没测到有效值，99(未知)不覆盖 */
+static char     s_iccid[21];                      /* SIM 卡 ICCID：20 位数字 + '\0' */
+
 
 /*==================== ST_NORMAL 一次性 MQTT 配置诊断 ====================*/
 #define DIAG_NORM_WAIT_MS      500u             /* 进 NORMAL 后等多久开始诊断（必须在 timeSync 之前跑） */
@@ -69,10 +70,10 @@ static const diag_cmd_t s_diag_cmds[7] = {
 };
 
 /*==================== LINKA debounce state ====================*/
-static uint8_t  s_link_state = 0u;
-static uint8_t  s_link_raw_prev = 0u;
-static uint32_t s_link_change_tick = 0u;
-static uint32_t s_offline_since = 0u;
+static uint8_t  s_link_state = 0u;        /* 去抖后的链路状态：1=在线(LINKA持续高)，0=离线(持续低) */
+static uint8_t  s_link_raw_prev = 0u;     /* 上一轮读到的 LINKA 原始电平，用于检测电平变化沿 */
+static uint32_t s_link_change_tick = 0u;  /* 电平最近一次跳变的时刻，从此刻起持续够久才算真变 */
+static uint32_t s_offline_since = 0u;     /* 确认掉线的时刻，算「已离线多久、该不该硬复位」用 */
 
 /**
  * @brief Record the 4G module boot banner as seen on UART.
@@ -287,6 +288,9 @@ void GPRS_AT_StateMachine(void)
                         (unsigned)s_link_state, (unsigned)g_atflag_online,
                         (unsigned)s_link_down_occurred);
         }
+        /* 热重启：模块未断电仍在线、无 banner；LINKA 去抖为高即视为链路有效 */
+        if(s_link_state)
+            s_link_down_occurred = 1u;
         s_offline_probe();   /* 不等 LINKA：先把模块的真实回包抓出来 */
         if (s_link_state && (g_atflag_online || s_link_down_occurred))
         {
@@ -297,6 +301,7 @@ void GPRS_AT_StateMachine(void)
             UartTx_Queue_Init();
             break;
         }
+        /* 设备离线够久（60 秒自愈期已过），且距上次硬复位够久（5 分钟节流），硬复位 4G 模块。 */
         if (((uint32_t)(g_sys_ms - s_offline_since) >= OFFLINE_HARD_RESET_MS) &&
             GPRS_4G_ResetAllowed(RESET_MIN_INTERVAL_MS))
         {

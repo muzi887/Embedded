@@ -19,6 +19,7 @@
 #define PROP_REPORT_MIN_INTERVAL_MS 1000u
 #define PROP_SNAPSHOT_BUF_SIZE 256u
 
+void PropertyReport_SetMinIntervalMs(uint16_t ms);
 void PropertyReport_SetPending(void);  /* called when opening changes (motor layer) */
 void PropertyReport_Process(void);     /* main loop */
 void PropertyReport_Force(void);       /* force report, e.g. on motor stop */

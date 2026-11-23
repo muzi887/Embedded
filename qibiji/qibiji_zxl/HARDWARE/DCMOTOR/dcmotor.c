@@ -4,6 +4,7 @@
 #include "delay.h"
 #include "property_report.h" 
 #include "event_pub.h"
+#include "debug_uart.h"
 
 /* ===========================================================================
  * DC motor implementation
@@ -239,9 +240,20 @@ uint8_t DCMOTOR_IsCalibrated(void) { return (s_max_turns != 0u) ? 1u : 0u; }
 void DCMOTOR_Request(uint8_t state)
 {
     /* refuse to drive into an already-tripped limit (same as the original
-     * keycheck's "FLAG_OPENALL != 1 / FLAG_CLOSEALL != 1" guard). */
-    if ((state == MOTOR_UP)   && (s_at_open  != 0u)) return;
-    if ((state == MOTOR_DOWN) && (s_at_close != 0u)) return;
+     * keycheck's "FLAG_OPENALL != 1 / FLAG_CLOSEALL != 1" guard).
+     * The refusal is silent at the LCD/key layer, so log it here: without
+     * this, "limit protection engaged" and "key not registered" look
+     * identical on the bench. */
+    if ((state == MOTOR_UP) && (s_at_open != 0u))
+    {
+        DEBUG_UART_SendString("[MOTOR] UP refused: at open limit\r\n");
+        return;
+    }
+    if ((state == MOTOR_DOWN) && (s_at_close != 0u))
+    {
+        DEBUG_UART_SendString("[MOTOR] DOWN refused: at close limit\r\n");
+        return;
+    }
 
     if ((state == MOTOR_UP) || (state == MOTOR_DOWN) || (state == MOTOR_STOP))
     {
@@ -298,11 +310,12 @@ void DCMOTOR_Process(void)
     if (ADC_CurrentIsReady() == 0u)
     {
         s_state = MOTOR_STOP;
-        s_old = MOTOR_STOP;      /* sync old: no phantom stop event on ready */
         
         /* only a forced stop out of a running state is a fault */
         if ((s_old == MOTOR_UP) || (s_old == MOTOR_DOWN))
             s_stop_reason = MOTOR_STOP_INTERLOCK;
+        s_old = MOTOR_STOP;      /* sync old: no phantom stop event on ready */
+
         if (s_cal_active != 0u)
             s_CalFinish(CAL_RESULT_FAIL);
         

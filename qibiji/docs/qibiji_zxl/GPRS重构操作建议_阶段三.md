@@ -480,7 +480,7 @@ uint8_t EventPostMotorStall(uint16_t motor_current_ma)
 
 上面"只点明，不铺开"的触发点接线**已经完成并上板验证通过**：
 
-- 调用位置（`qibiji_zxl/HARDWARE/DCMOTOR/dcmotor.c`）：366 行 `EventPostSimple(EVT_MOTOR_START_UP)`、373 行 `EventPostSimple(EVT_MOTOR_START_DOWN)`、390 行 `EventPostMotorStop(s_MapStopReason(...), s_opening)`、392 行 `EventPostMotorStall(s_stall_ma)`；
+- 调用位置（`qibiji_zxl/HARDWARE/DCMOTOR/dcmotor.c`，2026-11-21 晚复核行号）：388 行 `EventPostSimple(EVT_MOTOR_START_UP)`、395 行 `EventPostSimple(EVT_MOTOR_START_DOWN)`、412 行 `EventPostMotorStop(s_MapStopReason(...), s_opening)`、414 行 `EventPostMotorStall(s_stall_ma)`；
 - 7.1 的前置条件均已满足：`event_pub.c` 已 Add 进 Keil 工程（`event_pub.o` 存在）、`#include "event_pub.h"` 已加；
 - 原工程 `event_motor_up_posted` 等去重标志**不需要**：新工程 `if (s_old != s_state)` 本身就是边沿触发；
 - 旧工程 `switch.c:194/221` 的限位事件原本就是注释掉的，未补（维持决策）。

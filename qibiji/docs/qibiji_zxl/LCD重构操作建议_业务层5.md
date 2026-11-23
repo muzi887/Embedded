@@ -564,6 +564,8 @@ static void s_OpPageDrawAll(void)
 
 ### 4.8 分发与刷新
 
+> **落盘状态（2026-11-21 复核）**：`s_DrawPage()` 入口已按本节调 `s_OpPageClearBlocks()`（lcd_pages.c 578 行）——上一轮曾漏掉此调用，现已补上。反白残留的跨页风险解除。
+
 ```c
 static void s_DrawPage(page_id_t page)
 {

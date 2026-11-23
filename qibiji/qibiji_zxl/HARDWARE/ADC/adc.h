@@ -25,6 +25,8 @@
 
 /* Default stall threshold in mA (matches the original project's 3500 mA). */
 #define ADC_STALL_MA_DEFAULT  3500u
+#define ADC_RAIL_LOW           2u    /* <= this  = open wire ：电压几乎 0V */
+#define ADC_RAIL_HIGH          4090u /* >= this  = short / over-range ）：电压几乎满量程 3.3V  */
 
 void     ADC1_Init(void);
 void     ADC_Tick(void);                    /* call once per 10 ms system tick */
@@ -35,6 +37,7 @@ uint16_t ADC_GetSampleMa(void);             /* latest 20 ms sample, mA */
 uint16_t ADC_GetSolarMv(void);              /* solar voltage, mV */
 uint16_t ADC_GetBatMv(void);                /* battery voltage, mV */
 uint8_t  ADC_PopStall(void);                /* consume stall flag: 1 once, then 0 */
+void     ADC_SetRailLow(uint16_t v);
 void     ADC_SetStallThresholdMa(uint16_t ma);
 /* 电流零点跟踪的抑制标志,标定零点只能在电机停着的时候做 */
 void     ADC_SetMotorRunning(uint8_t running);  /* freeze zero tracking while running */

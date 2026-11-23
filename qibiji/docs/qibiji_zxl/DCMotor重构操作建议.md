@@ -1638,27 +1638,28 @@ PD1~PD6 都在 GPIOD，但分属三个不同职责。**这张表是边界的全�
 
 **订正（该方案有缺陷，待替换）**：这个标志不是无害的幂等写——它一旦置 1，就**解锁**了对 `s_stop_reason` 的改写权。此后静止期任何一拍 ADC not-ready 都会把正确的停机原因（MANUAL / LIMIT_OPEN / LIMIT_CLOSE）覆盖成 INTERLOCK；且 `s_MapStopReason()` 的 default 分支把 INTERLOCK 映射成 `STOP_REASON_UNKNOWN`，云端连"这是联锁"都看不出。
 
-**推荐替代（未落盘）**：判据改为"这一拍之前电机是否在运行"——`s_old` 是上一拍**实际执行**的状态（`s_state` 只是请求态，可能刚被 Request 设置而边沿未执行）：
+**替代方案已落盘，顺序 bug 已修复（2026-11-21 晚复核）**。判据按"这一拍之前电机是否在运行"实现——`s_old` 是上一拍**实际执行**的状态（`s_state` 只是请求态，可能刚被 Request 设置而边沿未执行）；`s_adc_zero_seen` 已全部删除。当前代码（`dcmotor.c` 310–317 行）判断在赋值**之前**，正确：
 
 ```c
 if (ADC_CurrentIsReady() == 0u)
 {
-    /* only a forced stop out of a running state is a fault */
-    if ((s_old == MOTOR_UP) || (s_old == MOTOR_DOWN))
-        s_stop_reason = MOTOR_STOP_INTERLOCK;
-
     s_state = MOTOR_STOP;
-    s_old = MOTOR_STOP;      /* 必须在读 s_old 之后赋值 */
+
+    /* only a forced stop out of a running state is a fault */
+    if ((s_old == MOTOR_UP) || (s_old == MOTOR_DOWN))   /* 315 行：先读 */
+        s_stop_reason = MOTOR_STOP_INTERLOCK;
+    s_old = MOTOR_STOP;                                 /* 317 行：后赋值 */
     ...
-    return;
 }
 ```
 
-静止时 `s_old == MOTOR_STOP`，此分支反复执行也不碰 reason；上电窗口内 `s_old` 由 Init 设为 STOP，同样安全。替换时删除 `s_adc_zero_seen` 的三处痕迹（45 行声明、201 行清零、311 行置 1）。注意：当前 `adc.c` 的 `s_ready` 从不清零，此分支实际只在 320ms 窗口命中——要让它有真实触发路径，需配合《ADC重构操作建议.md》补充节的掉线检测。
+（落盘过程中曾出现判断被放到 `s_old = MOTOR_STOP;` 之后的顺序错误——恒读 STOP、INTERLOCK 永不写入——当晚已修正为上面的顺序。此坑值得记住：**读判据变量必须在对它赋值之前**。）
+
+静止时 `s_old == MOTOR_STOP`，此分支反复执行也不碰 reason；上电窗口内 `s_old` 由 Init 设为 STOP，同样安全。注意：当前 `adc.c` 的 `s_ready` 本身从不清零，此分支的真实触发路径依赖《ADC重构操作建议.md》§12 掉线检测（`ADC_CurrentIsReady()` 已改为同时检查 `s_dma_dead` / `s_sensor_open`）。
 
 ### 17.2 30 秒超时停机（`reason:6`）与 30s 预算
 
-上板时间线：10:41:38.982 按 UP 启动 → 10:42:09.017 收到 `motor.stop, reason:6`，间隔 **30.035s**，正好命中 `MAX_RUN_MS_DEFAULT 30000u`（421 行超时保护）。`reason:6 = STOP_REASON_EMERGENCY_STOP`，即 `MOTOR_STOP_TIMEOUT` 的映射（285 行）。用户的 STOP 按键晚了 0.3 秒，电机已停、无边沿，不再发事件——正常。
+上板时间线：10:41:38.982 按 UP 启动 → 10:42:09.017 收到 `motor.stop, reason:6`，间隔 **30.035s**，正好命中 `MAX_RUN_MS_DEFAULT 30000u`（441 行超时保护）。`reason:6 = STOP_REASON_EMERGENCY_STOP`，即 `MOTOR_STOP_TIMEOUT` 的映射（297 行）。用户的 STOP 按键晚了 0.3 秒，电机已停、无边沿，不再发事件——正常。
 
 待办：限位接好后**实测全行程时间**，把 `s_max_run_ms` 调成实测 × 1.5 左右（接口 `DCMOTOR_SetMaxRunMs()` 已有），或做成 EEPROM 参数与 `maxturns` 同存。
 
@@ -1673,14 +1674,22 @@ if (ADC_CurrentIsReady() == 0u)
 
 ### 17.4 event_pub 上板验证（通过）
 
-`dcmotor.c` 已接入事件发布（366/373 行启动边沿、390 行停机边沿、392 行堵转），`event_pub.o` 已编进工程。上板日志确认两条链路都通：
+`dcmotor.c` 已接入事件发布（388 行 `EVT_MOTOR_START_UP`、395 行 `EVT_MOTOR_START_DOWN`、412 行 `EventPostMotorStop`、414 行 `EventPostMotorStall`），`event_pub.o` 已编进工程。上板日志确认两条链路都通：
 
 ```
 send json-->4,{...,"eventCode":"motor.start.up","output":{}}
 send json-->4,{...,"eventCode":"motor.stop","output":{"reason":6,"opening":0}}
 ```
 
-`TOPIC_EVENT_PUB=4`、`gprs_is_ready()` 与 `DCMOTOR_IsCalibrating()` 双闸工作正常。注意：`DCMOTOR_Request()` 被限位拒绝时是**静默 return**（243/244 行），现场表现为"按了没反应"，建议在两处拦截分支加 `DEBUG_UART_SendString` 提示，避免与按键故障混淆（未落盘，待用户确认）。
+`TOPIC_EVENT_PUB=4`、`gprs_is_ready()` 与 `DCMOTOR_IsCalibrating()` 双闸工作正常。限位拦截的调试输出**已落盘**（`DCMOTOR_Request()` 247–256 行，`debug_uart.h` 在第 7 行 include）：UP/DOWN 被限位拒绝时串口打出 `[MOTOR] UP/DOWN refused: at open/close limit`，"限位保护"和"按键没反应"在串口上可区分。17:42 段日志的 DOWN 无事件即此场景（闸门在全关位）。
+
+### 17.5 4G 热重启必卡死：hard reset 三连（2026-11-21 晚，待查根因）
+
+当天四次上电：09:49 首次上电 banner→link 仅 11s，未触发硬复位；之后 16:47 / 17:23 / 17:39 三次热重启**全部**卡满 53–54s 的 `offline long` 窗口 → 硬复位 → 复位后 19–20s 连上。100% 复现，指向系统性根因而非偶发：
+
+- **假设 1：服务器残留半开会话/拒绝重复 clientID**——查 broker 在复位恢复窗口（如 17:40:46–17:41:05）的 connect/disconnect/reject 日志，与 09:49 成功连接对比。
+- **假设 2：模块在 LTE 注册未完成时发起 MQTT 连接且失败后不重试**——旁证：复位后瞬时 `CSQ: 99,99`（未注册瞬态）几秒后恢复。
+- 两个假设分别对应"改服务器配置"和"改连接时序"（如开启模块 MQTT 自动重连），53s 阈值本身不用动——硬复位兜底是对的。详见当日日志分析。
 
 ---
 

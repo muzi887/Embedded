@@ -1,4 +1,5 @@
 #include "adc.h"
+#include "gprs_config.h"    /* GPRS_Printf, temporary debug */
 
 /* ===========================================================================
  * ADC current-sense 电流感测 implementation
@@ -24,8 +25,6 @@
 /* ---- link-loss detection 掉线检测 ---- */
 #define ADC_LINK_STATIC_SLOTS  25u   /* 25 x 20ms = 500ms CNDTR frozen  */
 #define ADC_LINK_RAIL_SLOTS    50u   /* 50 x 20ms = 1s raw stuck at rail */
-#define ADC_RAIL_LOW           2u    /* <= this  = open wire ：电压几乎 0V */
-#define ADC_RAIL_HIGH          4090u /* >= this  = short / over-range ）：电压几乎满量程 3.3V  */
 
 volatile uint16_t g_adc_buf[ADC_SAMPLE_COUNT][ADC_CHANNEL_COUNT];
 
@@ -55,6 +54,7 @@ static uint8_t  s_sensor_open;   /* self-clearing when raw comes back 自恢复 
 static uint8_t  s_stall_flag;
 static uint8_t  s_stall_cnt;
 static uint16_t s_stall_threshold;
+static uint16_t s_rail_low = ADC_RAIL_LOW;
 static uint8_t  s_slot_cnt;           /* counts 20ms slots for slow path */
 static uint8_t  s_motor_running;      /* set by motor module, freezes zero track */
 
@@ -188,7 +188,7 @@ static void ADC_LinkCheck(uint16_t raw)
 
     /* 2) open wire or shorted sensor parks the input at a rail.
      *    This one is recoverable: a sane reading clears both counters. */
-    if ((raw <= ADC_RAIL_LOW) || (raw >= ADC_RAIL_HIGH))
+    if ((raw <= s_rail_low) || (raw >= ADC_RAIL_HIGH))
     {
         if (s_rail_cnt < 0xFFu)
             s_rail_cnt++;
@@ -222,7 +222,10 @@ static void ADC_SampleSlot(void)
         {
             s_zero_avg = (uint16_t)((s_zero_sum + ZERO_SAMPLE_COUNT / 2u) /
                                     ZERO_SAMPLE_COUNT);
-            s_ready = 1u;
+            GPRS_Printf("[ADC] zero_avg=%u (%umV)\r\n",
+                        (unsigned)s_zero_avg,
+                        (unsigned)((u32)s_zero_avg * 3300u / 4095u));
+            s_ready = 1u;          
             s_last_run_ms = s_ms;
             s_last_track_ms = s_ms;
             /* discard zero-period zeros so they do not bias the window */
@@ -342,5 +345,6 @@ uint8_t ADC_PopStall(void)
     return v;
 }
 
+void ADC_SetRailLow(uint16_t v) { s_rail_low = v; }
 void ADC_SetStallThresholdMa(uint16_t ma) { s_stall_threshold = ma; }
 void ADC_SetMotorRunning(uint8_t running) { s_motor_running = running; }

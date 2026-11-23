@@ -10,6 +10,9 @@
 #include "gprs_rtc.h"
 #include "net_liveness.h"
 #include "uart_queue.h"
+#include "app_info.h"
+#include "property_report.h"
+#include "gprs_config_param.h"
 
 #define GPRS_CLOCK_MAX_ATTEMPTS     3u
 #define GPRS_CLOCK_TX_TIMEOUT_MS    3000u
@@ -216,7 +219,50 @@ void GPRS_JSON_ParseProcess(void)
                                         GPRS_RESET_REPLY_TIMEOUT_MS);
                 GPRS_Reset_Request();
             }
-            /* stage 3/4 add: getFirmware / setUpdateValue / getConfig / property_get */
+            else if (strcmp(serviceCode->valuestring, "getFirmware") == 0)
+            {
+                GPRS_ReplyServices(0, "success", "{\"version\": " APP_FW_VERSION "}");
+            }
+            else if (strcmp(serviceCode->valuestring, "property_get") == 0)
+            {
+                char snap[UART_TX_JSON_LEN];
+                if (PropertyReport_BuildSnapshot(snap, sizeof(snap)) != 0u)
+                    GPRS_ReplyServices(0, "success", snap);
+                else
+                    GPRS_ReplyServices(500, "snapshot failed", "{}");
+            }
+            else if (strcmp(serviceCode->valuestring, "setConfig") == 0)
+            {
+                cJSON *kid;
+                uint8_t rc;
+
+                params = cJSON_GetObjectItem(body, "params");
+                kid = params ? params->child : NULL;   /* body.params 下允许多个键值对，逐个处理 */
+                while (kid != NULL)
+                {
+                    if (cJSON_IsNumber(kid) && (kid->string != NULL))
+                    {
+                        rc = GprsCfg_Set(kid->string, (int)cJSON_GetNumberValue(kid));
+                        if (rc != GPRS_CFG_OK)
+                        {
+                            GPRS_Printf("s->c setConfig %s failed (%u)\r\n", kid->string, (unsigned)rc);
+                            GPRS_ReplyServices(400, "setConfig rejected", "{}");
+                            break;    /* 任一失败整体拒绝；落到统一出口释放 cJSON 树 */
+                        }
+                    }
+                    kid = kid->next;
+                }
+                /* 循环没被 break（全部成功，或 params 为空）→ 补成功应答 */
+                if (kid == NULL)
+                    GPRS_ReplyServices(0, "success", "{}");
+            }else if (strcmp(serviceCode->valuestring, "getConfig") == 0)
+            {
+                if (GprsCfg_BuildAllJson(s_json_buf, sizeof(s_json_buf)) != 0u)
+                    GPRS_ReplyServices(0, "success", s_json_buf);
+                else
+                    GPRS_ReplyServices(500, "build failed", "{}");
+            }
+            /* stage 3/4 add: setUpdateValue */
         }
     }
     /* stage 3 adds: request_reply / property_get / config branches here */

@@ -293,7 +293,7 @@ else                       { LED_PIN_OFF(LED_UP_PIN); LED_PIN_OFF(LED_DN_PIN); }
 | UP | PD11 | `DCMOTOR_GetState() == MOTOR_UP` | `dcmotor.h` |
 | DN | PD12 | `DCMOTOR_GetState() == MOTOR_DOWN` | `dcmotor.h` |
 | LINE | PD13 | `gprs_is_ready() != 0`（不变） | `gprs_at.h` |
-| ERR | PD14 | 停机原因 ∈ {堵转, 超时, 联锁}（不变）；将来加 `ADC_IsLinkLost()`，见《ADC重构操作建议.md》补充节 | `dcmotor.h` |
+| ERR | PD14 | `ADC_IsLinkLost()` 或 停机原因 ∈ {堵转, 超时, 联锁}（已并入链路直连，见下 ④） | `adc.h` / `dcmotor.h` |
 
 ### ③ 上板验证记录（2026-11-21 上午）
 
@@ -303,3 +303,19 @@ else                       { LED_PIN_OFF(LED_UP_PIN); LED_PIN_OFF(LED_DN_PIN); }
 | ERR 灯上电常亮 | 非本模块问题：`stop_reason` 被上电零点窗口写入 INTERLOCK 后无人复位，根因与修法见《DCMotor重构操作建议.md》§17 |
 | STOP 后 UP 灯不灭 | §2 原实现缺陷，已按上面改用 `GetState()` |
 | 故障后 ERR 锁存到下次启动 | 预期行为（原因只在 UP/DOWN 边沿清成 NONE） |
+
+### ④ ERR 灯并入 ADC 链路直连（已落盘，2026-11-21）
+
+`led.c` 两处改动已进文件：4 行 `#include "adc.h"`；`LED_Tick()` 末段故障判断由原来的 reason 三态改为**四条件或**：
+
+```c
+if ((ADC_IsLinkLost() != 0u) ||
+    (DCMOTOR_GetLastStopReason() == MOTOR_STOP_STALL) ||
+    (DCMOTOR_GetLastStopReason() == MOTOR_STOP_TIMEOUT) ||
+    (DCMOTOR_GetLastStopReason() == MOTOR_STOP_INTERLOCK))
+    LED_PIN_ON(LED_ERR_PIN);
+else
+    LED_PIN_OFF(LED_ERR_PIN);
+```
+
+两条独立通道点亮同一个灯：**链路直连**（`ADC_IsLinkLost()`，静止期链路挂掉不会产生 stop_reason，没有这条就漏报）+ **停机原因**（堵转/超时/联锁，锁存到下次启动）。到位停止（LIMIT_OPEN/CLOSE）是正常动作，不点灯。配套的 `ADC_IsLinkLost()` 声明在 `adc.h` 33 行。方案出处：《ADC重构操作建议.md》§12.5。

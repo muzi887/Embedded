@@ -9,11 +9,13 @@
 #include "net_liveness.h"   
 #include "gprs_rtc.h"
 
+#define PROP_FORCE_DEBOUNCE_MS 300u
+
 static uint8_t  s_pending = 0u;
 static uint16_t s_last_opening = 0xFFFFu;
 static uint32_t s_last_change_tick = 0u;
 static uint32_t s_last_force_tick = 0u;
-#define PROP_FORCE_DEBOUNCE_MS 300u
+static uint32_t s_min_interval_ms = PROP_REPORT_MIN_INTERVAL_MS;
 
 /* build the body field string (no outer braces) */
 uint8_t PropertyReport_BuildSnapshot(char *buf, uint32_t buf_size)
@@ -77,7 +79,7 @@ void PropertyReport_OnOpeningChange(void)
     if (s_last_opening == 0xFFFFu) { s_last_opening = curr; return; }
     diff = (curr >= s_last_opening) ? (curr - s_last_opening) : (s_last_opening - curr);
     if (diff < PROP_OPENING_THRESHOLD) return;
-    if ((uint32_t)(g_sys_ms - s_last_change_tick) < PROP_REPORT_MIN_INTERVAL_MS) return;
+    if ((uint32_t)(g_sys_ms - s_last_change_tick) < s_min_interval_ms) return;
     {
         char para[PROP_SNAPSHOT_BUF_SIZE];
         if (PropertyReport_BuildSnapshot(para, sizeof(para)))
@@ -88,6 +90,8 @@ void PropertyReport_OnOpeningChange(void)
         }
     }
 }
+
+void PropertyReport_SetMinIntervalMs(uint16_t ms) { s_min_interval_ms = (uint32_t)ms; }
 
 void PropertyReport_SetPending(void) { s_pending = 1u; }
 

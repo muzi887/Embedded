@@ -575,6 +575,7 @@ static void s_OpPageDrawAll(void)
 /* ---- 分发 ---- */
 static void s_DrawPage(page_id_t page)
 {
+    s_OpPageClearBlocks();   
     switch (page)
     {
     case PAGE_SET:

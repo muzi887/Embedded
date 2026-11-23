@@ -399,6 +399,11 @@
               <FileType>5</FileType>
               <FilePath>.\main.h</FilePath>
             </File>
+            <File>
+              <FileName>app_info.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\app_info.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -783,6 +788,16 @@
               <FileName>led.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\LED\led.h</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_config_param.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_config_param.c</FilePath>
+            </File>
+            <File>
+              <FileName>gprs_config_param.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\GPRS\gprs_config_param.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -15,7 +15,7 @@ uint8_t GPRS_4G_ResetAllowed(uint32_t min_interval_ms)
     return (elapsed >= min_interval_ms) ? 1u : 0u;
 }
 
-void GPRS_4G_Init(void) 
+static void GPRS_4G_GpioInit(void) 
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     EXTI_InitTypeDef EXTI_InitStructure;
@@ -23,7 +23,7 @@ void GPRS_4G_Init(void)
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE); 
 
-    /* PC4 / PC5: LINKA / LINKB, input pull-down */
+    /* PC5 / PC4: LINKA / LINKB, input pull-down */
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5; 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -48,14 +48,28 @@ void GPRS_4G_Init(void)
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3u;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-
-    /* power-on reset pulse (not counted in the throttle timeline) */
-    GPRS_RST_ON();
-    delay_ms(500);
-    GPRS_RST_OFF();
-    WDG_Feed();                  /* 上电复位脉冲 500ms */
 }
 
+void GPRS_4G_Init(void)
+{
+    GPRS_4G_GpioInit();
+
+    /* 模块由独立 +3.8V 供电，MCU 热重启时模块可能仍在线、MQTT 会话健在。
+       此时拉复位会杀掉好会话，之后要等 ~50s 陈旧会话过期才能重连。
+       只在 LINKA 为低（模块确实未连接）时才发上电复位脉冲。 */
+    GPRS_RST_OFF();
+    delay_ms(10);
+    if(GPRS_LINKA == 0)
+    {
+        /* power-on reset pulse (not counted in the throttle timeline) */
+        GPRS_RST_ON();
+        delay_ms(500);
+        GPRS_RST_OFF();
+        WDG_Feed();                  /* 上电复位脉冲 500ms */
+    }
+}
+
+/* 热重启 4G 模块 */
 void GPRS_4G_Reset(void)
 {
     /* all recovery paths share this timeline; blocking ~1s, runs in main loop */
@@ -64,8 +78,8 @@ void GPRS_4G_Reset(void)
     GPRS_RST_ON();
     delay_ms(1000);
     GPRS_RST_OFF();
-    WDG_Feed();                  /* 运行期复位 1s */
-    GPRS_4G_Init();              /* 内部 500ms 脉冲后已喂狗 */
+    WDG_Feed();                      /* 运行期复位 1s */
+    GPRS_4G_GpioInit();              /* 不再调用 Init，避免第二段 500ms 脉冲 */        
 }
 
 void EXTI9_5_IRQHandler(void)
