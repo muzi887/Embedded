@@ -1,4 +1,4 @@
-# 工程骨架重构（迁移顺序阶段 1）
+# LED 重构（迁移顺序阶段 1：工程骨架）
 
 > 对应《模块迁移顺序.md》阶段 1。目标：在 `qibiji_bootloader` 搭起最小可运行工程——
 > 启动文件 + 固件库 + SysTick 延时 + LED 模块 + 调试串口（printf）+ 最小 main，编译烧写后能看到 LED 闪烁、串口周期输出。
@@ -248,7 +248,7 @@ int main(void)
 | 编译标准 | 与原工程相同（C90 默认） | `main.c`、`led.c`、`usart1.c` 里变量声明已在块首，C90 下可编译 |
 | 分组 | CORE / FWLib / SYSTEM / HARDWARE / USER | **HARDWARE 组本阶段只加 `led.c`、`usart1.c`**；FWLib 组只勾 rcc、gpio、usart、misc 四个 .c |
 
-注意三点：boot 从 0x08000000 运行，向量表偏移保持默认 0，**不需要**设置 `VECT_TAB_OFFSET`（那是 A1 应用才需要的）；`stm32f10x_conf.h` 若未放开 `#include "stm32f10x_usart.h"`，需勾上（原工程 conf.h 已包含，原样拷贝即可）；每个 .c/.h 文件末尾保留一个换行（最后一行是 `#endif` 或 `}` 后回车），否则编译报 `#1-D: last line of file ends without a newline` 告警。
+注意三点：boot 从 0x08000000 运行，向量表偏移保持默认 0，**不需要**设置 `VECT_TAB_OFFSET`（那是 A1 应用才需要的）；`stm32f10x_conf.h` 若未放开 `#include "stm32f10x_usart.h"`，需勾上（原工程 conf.h 已包含，原样拷贝即可）；每个 .c/.h 文件末尾保留一个换行（最后一行是 `#endif` 或 `}` 后回车），否则编译报 `#1-D: last line of file ends without a newline` 告警——末行换行是 C 标准的硬性要求，缺了它预处理器做 `#include` 文本嵌入时，头文件最后一行可能与主文件后续代码拼成同一行（如吞掉 `#endif` 之后的语句），产生不知所云的报错。
 
 ## 6. 验证清单（全部通过才算本阶段完成）
 
