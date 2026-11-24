@@ -238,6 +238,7 @@ u8   AT24CXX_Check(void);                                           /* 上电自
 ```c
 #include "24cxx.h"
 #include "delay.h"      /* delay_ms：每次字节写后等内部写周期完成 */
+#include <stddef.h>     /* NULL：Write/Read 入参判空用（原文件靠 stdio.h 顺带带进来，裁掉后必须显式引入） */
 
 /* 初始化：24CXX 自身无寄存器可配，实际工作全在 IIC_Init */
 void AT24CXX_Init(void)
@@ -443,7 +444,7 @@ int main(void)
     u8 i;               /* 字节循环计数 */
     u8 save_byte;       /* 单字节测试地址的原值 */
     u8 chk;             /* AT24CXX_Check 返回值 */
-    u8 err;             /* 定长比对不一致计数 */
+    u8 err_cnt;         /* 定长比对不一致计数 */
     u32 blink_cnt = 0;  /* 心跳计数：watch 窗口看它递增确认主循环在跑，printf 里同步输出 */
 
     delay_init();
@@ -472,14 +473,14 @@ int main(void)
     /* 验证 3：定长写读比对（同样先存原值） */
     AT24CXX_Read(TEST_ADDR_LEN, s_save_buf, TEST_LEN);      /* 存原值 */
     for (i = 0; i < TEST_LEN; i++) s_wbuf[i] = (u8)(i * 3 + 1);     /* 预填测试图案 */
-    err = 0;
+    err_cnt = 0;
     if (AT24CXX_Write(TEST_ADDR_LEN, s_wbuf, TEST_LEN) == AT24CXX_OK)
     {
         AT24CXX_Read(TEST_ADDR_LEN, s_rbuf, TEST_LEN);
         for (i = 0; i < TEST_LEN; i++)
-            if (s_rbuf[i] != s_wbuf[i]) err++;
-        if (err == 0) printf("len test PASS (%u bytes)\r\n", (unsigned int)TEST_LEN);
-        else          printf("len test FAIL: err=%u\r\n", (unsigned int)err);
+            if (s_rbuf[i] != s_wbuf[i]) err_cnt++;
+        if (err_cnt == 0) printf("len test PASS (%u bytes)\r\n", (unsigned int)TEST_LEN);
+        else          printf("len test FAIL: err_cnt=%u\r\n", (unsigned int)err_cnt);
     }
     else
         printf("len test FAIL: write error\r\n");
@@ -527,7 +528,7 @@ int main(void)
 | `Eeprom_Wpara` | 24cxx.h:42 | **只有声明没有实现**（qibiji 主工程的函数，boot 工程从未实现） |
 | `IIC_Write_One_Byte / IIC_Read_One_Byte` | myiic.h:24-25 | 只有声明没有实现 |
 | `AT24CXX_TIMEOUT` 宏 | 24cxx.h:18 | 无任何函数返回过该值；其取值 2 由新契约的 `AT24CXX_FRESH` 接替 |
-| `#include "reg.h"`、`<stdio.h>`、`<string.h>` | 24cxx.c:3-5 | reg.h 依赖随播种上移而消失；stdio/string 在文件内未使用 |
+| `#include "reg.h"`、`<stdio.h>`、`<string.h>` | 24cxx.c:3-5 | reg.h 依赖随播种上移而消失；stdio/string 在文件内未使用，但 stdio.h 原本顺带提供了 NULL，裁掉后补 `<stddef.h>` 显式引入 |
 
 **跨阶段边界（阶段 6 必须执行的联动）**：
 

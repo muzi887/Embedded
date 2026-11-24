@@ -336,7 +336,7 @@
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER
 </Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART</IncludePath>
+              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -719,6 +719,21 @@
               <FileName>usart1.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\USART\usart1.c</FilePath>
+            </File>
+            <File>
+              <FileName>flash_layout.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\STMFLASH\flash_layout.h</FilePath>
+            </File>
+            <File>
+              <FileName>stmflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\STMFLASH\stmflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>stmflash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\STMFLASH\stmflash.h</FilePath>
             </File>
           </Files>
         </Group>

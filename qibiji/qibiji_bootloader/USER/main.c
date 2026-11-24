@@ -5,18 +5,23 @@
 #include "usart.h"
 #include "stmflash.h"
 #include "flash_layout.h"
+#include "24cxx.h"
 
-/* 两页验证缓冲放 static：合计 4KB，远超默认栈容量，不能作局部数组 */
-static u16 s_wbuf[ST32_PAGE_SIZE / 2];      /* 待写页：预填测试图案 */
-static u16 s_rbuf[ST32_PAGE_SIZE / 2];      /* 读回页：与待写页逐半字比对 */
+#define TEST_ADDR_BYTE  16      /* 单字节测试地址（APP 参数区内） */
+#define TEST_ADDR_LEN   24      /* 定长测试起始地址（连续 8 字节，仍在 APP 参数区内） */
+#define TEST_LEN        8       /* 定长测试的字节数 */
+
+static u8 s_save_buf[TEST_LEN];             /* 测试区原值暂存：跑完恢复，不留痕 */
+static u8 s_wbuf[TEST_LEN];         /* 待写测试图案 */
+static u8 s_rbuf[TEST_LEN];         /* 读回数据 */
 
 int main(void)
 {
   
   u32 i;               /* 页内半字循环计数 */
   u32 err_cnt;         /* 比对不一致的半字个数，0 = 通过 */
-  u16 a1_before;       /* 验证前 A1 区首半字快照：证明写 A2 没波及 A1 */
-  u16 a1_after;        /* 验证后 A1 区首半字快照 */
+  u8 save_byte;        /* 单字节测试地址的原值 */
+  u8 chk;              /* AT24CXX_Check 返回值 */
   u32 blink_cnt = 0;   /* 心跳计数：watch 窗口看它递增确认主循环在跑，printf 里同步输出 */
 
   delay_init();          /* SysTick 延时初始化（按 72MHz 系统时钟配节拍） */
@@ -25,31 +30,38 @@ int main(void)
   LED_Init();            /* 四路 LED 引脚初始化（上电全亮，led.c 内部基准态） */
   LED_CLOSE();           /* 全部熄灭，建立干净基准 */
 
-  /* 预填测试图案 */
-  for (i = 0; i < (ST32_PAGE_SIZE / 2); i++)
-  {
-    s_wbuf[i] = (u16)(i * 2 + 1);
-  }
+  AT24CXX_Init();     /* I²C 引脚就绪 */
 
-  a1_before = Flash_ReadHalfWord(ST32_A1_SADDR);      /* 记录验证前 A1 首半字 */
-  printf("flash test start: write A2 page0 @0x%08X\r\n", (unsigned int)ST32_A2_SADDR);
+  /* 验证 1：上电自检与标志管理 */
+  chk = AT24CXX_Check();
+  if (chk == AT24CXX_OK)          printf("check: OK (marker present)\r\n");
+  else if (chk == AT24CXX_FRESH)  printf("check: FRESH (marker written, seeding is REG's job)\r\n");
+  else                            printf("check: FAIL (eeprom not responding)\r\n");
 
-  Flash_Write(ST32_A2_SADDR, s_wbuf, ST32_PAGE_SIZE / 2);     /* 写满一页到 A2 第 0 页：页内含旧数据，走"擦除+重写"路径 */
-  Flash_Read(ST32_A2_SADDR, s_rbuf, ST32_PAGE_SIZE / 2);      /* 读回整页 */
+  /* 验证 2：单字节写读比对（先存原值，跑完恢复） */
+  save_byte = AT24CXX_ReadOneByte(TEST_ADDR_BYTE);
+  if (AT24CXX_WriteOneByte(TEST_ADDR_BYTE, 0xA5) == AT24CXX_OK
+      && AT24CXX_ReadOneByte(TEST_ADDR_BYTE) == 0xA5)
+      printf("byte test PASS\r\n");
+  else
+      printf("byte test FAIL\r\n");
+  AT24CXX_WriteOneByte(TEST_ADDR_BYTE, save_byte);                /* 恢复原值 */
 
+  /* 验证 3：定长写读比对（同样先存原值） */
+  AT24CXX_Read(TEST_ADDR_LEN, s_save_buf, TEST_LEN);              /* 存原值 */
+  for (i = 0; i < TEST_LEN; i++) s_wbuf[i] = (u8)(i * 3 + 1);     /* 预填测试图案 */
   err_cnt = 0;
-  for (i = 0; i < (ST32_PAGE_SIZE / 2); i++)
+  if (AT24CXX_Write(TEST_ADDR_LEN, s_wbuf, TEST_LEN) == AT24CXX_OK)
   {
-      if (s_rbuf[i] != s_wbuf[i])
-      {
-          err_cnt++;                              /* 记录不一致个数，不中断，一次看全 */
-          if (err_cnt <= 8) printf("  diff @%u: want=%04X got=%04X\r\n", (unsigned int)i, (unsigned int)s_wbuf[i], (unsigned int)s_rbuf[i]);
-      }
+      AT24CXX_Read(TEST_ADDR_LEN, s_rbuf, TEST_LEN);
+      for (i = 0; i < TEST_LEN; i++)
+          if (s_rbuf[i] != s_wbuf[i]) err_cnt++;
+      if (err_cnt == 0) printf("len test PASS (%u bytes)\r\n", (unsigned int)TEST_LEN);
+      else          printf("len test FAIL: err_cnt=%u\r\n", (unsigned int)err_cnt);
   }
-  a1_after = Flash_ReadHalfWord(ST32_A1_SADDR);       /* 记录验证后 A1 首半字 */
-
-  if (err_cnt == 0 && a1_before == a1_after) printf("flash test PASS (A1 untouched)\r\n");
-  else printf("flash test FAIL: err=%u, a1 %04X -> %04X\r\n", (unsigned int)err_cnt, (unsigned int)a1_before, (unsigned int)a1_after);
+  else
+      printf("len test FAIL: write err_cntor\r\n");
+  AT24CXX_Write(TEST_ADDR_LEN, s_save_buf, TEST_LEN);             /* 恢复原值 */
 
 
   while (1)
