@@ -336,7 +336,7 @@
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER
 </Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG</IncludePath>
+              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG;..\HARDWARE\4G</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -764,6 +764,21 @@
               <FileName>reg.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\REG\reg.h</FilePath>
+            </File>
+            <File>
+              <FileName>usart2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\USART\usart2.c</FilePath>
+            </File>
+            <File>
+              <FileName>4G.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\4G\4G.c</FilePath>
+            </File>
+            <File>
+              <FileName>4G.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\4G\4G.h</FilePath>
             </File>
           </Files>
         </Group>

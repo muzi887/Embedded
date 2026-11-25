@@ -1,7 +1,9 @@
 # STMFLASH 与分区布局重构（阶段 4）
 
 > 来源：`qibiji_boot/HARDWARE/STMFLASH/stmflash.c/.h` + `qibiji_boot/HARDWARE/BOOT/boot.h` 中的分区宏。
-> 本阶段逻辑等价（不修任何缺陷），只做：模块重排、改名、注释按现行规范全部新写。
+> 本阶段逻辑等价，**唯一例外**：跨页写地址推进的单位缺陷已定案修正（`WriteAddr += secremain` →
+> `+= secremain * 2`，见 §4 与 §8——2026-11-25 审计升级为阶段 10 前置必修项）。
+> 其余只做：模块重排、改名、注释按现行规范全部新写。
 > 分区宏按《模块迁移顺序.md》§3 从 boot.h 迁出，落到独立的 `flash_layout.h`。
 
 ## 1. 本阶段产出清单
@@ -179,7 +181,10 @@ void Flash_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
             secpos++;                           /* 页号 +1 */
             secoff = 0;                         /* 下一页从页首开始 */
             pBuffer += secremain;               /* 源指针滑过已写的半字数 */
-            WriteAddr += secremain;             /* 保持原工程写法原样保留：secremain 是半字数，此处按半字数递增地址，与按字节推进的常规写法存在单位差异——本阶段逻辑等价不做修正，缺陷整改阶段统一处理（见 §8） */
+            WriteAddr += secremain * 2;         /* 地址按字节推进：本轮写了 secremain 个半字 =
+                                                   secremain*2 字节（2026-11-25 定案修正——
+                                                   原工程写 `+= secremain`，把半字数当字节数推进，
+                                                   跨页写时后续页落在错误地址，见 §8 定案记录） */
             NumToWrite -= secremain;            /* 剩余请求长度同步扣减 */
             if (NumToWrite > (STM_SECTOR_SIZE / 2)) secremain = STM_SECTOR_SIZE / 2;    /* 剩余仍超过一页：下一轮写满整页 */
             else secremain = NumToWrite;        /* 剩余不足一页：下一轮写完收尾 */
@@ -204,9 +209,12 @@ void Flash_Read(u32 ReadAddr, u16 *pBuffer, u16 NumToRead)
 
 ## 5. 本阶段验证 main.c（替换阶段 1 的 main，全文）
 
-验证目标只有一个：**往 A2 区第 0 页写一页、读回、逐半字比对**——同时证明读、写（含擦除路径）、
-分区地址三条链路都活。写的是 A2 暂存区，不碰 B 区和 A1 区。
-缓冲必须 static：验证用了两页共 4KB，默认启动文件的栈只有 1KB，放局部数组会溢栈。
+验证目标两个：**① 往 A2 区第 0 页写一页、读回、逐半字比对**——同时证明读、写（含擦除路径）、
+分区地址三条链路都活；**② 跨页写**：从页中间起写 4KB（跨两个页边界、循环走三轮），
+专验 `Flash_Write` 的多页推进——这正是原工程单位缺陷的病灶（§8 定案记录），下载固件必踩。
+写的是 A2 暂存区，不碰 B/A1 区。
+缓冲必须 static：验证合计用到 10KB（两页 2×1KB + 跨页 2×4KB），默认启动文件的栈只有 1KB，
+放局部数组会溢栈。
 
 ```c
 #include "stm32f10x.h"
@@ -217,9 +225,11 @@ void Flash_Read(u32 ReadAddr, u16 *pBuffer, u16 NumToRead)
 #include "stmflash.h"
 #include "flash_layout.h"
 
-/* 两页验证缓冲放 static：合计 4KB，远超默认栈容量，不能作局部数组 */
-static u16 s_wbuf[ST32_PAGE_SIZE / 2];      /* 待写页：预填测试图案 */
-static u16 s_rbuf[ST32_PAGE_SIZE / 2];      /* 读回页：与待写页逐半字比对 */
+/* 验证缓冲放 static：合计 10KB，远超默认栈容量，不能作局部数组 */
+static u16 s_wbuf[ST32_PAGE_SIZE / 2];      /* 待写页：预填测试图案（单页测试用） */
+static u16 s_rbuf[ST32_PAGE_SIZE / 2];      /* 读回页：与待写页逐半字比对（单页测试用） */
+static u16 s_wbuf2[ST32_PAGE_SIZE];         /* 跨页测试待写缓冲：4KB = 2048 半字 */
+static u16 s_rbuf2[ST32_PAGE_SIZE];         /* 跨页测试读回缓冲 */
 
 int main(void)
 {
@@ -261,6 +271,33 @@ int main(void)
     if (err_cnt == 0 && a1_before == a1_after) printf("flash test PASS (A1 untouched)\r\n");
     else printf("flash test FAIL: err=%u, a1 %04X -> %04X\r\n", (unsigned int)err_cnt, (unsigned int)a1_before, (unsigned int)a1_after);
 
+    /* ── 测试 ②：跨页写（§8 定案的缺陷专测）──
+     * 从 A2 第 0 页中间（字节偏移 1024）起写 2048 个半字 = 4KB：
+     * 首轮只覆盖本页剩余 512 半字，随后两次跨过页 1、页 2 边界——
+     * Flash_Write 内部循环走三轮，每轮的地址推进都被真实验证。
+     * 若仍是原工程的半字推进，第 2 轮起地址落后于实际写入位置，
+     * 读回比对会出现整段错位。 */
+    for (i = 0; i < ST32_PAGE_SIZE; i++)
+    {
+        s_wbuf2[i] = (u16)(0xC000 + i);         /* 第二种图案：与测试 ① 区分 */
+    }
+    printf("flash cross-page test: 4KB from A2+0x400\r\n");
+    Flash_Write(ST32_A2_SADDR + ST32_PAGE_SIZE / 2, s_wbuf2, ST32_PAGE_SIZE);
+    Flash_Read(ST32_A2_SADDR + ST32_PAGE_SIZE / 2, s_rbuf2, ST32_PAGE_SIZE);
+
+    err_cnt = 0;
+    for (i = 0; i < ST32_PAGE_SIZE; i++)
+    {
+        if (s_rbuf2[i] != s_wbuf2[i])
+        {
+            err_cnt++;
+            if (err_cnt <= 8) printf("  cross diff @%u: want=%04X got=%04X\r\n", (unsigned int)i, (unsigned int)s_wbuf2[i], (unsigned int)s_rbuf2[i]);
+        }
+    }
+
+    if (err_cnt == 0) printf("flash cross-page PASS\r\n");
+    else printf("flash cross-page FAIL: err=%u\r\n", (unsigned int)err_cnt);
+
     while (1)
     {
         delay_ms(500);                          /* 半秒节拍 */
@@ -271,7 +308,7 @@ int main(void)
 }
 ```
 
-注意：这个测试会**清掉 A2 第 0 页上的任何旧内容**（包括以前 OTA 下载留在那的镜像）。
+注意：这个测试会**清掉 A2 第 0~2 页上的任何旧内容**（包括以前 OTA 下载留在那的镜像）。
 本阶段这是预期行为；到阶段 11 做 BOOT 验证前，重新下载一次固件即可，无需特殊处理。
 
 ## 6. Keil 配置要点
@@ -288,9 +325,11 @@ int main(void)
 
 1. 编译 0 Error（`flash_layout_check` 断言随编译一起验证：分区规则有任何一条不成立，这一步就编不过）；
 2. 串口收到 `flash test start ...`，随后 **`flash test PASS (A1 untouched)`**；
-3. 若报 FAIL：先看 diff 打印的地址偏移是否有规律（偏移整体错位 → 长度/地址参数问题；随机散布 → 硬件）；
-4. PD14 心跳灯持续闪烁、`blink_cnt` 递增（验证循环仍活着）；
-5. map 文件确认：`Flash_Write / Flash_Read` 已链接，`Test_Write / STMFLASH_*` 旧符号不存在。
+3. **`flash cross-page PASS`**——跨页写专测通过（原工程单位缺陷的回归验证，§8 定案记录；
+   若报 FAIL 且 diff 呈整段错位，说明落盘的 stmflash.c 还是旧的 `WriteAddr += secremain`）；
+4. 若报 FAIL：先看 diff 打印的地址偏移是否有规律（偏移整体错位 → 长度/地址参数问题；随机散布 → 硬件）；
+5. PD14 心跳灯持续闪烁、`blink_cnt` 递增（验证循环仍活着）；
+6. map 文件确认：`Flash_Write / Flash_Read` 已链接，`Test_Write / STMFLASH_*` 旧符号不存在。
 
 ## 8. 改名对照与跨阶段边界
 
@@ -309,6 +348,18 @@ int main(void)
 **删除的死代码**（grep 证实零引用）：`Test_Write`（stmflash.c 无外部调用者）、
 `STMFLASH_WriteLenByte / STMFLASH_ReadLenByte`（头文件声明了但从未实现）、
 stmflash.c 的 `#include "delay.h"` / `#include "usart.h"`（文件内未使用）。
+
+**缺陷定案记录（2026-11-25 跨模块审计，替代原「缺陷整改阶段统一处理」的搁置决定）**：
+
+- **缺陷**：原工程 `Flash_Write` 跨页推进 `WriteAddr += secremain`——`secremain` 是半字数，
+  按半字数递增**字节**地址，跨页写时第 2 轮起地址落后于实际写入位置（每跨一页错 1024 字节）；
+- **危害实锤**：消费方 gprs_rx.c:695-699 按包写 A2（`s_dl_addr += Size * 2`，地址语义是字节），
+  包大小任意、A2 固件下载 ~100KB 必然频繁跨页——原缺陷会让下载镜像整段错位，CRC 必挂；
+  原 boot 工程的验证从未覆盖跨页写（单页验证侥幸通过），本 bootloader 差点原样继承；
+- **定案**：修正为 `WriteAddr += secremain * 2`（§4 已改），并把跨页写验证并入本阶段
+  验证 main（§5 测试 ②）作为回归用例——**阶段 10（GPRS 写 A2）开工的前置条件**；
+- **落盘动作**：已落盘的 stmflash.c 同步改这一行（±1 处），重跑本阶段验证 main，
+  两条 PASS（单页 + 跨页）后此缺陷销案。
 
 **跨阶段边界**（对应《模块迁移顺序.md》§3）：
 

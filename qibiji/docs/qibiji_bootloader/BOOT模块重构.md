@@ -31,6 +31,7 @@
 | `BootStaFlag` | （删除） | 全工程无引用的死变量 |
 | boot.h 尾部 4 个死声明 `BootLoader_Enter / BootLoader_Info / BootLoader_Event / Xmodem_CRC16` | （删除） | 无实现、无调用（Xmodem 遗留） |
 | boot.c 内 `OtaWriteFlag / OtaClearInstalledVersion / OtaCloseUpdateGate / OtaRetryCount / OtaRetryCountSet` | （迁入 reg.c，名字不变，static 放开） | 它们只操作 24C02，放 REG 模块才对位 |
+| `BootLoader_Clear` 末尾**新增 `WDG_Feed()`**（2026-11-25 WDG 阶段联动） | —（原工程无） | boot.c | IWDG 使能后软件关不掉、跳 A1 后继续计时；跳转前喂狗把整个窗口（≥2.1s）留给 A1 应用启动到第一次喂狗（A1 应用自带 WDG 接续），否则正式 main 开狗后每次跳转都可能在应用初始化途中喂狗超窗复位 |
 
 ## 2. `HARDWARE/BOOT/boot.h`（重构后全文）
 
@@ -122,7 +123,8 @@ typedef struct {
 extern OTA_InfoCB OTA_Info;   // OTA 状态块的 RAM 副本（定义在 boot.c，上电由 main 从 24C02 读入）
 
 // LCD 错误提示登记：引导阶段屏幕尚未初始化，先在此记下错误，
-// 由 main 在屏就绪后统一显示（配合 CLEARGDRAMH() 清背景）
+// 由 main 在屏就绪后统一显示（配合 LCD12864_ClearGDRAM() 清背景；
+// LCD 阶段驱动换源 zxl，原 CLEARGDRAMH，对照见《LCD重构.md》§1.1）
 extern u8 g_ota_lcd_err;    // 待显示的 OTA_ERR_* 错误码；0 = 无错误
 extern u8 g_ota_lcd_hold;   // 1 = 显示后停留 3 秒再尝试进应用；0 = 显示即返回
 
@@ -156,6 +158,7 @@ u8   OtaCopyVerify(void);     // 搬运校验：A1 与 A2 前 OTA_size 字节一
 #include "reg.h"      // OtaWriteFlag / OtaClearInstalledVersion / OtaCloseUpdateGate / OtaRetryCount(Set)
 #include <string.h>
 #include "display.h"  // OTA_ERR_*：LCD 错误码定义
+#include "wdg.h"      // WDG_Feed：跳转 A1 前喂狗（IWDG 一旦使能关不掉，见 BootLoader_Clear）
 
 OTA_InfoCB OTA_Info;      // OTA 状态块 RAM 副本：上电由 main 从 24C02 读入，变化时经 reg.c 写回
 
@@ -350,13 +353,18 @@ void Boot_JumpToA1(uint32_t addr)
 // 函数功能：清理 B 区占用、可能干扰 A1 运行的外设资源
 // 参    数：无
 // 返 回 值：无
-// 内容：复位调试串口 USART1 与 OTA 通讯串口 USART2；向 LCD 发清屏命令
+// 内容：复位调试串口 USART1 与 OTA 通讯串口 USART2；向 LCD 发清屏命令；
+//       跳转前喂狗一次——IWDG 一旦使能软件关不掉、跳 A1 后继续计时，
+//       这里把整个窗口（≥2.1s，见《WDG重构.md》）留给 A1 应用启动到第一次喂狗
 void BootLoader_Clear(void)
 {
     USART_DeInit(USART1);
     USART_DeInit(USART2);
 
-    WRCommandH(0x01);   // LCD 清屏指令
+    LCD12864_Clear();   // LCD 清屏（原工程 WRCommandH(0x01)，LCD 阶段驱动换源 zxl，
+                        // 对照见《LCD重构.md》§1.1）
+
+    WDG_Feed();         // 跳转前喂狗：给 A1 应用留满整个 IWDG 窗口（《WDG重构.md》§7.5）
 }
 ```
 

@@ -1,8 +1,10 @@
 # EEPROM 硬件访问层重构（迁移顺序阶段 5）
 
-> 来源：`qibiji_boot/HARDWARE/IIC/myiic.c/.h` + `qibiji_boot/HARDWARE/24CXX/24cxx.c/.h`。
+> 来源：`qibiji_boot/HARDWARE/IIC/myiic.c/.h` + `qibiji_boot/HARDWARE/24CXX/24cxx.c/.h`；
+> 第二信源参考 `qibiji_zxl/HARDWARE/EEPROM/eeprom_drv.c`（2026-11-25 跨模块审计）。
 > 本阶段做：模块重排、删死代码、注释按现行规范全部新写；**AT24CXX/驱动函数名保持原名**（按既定"驱动原样平移"约定）。
 > 唯一的逻辑边界调整：`AT24CXX_Check()` 不再调用 `paraToEeprom()`（消除 24CXX → REG 的反向依赖），详见 §5 与 §9。
+> 一处行为新增：`AT24CXX_WriteOneByte` 末尾补 `WDG_Feed()`（zxl 同款，见 §5 开头说明）。
 > 只生成 md，不动工程文件。
 
 ## 1. 本阶段范围与产出清单
@@ -235,9 +237,17 @@ u8   AT24CXX_Check(void);                                           /* 上电自
 返回值从 0/1 扩为 0/1/2（"新芯片"返回 2，由调用方播种）。include 里删掉未使用的
 `stdio.h`、`string.h` 和已不存在的对 `reg.h` 的依赖。
 
+**一处行为新增（zxl 同款，2026-11-25 审计引入）**：`AT24CXX_WriteOneByte` 末尾补 `WDG_Feed()`。
+依据：每字节写固定阻塞 10ms，REG 的 OTA 标志一次写 41 字节 ≈ 410ms、24C02 全片 256 字节 ≈ 2.56s——
+连续写会逼近 IWDG 窗口（3.18s 标称 / 2.12s 最坏，见 WDG 文档）。原工程不开狗所以从没暴露；
+正式 main（阶段 12）开狗后这是必需的保险。zxl 应用工程在同位置喂狗（eeprom_drv.c:69，
+注释原文：单字节 10ms；32B 槽 320ms、四槽连续 1.28s，必须在此喂狗）。验证 main 不开狗时为无害寄存器写。
+
 ```c
 #include "24cxx.h"
 #include "delay.h"      /* delay_ms：每次字节写后等内部写周期完成 */
+#include "wdg.h"        /* WDG_Feed：每字节写周期后喂狗（见上方说明；wdg.h 属 WDG 阶段产物，
+                           若落盘时尚未入库可先注释本行与下方 WDG_Feed，WDG 入库后恢复） */
 #include <stddef.h>     /* NULL：Write/Read 入参判空用（原文件靠 stdio.h 顺带带进来，裁掉后必须显式引入） */
 
 /* 初始化：24CXX 自身无寄存器可配，实际工作全在 IIC_Init */
@@ -275,7 +285,8 @@ u8 AT24CXX_ReadOneByte(u16 ReadAddr)
 }
 
 /* 单字节写：写器件地址、字节地址、数据三步，每步等 ACK；任一步无应答立即停止返回失败。
-   结尾 delay_ms(10) 是等 AT24C02 的内部写周期（约 5~10ms），期间芯片不响应新命令 */
+   结尾 delay_ms(10) 是等 AT24C02 的内部写周期（约 5~10ms），期间芯片不响应新命令；
+   写周期等待完就喂狗——连续写多字节时累计阻塞可达秒级，不喂会逼近 IWDG 窗口（zxl 同款） */
 u8 AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 {
     u8 ack_result;                          /* 每一步的应答结果 */
@@ -327,6 +338,7 @@ u8 AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 
     IIC_Stop();
     delay_ms(10);                           /* 等内部写周期完成，期间该页不可访问 */
+    WDG_Feed();                             /* 每字节 10ms，连续写累计秒级：写周期等完即喂狗（zxl 同款） */
     return AT24CXX_OK;
 }
 
@@ -503,7 +515,7 @@ int main(void)
 | 分组 | HARDWARE 组加 `myiic.c`、`24cxx.c` | 两个 .h 是头文件，不进编译清单 |
 | Include Paths | 追加 `..\HARDWARE\IIC`、`..\HARDWARE\24CXX` | 24cxx.h include myiic.h，两条路径都要 |
 | FWLib | 不变（rcc/gpio/usart/misc/flash） | 本阶段只用 GPIO，无新外设 |
-| 依赖 | `delay_us/delay_ms`（阶段 1 已入库） | myiic.c 与 24cxx.c 都依赖 delay |
+| 依赖 | `delay_us/delay_ms`（阶段 1 已入库）；`WDG_Feed`（wdg.h，WDG 阶段产物——落盘顺序上 WDG 在阶段 3 应已入库；若尚未落盘，见 §5 开头的临时注释策略） | myiic.c 只依赖 delay；24cxx.c 依赖 delay + wdg |
 
 ## 8. 验证清单（全部通过才算本阶段完成）
 
