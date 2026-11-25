@@ -23,7 +23,7 @@ static u8 MqttKeyUsable(const char *buf)
 
 /* 从 24C02 读取 productKey / deviceKey（与 A1 应用同地址、同长度）。
    槽位无效时全局变量保持兜底值不动；只读不写，不碰 EEPROM 键槽位。 */
-void MQTT_ReadKeysFromEeprom(void)
+void Reg_ReadMqttKeys(void)
 {
     char pk[MQTT_KEY_STR_LEN];   /* productKey 读出缓冲：32 字节 + 结尾 */
     char dk[MQTT_KEY_STR_LEN];   /* deviceKey 读出缓冲 */
@@ -60,13 +60,13 @@ void Reg_ReadOtaInfo(void)
 
     if (chk == AT24CXX_FRESH)
     {
-        paraToEeprom();   /* 新芯片：播种默认值（内部写回 24C02），随后走正常读取路径与老芯片殊途同归 */
+        Reg_SeedDefaults();   /* 新芯片：播种默认值（内部写回 24C02），随后走正常读取路径与老芯片殊途同归 */
     }
     else if (chk == AT24CXX_ERROR)
     {
         /* 24C02 自检/读写失败（芯片或 I2C 总线异常）：升级状态无法落盘，
            下载好的固件也没法靠 OTA_flag 引导，显式关闭联网 OTA，让设备直接运行 A1。
-           只 memset 成 0 属于「静默失效」，现场看不出原因；版本串与 paraToEeprom() 的 "v0.0.0" 保持一致。 */
+           只 memset 成 0 属于「静默失效」，现场看不出原因；版本串与 Reg_SeedDefaults() 的 "v0.0.0" 保持一致。 */
         OTA_Info.OTA_flag    = OTA_A1_FLAG;
         OTA_Info.OTA_size    = 0;
         OTA_Info.UPDATE_flag = 0;
@@ -80,13 +80,13 @@ void Reg_ReadOtaInfo(void)
     /* OK 或 FRESH（播种后）都到这里：读状态块 + 取 MQTT 身份 */
     AT24CXX_Read(OTA_ADDR, (u8 *)&OTA_Info, OTA_INFOCB_SIZE);   /* 整块读入 RAM 副本 */
     printf("OTA_ver = %s,%x,%d\n", OTA_Info.OTA_ver, OTA_Info.OTA_flag, OTA_Info.UPDATE_flag);
-    MQTT_ReadKeysFromEeprom();   /* 同时取出 platform 需要的 productKey / deviceKey */
+    Reg_ReadMqttKeys();   /* 同时取出 platform 需要的 productKey / deviceKey */
 }
 
 /* 播种：把 OTA 状态块默认值写进 24C02。
    触发者只有 Reg_ReadOtaInfo 的 FRESH 分支；写的是整块默认值
    （flag=A1 当前区最新、UPDATE=1 默认开启联网 OTA、ver=v0.0.0 尚无版本记录）。 */
-void paraToEeprom(void)
+void Reg_SeedDefaults(void)
 {
     memset(&OTA_Info, 0, OTA_INFOCB_SIZE);
     OTA_Info.OTA_flag = OTA_A1_FLAG;   /* 标志位默认值：当前 A 区是最新的 */
@@ -101,7 +101,7 @@ void paraToEeprom(void)
 
 /* 只写 OTA_flag 字段（偏移 OTA_OFF_FLAG，4 字节）：RAM 副本与 24C02 同步更新。
    返回 AT24CXX_OK/ERROR，BOOT 用返回值确认「已安装」是否真的落盘 */
-u8 OtaWriteFlag(u32 flag)
+u8 Ota_WriteFlag(u32 flag)
 {
     OTA_Info.OTA_flag = flag;   /* 先改 RAM 副本，保持内存与 EEPROM 一致 */
     return AT24CXX_Write(OTA_ADDR + OTA_OFF_FLAG, (u8 *)&OTA_Info.OTA_flag, 4);
@@ -109,7 +109,7 @@ u8 OtaWriteFlag(u32 flag)
 
 /* 清掉 OTA_ver：表示「本机没有可用的已安装版本」。
    这样 putVersion 的版本闸不会再认为「已是最新」，下次联网会重新下载安装 */
-void OtaClearInstalledVersion(void)
+void Ota_ClearInstalledVersion(void)
 {
     memset(&OTA_Info.OTA_ver, 0, 32);   /* 全 0 = 版本闸失效 */
     AT24CXX_Write(OTA_ADDR + OTA_OFF_VER, (u8 *)&OTA_Info.OTA_ver[0], 32);
@@ -117,14 +117,14 @@ void OtaClearInstalledVersion(void)
 
 /* 安装成功 → 关闭升级标志（UPDATE_flag=0）：之后上电直接跑应用、不再联网核查。
    再次升级需由平台经 A1 应用把 UPDATE_flag 置 1（见 reg.h 字段注释） */
-void OtaCloseUpdateGate(void)
+void Ota_CloseUpdateGate(void)
 {
     OTA_Info.UPDATE_flag = 0;
     AT24CXX_Write(OTA_ADDR + OTA_OFF_UPDATE, (u8 *)&OTA_Info.UPDATE_flag, 1);
 }
 
 /* 读自愈重搬失败计数（地址 OTA_RETRY_ADDR，1 字节）：成功清零、失败累加，供自愈限流 */
-u8 OtaRetryCount(void)
+u8 Ota_RetryCount(void)
 {
     u8 v = 0;   /* 读出值：空片 0xFF 会得到 255，但正常流程下播种/成功路径都会清零 */
     AT24CXX_Read(OTA_RETRY_ADDR, &v, 1);
@@ -132,7 +132,7 @@ u8 OtaRetryCount(void)
 }
 
 /* 写自愈重搬失败计数 */
-void OtaRetryCountSet(u8 v)
+void Ota_RetryCountSet(u8 v)
 {
     AT24CXX_Write(OTA_RETRY_ADDR, &v, 1);
 }

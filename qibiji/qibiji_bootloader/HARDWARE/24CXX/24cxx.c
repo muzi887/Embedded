@@ -1,6 +1,7 @@
 #include "24cxx.h"
 #include <stddef.h>     /* NULL：Write/Read 入参判空用 */
 #include "delay.h"      /* delay_ms：每次字节写后等内部写周期完成 */
+#include "wdg.h"        /* WDG_Feed：每字节写周期后喂狗 */
 
 /* 初始化：24CXX 自身无寄存器可配 */
 void AT24CXX_Init(void)
@@ -37,7 +38,8 @@ u8 AT24CXX_ReadOneByte(u16 ReadAddr)
 }
 
 /* 单字节写：写器件地址、字节地址、数据三步，每步等 ACK；任一步无应答立即停止返回失败。
-   结尾 delay_ms(10) 是等 AT24C02 的内部写周期（约 5~10ms），期间芯片不响应新命令 */
+   结尾 delay_ms(10) 是等 AT24C02 的内部写周期（约 5~10ms），期间芯片不响应新命令；
+   写周期等待完就喂狗——连续写多字节时累计阻塞可达秒级，不喂会逼近 IWDG 窗口  */
 u8 AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 {
     u8 ack_result;                          /* 每一步的应答结果 */
@@ -89,6 +91,7 @@ u8 AT24CXX_WriteOneByte(u16 WriteAddr, u8 DataToWrite)
 
     IIC_Stop();
     delay_ms(10);                           /* 等内部写周期完成，期间该页不可访问 */
+    WDG_Feed();                             /* 每字节 10ms，连续写累计秒级：写周期等完即喂狗 */
     return AT24CXX_OK;
 }
 

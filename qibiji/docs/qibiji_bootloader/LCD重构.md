@@ -18,7 +18,7 @@
 | `HARDWARE/LCD/Display.h` | 重写 | OTA_ERR_* 8 个错误码（**定义归属维持原工程，就在此文件**）+ OTA 提示层声明（见 §4） |
 | `HARDWARE/LCD/Display.c` | 重写 | GB2312 文案码表（static const）+ Ota_Show* 状态/错误页 + wait net 提示（见 §5） |
 | `HARDWARE/LCD/ProgressBar.h/.c` | 重写 | 进度条：配置结构 + 画条/边框/百分比，按 zxl 原语实现（见 §6） |
-| `USER/main.c` | 替换 | 本模块验证代码：四幕演示（字符串/状态页/进度条/错误页，见 §7） |
+| `USER/main.c` | 合并 | 4G 联测 + 本模块四幕验证合并为一个循环（实机定稿形态，见 §7） |
 | Keil 工程 | 手动加 | HARDWARE 组加 `Lcd12864.c`、`Display.c`、`ProgressBar.c`；Include Paths 加 `..\HARDWARE\LCD`（见 §8） |
 
 ### 1.1 与原工程的差异（换源 + 裁剪 + 命名按功能重定义）
@@ -931,7 +931,7 @@ int main(void)
 |---|---|---|
 | 分组 | HARDWARE 组加 `Lcd12864.c`、`Display.c`、`ProgressBar.c` | 三个头文件同目录自动可寻；**注意别把旧名 `Dispaly.c` 再加进去**（文件已改名 `Display.c`） |
 | Include Paths | 加 `..\HARDWARE\LCD` | main.c include "Display.h"/"ProgressBar.h" 需要 |
-| WDG 依赖 | `Lcd12864.c` include `wdg.h` | WDG 阶段产物；尚未入库时按 §10.5 临时注释，见下 |
+| WDG 依赖 | `Lcd12864.c` include `wdg.h` | 已闭环（《WDG重构.md》定稿且已落盘验证）；`main.c` 本身也 include `wdg.h/4G.h`，路径已在各自阶段配置 |
 | FWLib 勾选 | 无新增 | 只用 GPIO（`stm32f10x_gpio.c` 已勾）；LCD 是纯 GPIO 位带操作，无 EXTI/DMA |
 | stm32f10x_conf.h | 无新增 | 不引新固件库头 |
 | 拷贝注意 | zxl 源文件名 `lcd12864.c/.h`（全小写）→ 落盘为 `Lcd12864.c/.h` | 与工程内其它模块命名风格一致（`Lcd12864` 驼峰） |
@@ -976,7 +976,7 @@ GDRAM Y 坐标 32」与实际渲染不符。
    `ProgressBar_Update()`——前者本阶段更名 `ProgressBar_Setup`）——include `ProgressBar.h` 即得；
    GPRS 的错误返回码 `OTA_ERR_DATA` 等经 `Display.h` 获得（REG 文档 §跨阶段已预告此归属）；
 2. **BOOT（阶段 11）**：`boot.c` include `Display.h` 拿 OTA_ERR_*；`g_ota_lcd_err/hold` 两个
-   登记变量的定义**仍在 boot.c**（属主不变，REG 文档已登记）；`BootLoader_Clear()` 跳 A1 前的
+   登记变量的定义**仍在 boot.c**（属主不变，REG 文档已登记）；`Boot_Clear()` 跳 A1 前的
    LCD 清屏用 `LCD12864_Clear()`（原工程写作 `WRCommandH(0x01)`，换源对照见 §1.1，
    BOOT 文档两处已同步）；
 3. **正式 main（阶段 12）**：上电 LCD 部分一步 = `LCD12864_Init()`（原工程
@@ -999,4 +999,5 @@ GDRAM Y 坐标 32」与实际渲染不符。
 ---
 
 本文档只生成/修订 md，不改任何 `.c/.h` 工程文件；`Lcd12864.h/.c、Display.h/.c、ProgressBar.h/.c、main.c`
-均由你按本文档落盘，落盘前提：4G 联测已验证通过（当前 main.c 里的 4G 联测代码本阶段起被替换）。
+均由你按本文档落盘，落盘前提：4G 联测已验证通过（main.c 按 §7 的合并版落盘——4G 联测代码
+与四幕验证共存于同一循环，实机定稿形态）。

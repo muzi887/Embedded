@@ -7,6 +7,7 @@
 #include "4G.h"
 #include "led.h"        /* LED_LINE（PD13）：在线指示灯，随 PC5 电平同步点亮/熄灭 */
 #include "delay.h"      /* delay_ms：复位脉冲的高电平保持时长 */
+#include "wdg.h"        /* WDG_Feed：500ms 脉冲延时后喂狗（占 IWDG 窗口 1/4） */
 
 /* 在线标志的定义：1 = 模块已注册网络；0 = 掉线/未注册 */
 u8 g_gprs_online = 0;
@@ -56,10 +57,19 @@ void Gprs4G_Init(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
-    /* 复位脉冲：PA1 拉高 500ms 再放低——给模块一个确定的开机起点 */
-    GPIO_SetBits(GPIOA, GPIO_Pin_1);
-    delay_ms(500);
+    /* 条件点火：先确保复位脚为低、给 10ms 稳定，再看 LINKA——
+       模块已连接（PC5=1）则绝不能拉复位，否则杀掉健在的 MQTT 会话，
+       重连要等 ~50s 陈旧会话过期（OTA 重启场景每轮都踩）；未连接才点火 */
     GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+    delay_ms(10);
+    if (GPRS_LINK_STATUS == 0)
+    {
+        /* 复位脉冲：PA1 拉高 500ms 再放低——给模块一个确定的开机起点 */
+        GPIO_SetBits(GPIOA, GPIO_Pin_1);
+        delay_ms(500);
+        GPIO_ResetBits(GPIOA, GPIO_Pin_1);
+        WDG_Feed();     /* 500ms 阻塞延时后喂狗（验证 main 未开狗时为无害寄存器写） */
+    }
 }
 
 /* EXTI9_5 中断服务：PC5（EXTI5）电平一变就进——上线置标志亮灯，掉线清标志灭灯 */

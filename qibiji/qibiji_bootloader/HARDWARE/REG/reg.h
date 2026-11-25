@@ -39,14 +39,14 @@ typedef struct {
     u8  OTA_ver[32];   /* 版本串；全 0 = 本机没有可用的已安装版本（版本闸以此判定） */
     u32 OTA_size;      /* A2 中待安装固件的总字节数；0 = 无固件 */
     u8  UPDATE_flag;   /* 升级闸：1 = 上电进入联网 OTA 流程；0 = 上电直接跳 A1。
-                          写入端：① 出厂默认 paraToEeprom() 置 1（APP 参数协议也可改）；
-                          ② 安装/自愈成功后由 OtaCloseUpdateGate() 自动置 0，
+                          写入端：① 出厂默认 Reg_SeedDefaults() 置 1（APP 参数协议也可改）；
+                          ② 安装/自愈成功后由 Ota_CloseUpdateGate() 自动置 0，
                           再次升级需由平台经 A1 应用把它置回 1。
                           24C02 自检失败时 Reg_ReadOtaInfo 显式置 0（状态落不了盘，做不了 OTA）。 */
 } OTA_InfoCB;
 #define OTA_INFOCB_SIZE sizeof(OTA_InfoCB)   /* 状态块总字节数 = 44（含对齐填充），整块读写时使用 */
 
-/* 状态块各字段在 24C02 中的字节偏移：分字段读写（OtaWriteFlag 等）按此寻址 */
+/* 状态块各字段在 24C02 中的字节偏移：分字段读写（Ota_WriteFlag 等）按此寻址 */
 #define OTA_OFF_FLAG    0    
 #define OTA_OFF_VER     4 
 #define OTA_OFF_SIZE    36 
@@ -89,13 +89,15 @@ extern OTA_InfoCB OTA_Info;
 
 /* ---- 对外函数 ---- */
 void Reg_ReadOtaInfo(void);              /* 上电入口：三态自检分派（播种 / 故障 / 正常读取），填 OTA_Info */
-void MQTT_ReadKeysFromEeprom(void);      /* 从 24C02 读 productKey/deviceKey，空槽保持兜底值 */
-void paraToEeprom(void);                 /* 播种：把 OTA 状态块默认值写进 24C02（名字保留原工程） */
+void Reg_ReadMqttKeys(void);      /* 从 24C02 读 productKey/deviceKey，空槽保持兜底值 */
+void Reg_SeedDefaults(void);             /* 播种：把 OTA 状态块默认值写进 24C02（原名 paraToEeprom） */
 
-u8   OtaWriteFlag(u32 flag);             /* 只写 OTA_flag（4 字节）：传入 OTA_A1_FLAG / OTA_A2_FLAG */
-void OtaClearInstalledVersion(void);     /* 清空 OTA_ver：版本闸失效，平台将重新下发固件 */
-void OtaCloseUpdateGate(void);           /* 写 UPDATE_flag=0：关闭升级闸，上电不再进 OTA */
-u8   OtaRetryCount(void);                /* 读自愈重搬失败计数（1 字节） */
-void OtaRetryCountSet(u8 v);             /* 写自愈重搬失败计数（1 字节） */
+/* ---- OTA 标志读写 ---- */
+/* 以下五个函数直接操作 24C02 中 OTA 状态块 / 自愈计数的对应字段 */
+u8   Ota_WriteFlag(u32 flag);             /* 只写 OTA_flag（4 字节）：传入 OTA_A1_FLAG / OTA_A2_FLAG */
+void Ota_ClearInstalledVersion(void);     /* 清空 OTA_ver：版本闸失效，平台将重新下发固件 */
+void Ota_CloseUpdateGate(void);           /* 写 UPDATE_flag=0：关闭升级闸，上电不再进 OTA */
+u8   Ota_RetryCount(void);                /* 读自愈重搬失败计数（1 字节） */
+void Ota_RetryCountSet(u8 v);             /* 写自愈重搬失败计数（1 字节） */
 
 #endif

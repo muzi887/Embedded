@@ -530,7 +530,7 @@ int main(void)
 ## 8. 跨阶段边界（USART 部分）
 
 1. **阶段 10 GPRS**：`usart2.c` 的环形缓冲 API 是 gprs_rx 的取数入口（`Usart2_RxCopy/Consume`）；
-2. **阶段 11 BOOT**：`BootLoader_Clear()` 跳转前 `USART_DeInit(USART1/2)`——届时需确认跳转前
+2. **阶段 11 BOOT**：`Boot_Clear()` 跳转前 `USART_DeInit(USART1/2)`——届时需确认跳转前
    先关两路 IDLE 中断，避免跳转瞬间中断向量切走后来不及退出（阶段 11 文档处理）；
 3. usart3/4/5 与 RS485 不在迁移计划内，usart.h 里的相关声明已裁掉，后续若要用再按原工程回补。
 

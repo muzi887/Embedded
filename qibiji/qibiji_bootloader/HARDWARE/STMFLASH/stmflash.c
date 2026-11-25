@@ -71,7 +71,7 @@ void Flash_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
             secpos++;                           /* 页号 +1 */
             secoff = 0;                         /* 下一页从页首开始 */
             pBuffer += secremain;               /* 源指针滑过已写的半字数 */
-            WriteAddr += secremain;             /* 保持原工程写法原样保留：secremain 是半字数，此处按半字数递增地址，与按字节推进的常规写法存在单位差异——本阶段逻辑等价不做修正，缺陷整改阶段统一处理（见 §8） */
+            WriteAddr += secremain * 2;          /* 地址按字节推进：本轮写了 secremain 个半字 = secremain*2 字节 */
             NumToWrite -= secremain;            /* 剩余请求长度同步扣减 */
             if (NumToWrite > (STM_SECTOR_SIZE / 2)) secremain = STM_SECTOR_SIZE / 2;    /* 剩余仍超过一页：下一轮写满整页 */
             else secremain = NumToWrite;        /* 剩余不足一页：下一轮写完收尾 */

@@ -182,8 +182,8 @@ int main(void)
    （原 boot main.c:131/136 的 `IWDG_Init(4,1990)` / `IWDG_Feed()` 调用点由 `WDG_Init()/WDG_Feed()`
    等价替换，魔数进宏）；③ 全工程阻塞段审查：任何单段延时 ≥ `WDG_WINDOW_MIN_MS` 都必须
    分片喂狗（LCD 的 3×500ms 分片就是样板）；
-5. **BOOT（阶段 11）**：IWDG 一旦使能软件关不掉、跳 A1 后继续计时——`BootLoader_Clear()`/
-   `JumpToApp()` 跳转前 `WDG_Feed()` 一次，把整个窗口（≥2.1s）留给 A1 应用启动到第一次喂狗；
+5. **BOOT（阶段 11）**：IWDG 一旦使能软件关不掉、跳 A1 后继续计时——`Boot_Clear()`/
+   `Boot_JumpToA1()` 跳转前 `WDG_Feed()` 一次，把整个窗口（≥2.1s）留给 A1 应用启动到第一次喂狗；
    A1 应用工程自带 WDG（zxl 同款）会接续喂狗。登记 BOOT 文档阶段 11 落实；
 6. **依赖闭环**：无依赖（叶子模块），迁移顺序表「WDG/LED/CRC16/cJSON 无依赖」成立；
    落盘顺序可插队——LCD/4G/EEPROM 三个文档的 wdg.h 引用在落盘本阶段后全部自然生效。

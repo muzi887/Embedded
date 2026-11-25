@@ -546,7 +546,8 @@ int main(void)
 
 1. **播种调用点移位**：原 `AT24CXX_Check()` 内部的 `paraToEeprom()` 移到 reg.c——阶段 6 的
    `Reg_ReadOtaInfo`（原 `AT24CXX_ReadOTAInfo`）开头改为：
-   `chk = AT24CXX_Check(); if (chk == AT24CXX_FRESH) paraToEeprom(); else if (chk == AT24CXX_ERROR) { /* EEPROM 故障：显式置 UPDATE_flag=0 */ }`
+   `chk = AT24CXX_Check(); if (chk == AT24CXX_FRESH) Reg_SeedDefaults(); else if (chk == AT24CXX_ERROR) { /* EEPROM 故障：显式置 UPDATE_flag=0 */ }`
+   （`paraToEeprom` 已改名 `Reg_SeedDefaults`，见《REG重构.md》改名表）
 2. **原 reg.c:48 的 `if(AT24CXX_Check())` 判断要重写**——旧契约"非 0 即失败"在新契约下会把
    `FRESH(2)` 也当成故障，必须按上面三态分别处理；
 3. `AT24CXX_Write/Read` 是阶段 6 REG、阶段 10 GPRS（落盘 OTA_size/ver/flag）、阶段 11 BOOT
