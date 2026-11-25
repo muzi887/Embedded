@@ -511,14 +511,14 @@ int main(void)
 | flash_layout.h（ST32_A1_SADDR） | 《STMFLASH与分区布局重构.md》 | ✅ 已落盘 |
 | Display.h/.c、ProgressBar.h/.c、Lcd12864.h/.c | 《LCD重构.md》 | ✅ 已落盘 |
 | 4G.c 条件脉冲版（Gprs4G_Init/GPRS_LINK_STATUS，删 g_gprs_online） | 《4G模块重构.md》§3 | ⬜ 待更新（当前落盘版为无条件脉冲 + ISR 维护标志；本文档假定新版接口） |
-| reg.h/reg.c（Reg_ReadOtaInfo/OTA_Info 属主） | 《REG重构.md》 | ⬜ 待核对落盘状态 |
-| boot.c/ota_copy.c（Branch/JumpToA1/g_ota_lcd_err） | 《BOOT模块重构.md》 | ⬜ 待落盘 |
+| reg.h/reg.c（Reg_ReadOtaInfo/OTA_Info 属主） | 《REG重构.md》 | ✅ 已落盘（2026-11-25 去重轮核对：OTA_Info/g_ota_lcd_* 均由 reg.c 定义） |
+| boot.c/ota_copy.c（Branch/JumpToA1） | 《BOOT模块重构.md》 | ✅ 已落盘（2026-11-25；g_ota_lcd_err 定义已归 reg.c，extern 经 reg.h） |
 | gprs.h/gprs_tx/gprs_frame/gprs_session/gprs_rx（OTA_RX_* 返回码） | 《GPRS重构.md》（未生成） | ⬜ 阶段 10 |
 | ds1302.c（gprs_tx 时间戳依赖） | 迁移顺序阶段 7「按需」 | ⚠️ 实查 gprs_tx.c 用 `ds1302_dataread` 组 JSON 时间戳，**是 GPRS 硬依赖而非可选项**，建议在《GPRS重构.md》中一并定案入库 |
 
 | 其它文件 | 位置 | 改动 |
 |---|---|---|
-| 《BOOT模块重构.md》boot.c | `OTA_InfoCB OTA_Info;` 定义行 | 落盘时**删除该定义行**：`OTA_Info` 属主已归 reg.c（《REG重构.md》），extern 走 reg.h，否则重复定义 |
+| 《BOOT模块重构.md》boot.c | `OTA_InfoCB OTA_Info;` 定义行 | ✅ 已删除（2026-11-25 去重轮）：`OTA_Info` 属主归 reg.c（《REG重构.md》），extern 走 reg.h |
 | 《模块迁移顺序.md》 | 阶段 12 行 | 指向本文档（本次同步更新） |
 | gprs_rx.c（随阶段 10） | `extern int pub_version_flag` 及写入行 | 死变量，随《GPRS重构.md》清理 |
 | Keil 工程 | USER 组 | 无新增文件（main.c/main.h 已在工程内）；ds1302.c 待阶段 10 决定是否加入 |

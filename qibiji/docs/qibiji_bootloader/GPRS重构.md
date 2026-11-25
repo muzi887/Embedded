@@ -1368,7 +1368,7 @@ int main(void)
 | usart2.c 环形缓冲（Usart2_* 六 API） | 《USART重构.md》 | ✅ 已落盘 |
 | 4G.h（GPRS_LINK_STATUS 宏） | 《4G模块重构.md》 | ✅ 宏已在落盘版（合并版 main 已引用） |
 | flash_layout.h / Flash_Write | 《STMFLASH与分区布局重构.md》 | ⚠️ 落盘时必须含 §4/§8 跨页修正 |
-| reg.h/reg.c（OTA_Info/OTA_ADDR/OTA_OFF_*/OTA_A*_FLAG/g_mqtt_*） | 《REG重构.md》 | ⬜ 待核对落盘状态 |
+| reg.h/reg.c（OTA_Info/OTA_ADDR/OTA_OFF_*/OTA_A*_FLAG/g_mqtt_*） | 《REG重构.md》 | ✅ 已落盘（2026-11-25 去重轮核对） |
 | 24cxx（AT24CXX_Write/AT24CXX_OK） | 《EEPROM硬件访问层重构.md》 | ✅ 已落盘 |
 | wdg.h / ds1302.c / CRC16 / cJSON / mymalloc | 《WDG重构.md》+《叶子模块重构.md》 | wdg ✅；其余按叶子文档落盘 |
 | Display.h（Lcd_ShowWaitNet/Ota_ShowRequestVer） / ProgressBar | 《LCD重构.md》 | ✅ 已落盘 |

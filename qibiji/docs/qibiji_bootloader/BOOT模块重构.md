@@ -7,6 +7,9 @@
 > - 新结构：`boot.c`（决策+跳转）+ `ota_copy.c`（A2→A1 搬运）+ `boot.h`（声明），
 >   EEPROM 标志函数迁入 `HARDWARE/REG/`
 > - 迁入函数与 reg.h/reg.c 的完整文本见附录 1，未做任何 Reg_ 前缀改名（那属于 REG 模块的重构范围）
+> - **落盘状态（2026-11-25）**：boot.h / boot.c / ota_copy.c 已落盘，§2~§4 列表已与实文件
+>   逐字同步（含 2026-11-25 去重轮：OTA 状态块族归 reg.h/reg.c，见 §5）；
+>   附录 1 已作废（由《REG重构.md》§3 接替），main.c 联动仍待正式 main 落盘（见附录 2）
 
 ## 0. 注释风格约定（对齐 docs/qibiji_zxl 各重构文档）
 
@@ -23,7 +26,7 @@
 |---|---|---|
 | `BootLoader_Brance` | `Boot_Branch` | 拼写订正（Brance→Branch）+ 前缀统一（boot 动作统一 `Boot_`，原 `BootLoader_` 过长且与 `Boot_JumpToA1` 混用） |
 | `LOAD_A` | `Boot_JumpToA1` | 原名看不出「跳转到哪」，新名直接说明跳 A1 |
-| `MSR_MSP` | `Boot_SetMSP`（改 static，boot.h 声明删除） | 原名是 ARM 指令助记符，不体现「设主栈指针」的功能语义；仅 Boot_JumpToA1 调用，收成本文件私有 |
+| `MSR_MSP` | **落盘保留原名** `MSR_MSP`（已改 static，boot.h 声明删除） | 原建议改 `Boot_SetMSP` 体现「设主栈指针」语义；落盘时未采纳，§2~§3 已按实文件回退为 `MSR_MSP` |
 | `BootLoader_Clear` | `Boot_Clear` | 前缀统一（同 Boot_Branch 行） |
 | `OtaImageValidAt / OtaA2ImageValid / OtaA1ImageValid / OtaCopyVerify` | `Ota_ImageValidAt / Ota_A2ImageValid / Ota_A1ImageValid / Ota_CopyVerify` | 前缀统一（OTA 动作统一 `Ota_` 带下划线，与 Ota_CalcCopyPlan / Ota_CopyA2ToA1 对齐） |
 | `load_a` / `load_A` | `app_entry_fn` / `s_AppEntry`（改 static） | 类型名含义化；指针只在本文件用，收成 static |
@@ -34,9 +37,13 @@
 | `BootStaFlag` | （删除） | 全工程无引用的死变量 |
 | boot.h 尾部 4 个死声明 `BootLoader_Enter / BootLoader_Info / BootLoader_Event / Xmodem_CRC16` | （删除） | 无实现、无调用（Xmodem 遗留） |
 | boot.c 内 `OtaWriteFlag / OtaClearInstalledVersion / OtaCloseUpdateGate / OtaRetryCount / OtaRetryCountSet` | （迁入 reg.c，改名 `Ota_WriteFlag / Ota_ClearInstalledVersion / Ota_CloseUpdateGate / Ota_RetryCount / Ota_RetryCountSet`，static 放开） | 它们只操作 24C02，放 REG 模块才对位；改名登记见《REG重构.md》§3 |
+| boot.h 的 `OTA_InfoCB` 族（typedef / `OTA_INFOCB_SIZE` / `OTA_OFF_*` / 布局断言 / `OTA_ADDR` / `OTA_RETRY_*` / `OTA_A1/A2_FLAG`） | （迁出，归 reg.h） | 2026-11-25 去重轮：REG 是 24C02 布局属主，boot.h 经 `#include "reg.h"` 获取；此前双份定义触发 #256/#147 编译错误 |
+| boot.c 的 `OTA_Info` 定义、`g_ota_lcd_err/hold` 定义 | （迁出，归 reg.c） | 同去重轮；extern 一并走 reg.h（boot.h 的两份 extern 删除） |
 | `Boot_Clear` 末尾**新增 `WDG_Feed()`**（2026-11-25 WDG 阶段联动） | —（原工程无） | boot.c | IWDG 使能后软件关不掉、跳 A1 后继续计时；跳转前喂狗把整个窗口（≥2.1s）留给 A1 应用启动到第一次喂狗（A1 应用自带 WDG 接续），否则正式 main 开狗后每次跳转都可能在应用初始化途中喂狗超窗复位 |
 
-## 2. `HARDWARE/BOOT/boot.h`（重构后全文）
+## 2. `HARDWARE/BOOT/boot.h`（已落盘，2026-11-25 与实文件逐字同步）
+
+> 注：实文件的行注用 `//`（与 §0 的 `/* */` 约定不一致，按落盘现状记录，未回改）。
 
 ```c
 #ifndef BOOT_H
@@ -46,67 +53,30 @@
 #include <stddef.h>
 #include "stmflash.h"   /* 提供 STM32_FLASH_SIZE：分区断言用它核对片内 Flash 总容量 */
 #include "24cxx.h"      /* 提供 EE_ADDR：分区断言用它核对 EEPROM 地址边界 */
+#include "reg.h"
 
-/* A1 应用入口函数指针类型：指向应用镜像的复位向量，调用它即完成跳转 */
+// A1 应用入口函数指针类型：指向应用镜像的复位向量，调用它即完成跳转
 typedef void (*app_entry_fn)(void);
 
-/* 芯片资源对照：分区推导与断言按 VET6（512K Flash / 2K 页）校验
-   stm32f103vct6  flash:256k  ram:48k  页大小:2k
-   stm32f103vet6  flash:512k  ram:64k  页大小:2k */
+// 芯片资源对照：分区推导与断言按 VET6（512K Flash / 2K 页）校验
+// stm32f103vct6  flash:256k  ram:48k  页大小:2k
+// stm32f103vet6  flash:512k  ram:64k  页大小:2k
 
-#define  ST32_FLASH_SADDR    0x08000000   /* 片内 Flash 基地址，三个分区的共同起点 */
-#define  ST32_PAGE_SIZE      2048         /* Flash 页大小：擦除与搬运的最小单位 */
-#define  ST32_PAGE_NUM       256          /* 片内 Flash 总页数（512K / 2K） */
-#define  ST32_B_PAGE_NUM     28           /* B 区页数：BootLoader 自身占用 56KB（0x08000000~0x0800E000） */
-#define  ST32_A1_PAGE_NUM    100          /* A1 区页数：正式应用运行区，共 200KB */
-#define  ST32_A1_START_PAGE  ST32_B_PAGE_NUM                                         /* A1 起始页号 = B 区页数（两区紧邻） */
-#define  ST32_A1_SADDR       (ST32_FLASH_SADDR + ST32_A1_START_PAGE * ST32_PAGE_SIZE) /* A1 起始地址，由宏链推导，当前 0x0800E000 */
-#define  ST32_A2_PAGE_NUM    100                                                          /* A2 区页数：新固件下载暂存区，共 200KB */
-#define  ST32_A2_START_PAGE  (ST32_A1_START_PAGE + ST32_A1_PAGE_NUM)                     /* A2 起始页号 = A1 末页（两区紧邻） */
-#define  ST32_A2_SADDR       (ST32_FLASH_SADDR + ST32_A2_START_PAGE * ST32_PAGE_SIZE)    /* A2 起始地址，由宏链推导，当前 0x08040000 */
+#define  ST32_FLASH_SADDR    0x08000000   // 片内 Flash 基地址，三个分区的共同起点
+#define  ST32_PAGE_SIZE      2048         // Flash 页大小：擦除与搬运的最小单位
+#define  ST32_PAGE_NUM       256          // 片内 Flash 总页数（512K / 2K）
+#define  ST32_B_PAGE_NUM     28           // B 区页数：BootLoader 自身占用 56KB（0x08000000~0x0800E000）
+#define  ST32_A1_PAGE_NUM    100          // A1 区页数：正式应用运行区，共 200KB
+#define  ST32_A1_START_PAGE  ST32_B_PAGE_NUM                                         // A1 起始页号 = B 区页数（两区紧邻）
+#define  ST32_A1_SADDR       (ST32_FLASH_SADDR + ST32_A1_START_PAGE * ST32_PAGE_SIZE) // A1 起始地址，由宏链推导，当前 0x0800E000
+#define  ST32_A2_PAGE_NUM    100                                                          // A2 区页数：新固件下载暂存区，共 200KB
+#define  ST32_A2_START_PAGE  (ST32_A1_START_PAGE + ST32_A1_PAGE_NUM)                     // A2 起始页号 = A1 末页（两区紧邻）
+#define  ST32_A2_SADDR       (ST32_FLASH_SADDR + ST32_A2_START_PAGE * ST32_PAGE_SIZE)    // A2 起始地址，由宏链推导，当前 0x08040000
 
-#define  OTA_A1_FLAG         0xA1A1A1A1   /* OTA_flag 取此值：A1 区为当前有效应用 */
-#define  OTA_A2_FLAG         0xA2A2A2A2   /* OTA_flag 取此值：A2 区存有待安装固件 */
-
-#define  OTA_ADDR            200          /* OTA 状态块在 24C02 中的存放起始地址 */
-
-/* OTA 状态块：整块存于 24C02（200~243 共 44 字节），上电读入 RAM，关键变化写回 */
-typedef struct {
-    u32 OTA_flag;      /* 生效分区标志：OTA_A1_FLAG / OTA_A2_FLAG */
-    u8  OTA_ver[32];   /* 版本串；全 0 = 本机没有可用的已安装版本（版本闸以此判定） */
-    u32 OTA_size;      /* A2 中待安装固件的总字节数；0 = 无固件 */
-    u8  UPDATE_flag;   /* 升级闸：1 = 上电进入联网 OTA 流程；0 = 上电直接跳 A1 */
-} OTA_InfoCB;
-#define OTA_INFOCB_SIZE sizeof(OTA_InfoCB)   /* 状态块总字节数，整块读写时使用 */
-
-/* UPDATE_flag 的两个写入端：① 出厂初始化 Reg_SeedDefaults() 置 1，APP 参数协议也可改；
-   ② 安装/自愈成功后由 reg.c 的 Ota_CloseUpdateGate() 自动置 0；下次升级由平台经 A1 置回 1。
-   24C02 自检失败时 reg.c 显式置 0——状态落不了盘，OTA 无法进行。 */
-
-/* 状态块各字段在 24C02 中的字节偏移：分字段读写时按此寻址 */
-#define OTA_OFF_FLAG        0     /* OTA_flag 偏移（4 字节） */
-#define OTA_OFF_VER         4     /* OTA_ver 偏移（32 字节） */
-#define OTA_OFF_SIZE        36    /* OTA_size 偏移（4 字节） */
-#define OTA_OFF_UPDATE      40    /* UPDATE_flag 偏移（1 字节） */
-
-/* 布局断言：结构体任一成员的实际偏移与上面宏不符即编译失败（负数组长度技巧），
-   防止日后改结构体导致分字段读写地址错位 */
-typedef char ota_info_layout_check[
-    (offsetof(OTA_InfoCB, OTA_flag)    == OTA_OFF_FLAG   &&
-     offsetof(OTA_InfoCB, OTA_ver)     == OTA_OFF_VER    &&
-     offsetof(OTA_InfoCB, OTA_size)    == OTA_OFF_SIZE   &&
-     offsetof(OTA_InfoCB, UPDATE_flag) == OTA_OFF_UPDATE) ? 1 : -1];
-
-/* 自愈重搬失败计数：1 字节 EEPROM，地址 244，位于状态块之后的空闲段
-   （0~63 留给 APP、64~191 为 MQTT 参数、250 是 EE_ADDR 标志）。
-   状态块一旦扩大会覆盖到它，ota_layout_check 会在编译期拦截 */
-#define OTA_RETRY_ADDR      (OTA_ADDR + 44)
-#define OTA_RETRY_MAX       3   /* 自愈重搬连续失败上限：达到后不再擦写 A1 */
-
-/* 分区合法性编译期断言：全部由宏推导，任何一条不满足即因负数组长度编译失败
-   ① A1 紧接 B 区；② A2 紧接 A1；③ A2 末页不越过片内 Flash；
-   ④⑤ A1/A2 各恰为 200KB（OTA 固件上限不变）；⑥ B 区大小与 Keil IROM1 的 0xE000 一致；
-   ⑦ 自愈计数地址不越过 EE_ADDR */
+// 分区合法性编译期断言：全部由宏推导，任何一条不满足即因负数组长度编译失败
+// ① A1 紧接 B 区；② A2 紧接 A1；③ A2 末页不越过片内 Flash；
+// ④⑤ A1/A2 各恰为 200KB（OTA 固件上限不变）；⑥ B 区大小与 Keil IROM1 的 0xE000 一致；
+// ⑦ 自愈计数地址不越过 EE_ADDR
 typedef char ota_layout_check[
     (ST32_A1_START_PAGE == ST32_B_PAGE_NUM &&
      ST32_A2_START_PAGE == (ST32_A1_START_PAGE + ST32_A1_PAGE_NUM) &&
@@ -116,60 +86,50 @@ typedef char ota_layout_check[
      (ST32_B_PAGE_NUM * ST32_PAGE_SIZE) == 0xE000 &&
      (OTA_RETRY_ADDR + 1) <= EE_ADDR) ? 1 : -1];
 
-/* A2→A1 搬运计划：Ota_CalcCopyPlan 按固件长度填写，Ota_CopyA2ToA1 按它执行 */
+// A2→A1 搬运计划：Ota_CalcCopyPlan 按固件长度填写，Ota_CopyA2ToA1 按它执行
 typedef struct {
-    u8  PageBuf[ST32_PAGE_SIZE];   /* 单页搬运缓冲：A2→RAM→A1 的中转区 */
-    u8  PageNB;                    /* 页块总数（含末块）；0 = 计划无效，不执行搬运 */
-    u16 TailHalfwords;             /* 末块长度（半字数）：末块通常不满一页 */
+    u8  PageBuf[ST32_PAGE_SIZE];   // 单页搬运缓冲：A2→RAM→A1 的中转区
+    u8  PageNB;                    // 页块总数（含末块）；0 = 计划无效，不执行搬运
+    u16 TailHalfwords;             // 末块长度（半字数）：末块通常不满一页
 } OtaCopyPlan_CB;
 
-extern OTA_InfoCB OTA_Info;   /* OTA 状态块的 RAM 副本（定义在 boot.c，上电由 main 从 24C02 读入） */
-
-/* LCD 错误提示登记：引导阶段屏幕尚未初始化，先在此记下错误，
-   由 main 在屏就绪后统一显示（配合 LCD12864_ClearGDRAM() 清背景；
-   LCD 阶段驱动换源 zxl，原 CLEARGDRAMH，对照见《LCD重构.md》§1.1） */
-extern u8 g_ota_lcd_err;    /* 待显示的 OTA_ERR_* 错误码；0 = 无错误 */
-extern u8 g_ota_lcd_hold;   /* 1 = 显示后停留 3 秒再尝试进应用；0 = 显示即返回 */
-
 /* ---- 上电决策（boot.c） ---- */
-/* 上电三分支：① flag≠A1 → 校验后搬 A2→A1；② flag=A1 但 A1 损坏 → 自愈重搬；
-   ③ 其余 → 直接返回，由 main 决定联网 OTA 还是跳应用 */
+// 上电三分支：① flag≠A1 → 校验后搬 A2→A1；② flag=A1 但 A1 损坏 → 自愈重搬；
+// ③ 其余 → 直接返回，由 main 决定联网 OTA 还是跳应用
 void Boot_Branch(void);
 
 /* ---- 跳转（boot.c） ---- */
-/* Boot_SetMSP 为 static 内联汇编（仅 Boot_JumpToA1 内部调用），不再在 boot.h 声明 */
-void Boot_JumpToA1(uint32_t addr); /* 跳转 A1 应用；A1 不可运行时打印提示后返回 */
-void Boot_Clear(void);       /* 复位 B 区占用的外设，跳转前调用 */
+void Boot_JumpToA1(uint32_t addr); // 跳转 A1 应用；A1 不可运行时打印提示后返回
+void Boot_Clear(void);            // 复位 B 区占用的外设，跳转前调用
 
 /* ---- A2→A1 搬运（ota_copy.c） ---- */
-void Ota_CalcCopyPlan(void);  /* 按 OTA_size 计算页块数与末块长度，写入 g_CopyPlan */
-void Ota_CopyA2ToA1(void);    /* 按搬运计划逐页把 A2 内容复制到 A1 */
-u8   Ota_CopyVerify(void);     /* 搬运校验：A1 与 A2 前 OTA_size 字节一致返回 1 */
+void Ota_CalcCopyPlan(void);  // 按 OTA_size 计算页块数与末块长度，写入 g_CopyPlan
+void Ota_CopyA2ToA1(void);    // 按搬运计划逐页把 A2 内容复制到 A1
+u8   Ota_CopyVerify(void);     // 搬运校验：A1 与 A2 前 OTA_size 字节一致返回 1
 
 #endif
 ```
 
-## 3. `HARDWARE/BOOT/boot.c`（重构后全文）
+## 3. `HARDWARE/BOOT/boot.c`（已落盘，2026-11-25 与实文件逐字同步）
+
+> 与上一版评审稿的差异：① `OTA_Info` 与 `g_ota_lcd_err/hold` 定义行删除（归 reg.c，§5）；
+> ② `Boot_SetMSP` 回退为原名 `MSR_MSP`（仍 static）；③ 分支一两条护栏的行内注精简；
+> ④ `Boot_Clear` 内 LCD 清屏注精简为一行。
 
 ```c
+#include "boot.h"
+#include "usart.h"    // printf：调试串口输出
+#include "reg.h"
+#include <string.h>
+#include "display.h"  // OTA_ERR_*：LCD 错误码定义
+#include "wdg.h"      // WDG_Feed：跳转 A1 前喂狗（IWDG 一旦使能关不掉，见 Boot_Clear）
+
 /* BOOT 模块：上电决策与跳转
    Boot_Branch 读 EEPROM 状态块做三分支判定；Boot_JumpToA1 负责换栈跳转。
    A2→A1 的搬运实现在 ota_copy.c，标志/计数的 EEPROM 读写实现在 reg.c。 */
-
-#include "boot.h"
-#include "usart.h"    /* printf：调试串口输出 */
-#include "reg.h"      /* Ota_WriteFlag / Ota_ClearInstalledVersion / Ota_CloseUpdateGate / Ota_RetryCount(Set) */
-#include <string.h>
-#include "display.h"  /* OTA_ERR_*：LCD 错误码定义 */
-#include "wdg.h"      /* WDG_Feed：跳转 A1 前喂狗（IWDG 一旦使能关不掉，见 Boot_Clear） */
-
-OTA_InfoCB OTA_Info;      /* OTA 状态块 RAM 副本：上电由 main 从 24C02 读入，变化时经 reg.c 写回 */
-
-u8 g_ota_lcd_err = 0;     /* 引导阶段登记的 LCD 错误码（OTA_ERR_*），0 = 无错误 */
-u8 g_ota_lcd_hold = 0;    /* 1 = 屏就绪后显示 3 秒再尝试进应用；0 = 显示即返回 */
-
-static app_entry_fn s_AppEntry;   /* A1 应用入口：跳转前指向其复位向量，仅本文件使用 */
-
+   
+static app_entry_fn s_AppEntry;   /* A1 应用入口：跳转前指向其复位向量 */
+   
 /* 校验镜像头部：栈顶须落片内 RAM 区、复位向量须落 A1 区（应用按 A1 链接）；1=合法 0=坏包 */
 /* 注意：分区地址宏展开为「0x08000000 + 偏移」的算式，取值时必须整体加括号再转型。
    若写成 *(volatile u32 *)ST32_A2_SADDR，强制转换只作用于第一个加数，
@@ -205,10 +165,7 @@ void Boot_Branch(void)
 {
     if (OTA_Info.OTA_flag != OTA_A1_FLAG)   /* 分支一：标志指向 A2，存在待安装固件 */
     {
-        /* 护栏一：OTA_size 必须是合法固件字节数。
-           size=0 会让 Ota_CalcCopyPlan 得出 PageNB=0，Ota_CopyA2ToA1 内
-           PageNB-1 以 u16 存储下溢成 65535，把整片 Flash 当固件刷进 A1（变砖）；
-           size 超过 A2 容量说明 EEPROM 数据已损坏，同样不可作为搬运依据。 */
+        /* OTA_size 必须是合法固件字节数。 */
         if (OTA_Info.OTA_size == 0 || OTA_Info.OTA_size > (u32)(ST32_A2_PAGE_NUM * ST32_PAGE_SIZE))
         {
             printf("bad OTA_size=%u\r\n", OTA_Info.OTA_size);
@@ -219,8 +176,7 @@ void Boot_Branch(void)
             return;
         }
 
-        /* 护栏二：A2 头部必须是可运行镜像。拦截「误传 .hex 文本」「下载中途截断」
-           等坏包，避免垃圾被搬进 A1 后又被搬运比对「确认」成有效应用。 */
+        /* A2 头部必须是可运行镜像。 */
         if (!Ota_A2ImageValid())
         {
             printf("A2 hdr invalid\r\n");
@@ -310,9 +266,8 @@ void Boot_Branch(void)
     /* 分支三：A1 正常 → 函数返回，main 继续走 OTA 状态机或跳应用 */
 }
 
-/* MSP = addr：跳转应用前先把栈换到应用自己的栈（Keil 内联汇编，addr 经 r0 写入 MSP）。
-   仅 Boot_JumpToA1 调用，收成 static；若个别 armcc 版本不接受 static __asm 组合，去掉 static 即可 */
-static __asm void Boot_SetMSP(uint32_t addr)
+/* MSP = addr：跳转应用前先把栈换到应用自己的栈（Keil 内联汇编，addr 经 r0 写入 MSP） */
+static __asm void MSR_MSP(uint32_t addr)
 {
     MSR MSP, r0
     BX r14
@@ -328,7 +283,7 @@ void Boot_JumpToA1(uint32_t addr)
     {
         vtor = SCB->VTOR;
         printf("vtor %x\n", vtor);
-        Boot_SetMSP(*(uint32_t *)addr);                    /* 切换主栈指针到应用的栈顶 */
+        MSR_MSP(*(uint32_t *)addr);                    /* 切换主栈指针到应用的栈顶 */
         s_AppEntry = (app_entry_fn) * (uint32_t *)(addr + 4);   /* 取应用复位向量作为入口 */
         printf("load progarm A is ok\r\n");
         Boot_Clear();                            /* 复位 USART1/2 与清屏，把干净外设交给应用 */
@@ -339,31 +294,32 @@ void Boot_JumpToA1(uint32_t addr)
 }
 
 /* 清理 B 区外设：复位 USART1/2 + LCD 清屏 + 跳转前喂狗——IWDG 使能后软件关不掉，
-   把整个窗口（≥2.1s，见《WDG重构.md》）留给 A1 应用启动到第一次喂狗 */
+   把整个窗口（≥2.1s）留给 A1 应用启动到第一次喂狗 */
 void Boot_Clear(void)
 {
     USART_DeInit(USART1);
     USART_DeInit(USART2);
 
-    LCD12864_Clear();   /* LCD 清屏（原工程 WRCommandH(0x01)，LCD 阶段驱动换源 zxl， */
-                        /* 对照见《LCD重构.md》§1.1） */
+    LCD12864_Clear();   /* LCD 清屏 */
 
-    WDG_Feed();         /* 跳转前喂狗：给 A1 应用留满整个 IWDG 窗口（《WDG重构.md》§7.5） */
+    WDG_Feed();         /* 跳转前喂狗：给 A1 应用留满整个 IWDG 窗口 */
 }
 ```
 
-## 4. `HARDWARE/BOOT/ota_copy.c`（新文件，全文）
+## 4. `HARDWARE/BOOT/ota_copy.c`（已落盘，2026-11-25 与实文件逐字同步）
+
+> 与上一版评审稿的差异：Flash 读写已随 STMFLASH 阶段改为 `Flash_Read/Flash_Write`，
+> include 增加 `flash_layout.h`；文件头「逐行等价」说明行删除。
 
 ```c
 /* OTA 搬运模块：把暂存在 A2 的新固件复制到 A1 应用区
    Ota_CalcCopyPlan 先按固件长度制定计划，Ota_CopyA2ToA1 执行逐页复制，
-   Ota_CopyVerify 用逐字节比对确认结果，三步配合完成一次固件安装。
-   本文件逻辑与原 boot.c 的 Cal_Block / Update_A1 / OtaCopyVerify（现 Ota_CalcCopyPlan /
-   Ota_CopyA2ToA1 / Ota_CopyVerify，见 §1 改名表）逐行等价。 */
+   Ota_CopyVerify 用逐字节比对确认结果，三步配合完成一次固件安装。 */
 
 #include "boot.h"
 #include "usart.h"    /* printf：调试串口输出 */
 #include <string.h>   /* memcmp：搬运校验 */
+#include "flash_layout.h"
 
 OtaCopyPlan_CB g_CopyPlan;   /* 全局搬运计划：先由 Ota_CalcCopyPlan 填写，再由 Ota_CopyA2ToA1 消费 */
 
@@ -396,7 +352,7 @@ void Ota_CalcCopyPlan(void)
 }
 
 /* 按搬运计划逐页把 A2 复制到 A1：前 PageNB-1 块满页搬运，末块按 TailHalfwords 个半字；
-   依赖 STMFLASH_Read/Write 的半字单位与 Write 内部按页擦除，写入地址须对齐页边界 */
+   依赖 Flash_Read/Write 的半字单位与 Write 内部按页擦除，写入地址须对齐页边界 */
 void Ota_CopyA2ToA1(void)
 {
     u16 i = 0;                    /* 页块循环计数 */
@@ -411,18 +367,18 @@ void Ota_CopyA2ToA1(void)
     for (i = 0; i < g_CopyPlan.PageNB - 1; i++)    /* 逐个搬运满页块（不含末块） */
     {
         addrR = ST32_A2_SADDR + i * ST32_PAGE_SIZE;   /* 第 i 块在 A2 的读取地址 */
-        STMFLASH_Read(addrR, (u16 *)&g_CopyPlan.PageBuf[0], ST32_PAGE_SIZE / 2);    /* 整页读入缓冲（1024 半字） */
+        Flash_Read(addrR, (u16 *)&g_CopyPlan.PageBuf[0], ST32_PAGE_SIZE / 2);    /* 整页读入缓冲（1024 半字） */
 
         addrW = ST32_A1_SADDR + i * ST32_PAGE_SIZE;   /* 同一块在 A1 的对称写入地址 */
-        STMFLASH_Write(addrW, (u16 *)&g_CopyPlan.PageBuf[0], ST32_PAGE_SIZE / 2);   /* 整页写回（内部先擦后写） */
+        Flash_Write(addrW, (u16 *)&g_CopyPlan.PageBuf[0], ST32_PAGE_SIZE / 2);   /* 整页写回（内部先擦后写） */
     }
 
     i = g_CopyPlan.PageNB - 1;    /* 末块单独处理：长度通常不满一页 */
     addrR = ST32_A2_SADDR + i * ST32_PAGE_SIZE;
-    STMFLASH_Read(addrR, (u16 *)&g_CopyPlan.PageBuf[0], g_CopyPlan.TailHalfwords);    /* 只读末块实际长度 */
+    Flash_Read(addrR, (u16 *)&g_CopyPlan.PageBuf[0], g_CopyPlan.TailHalfwords);    /* 只读末块实际长度 */
 
     addrW = ST32_A1_SADDR + i * ST32_PAGE_SIZE;
-    STMFLASH_Write(addrW, (u16 *)&g_CopyPlan.PageBuf[0], g_CopyPlan.TailHalfwords);   /* 只写末块实际长度 */
+    Flash_Write(addrW, (u16 *)&g_CopyPlan.PageBuf[0], g_CopyPlan.TailHalfwords);   /* 只写末块实际长度 */
 }
 
 /* 搬运校验：逐字节比对 A1/A2 固件长度范围，1=一致（安装有效）0=不一致或长度非法；填充字节不参与 */
@@ -438,7 +394,35 @@ u8 Ota_CopyVerify(void)
 }
 ```
 
-## 附录 1：REG 模块联动（boot.c 依赖，必须与本模块一起落地）
+## 5. 2026-11-25 去重轮定稿（boot.h/boot.c 与 REG 的重复定义清理）
+
+起因：REG 阶段把 OTA 状态块族定稿到 reg.h/reg.c 后，boot.h/boot.c 里的同名定义未同步删除，
+编译报 `#256: invalid redeclaration of type name "OTA_InfoCB"`（boot.h vs reg.h）、
+`#147: declaration is incompatible`（`OTA_Info` 双 extern、双定义）。
+
+定稿原则：**属主归 REG，BOOT 侧只消费**。落盘改动：
+
+1. **boot.h**：删 `OTA_A1_FLAG / OTA_A2_FLAG / OTA_ADDR` 宏、`OTA_InfoCB` typedef 与
+   `OTA_INFOCB_SIZE`、`OTA_OFF_*` 偏移宏、`ota_info_layout_check` 布局断言、
+   `OTA_RETRY_ADDR / OTA_RETRY_MAX`、`extern OTA_InfoCB OTA_Info`、
+   `extern g_ota_lcd_err / g_ota_lcd_hold`；新增 `#include "reg.h"`——boot.c / ota_copy.c
+   经 boot.h 间接取得同一份定义，所有引用点不受影响。
+2. **boot.c**：删 `OTA_InfoCB OTA_Info;` 与 `u8 g_ota_lcd_err/hold = 0;` 定义行（reg.c 提供）。
+3. 保留：boot.h 只剩 BOOT 自己的东西——`app_entry_fn`、`ST32_*` 分区宏、`ota_layout_check`
+   （分区六条 + 第七条 EE_ADDR 检查）、`OtaCopyPlan_CB`、函数声明。
+
+遗留记录（本轮未动代码，待后续收敛）：
+
+- **OTA_ERR_* 双份定义**：reg.h 与 Display.h 同时定义 8 个错误码（值相同，良性重复定义）。
+  建议后续收敛到一处（REG 属主或 Display 独占），属 REG/LCD 边界问题。
+- **ST32_* 分区宏双份**：boot.h 与 flash_layout.h 各一份（值相同）。《STMFLASH与分区布局重构.md》
+  阶段 11 的 boot.h 瘦身（分区宏迁出、boot.h 改 include flash_layout.h）尚未执行。
+- **MSR_MSP 未改名**：§1 建议的 `Boot_SetMSP` 未采纳，实文件保留 `static __asm MSR_MSP`。
+
+## 附录 1：REG 模块联动（⛔ 已作废，由《REG重构.md》§3 接替并落盘）
+
+> 本附录文本已过时：五个标志函数与 OTA 状态块族已随 REG 阶段（阶段 6）按《REG重构.md》
+> 的版本落盘，本附录仅存档备查。
 
 ### 附录 1.1 `HARDWARE/REG/reg.h`（在现有文件末尾 `#endif` 前追加）
 
@@ -498,10 +482,9 @@ void Ota_RetryCountSet(u8 v)
 
 | 文件 | 位置 | 改动 |
 |---|---|---|
-| `USER/main.c` | :29、:50 | `LOAD_A(ST32_A1_SADDR)` → `Boot_JumpToA1(ST32_A1_SADDR)`；:24、:42 注释里的 `LOAD_A` 同步改文本 |
-| `USER/main.c` | :87 | `BootLoader_Brance()` → `Boot_Branch()` |
-| `USER/BOOTV10.uvprojx` | HARDWARE 组 | 新增 `ota_copy.c` 条目（路径 `../HARDWARE/BOOT/ota_copy.c`） |
-| 后续 STMFLASH 模块 md | — | `STMFLASH_Read/Write` → `Flash_Read/Flash_Write`（届时改 ota_copy.c 4 处调用 + gprs_rx.c 1 处 + stmflash.c 自身） |
+| `USER/main.c` | :29、:50、:87 | `LOAD_A(ST32_A1_SADDR)` → `Boot_JumpToA1(ST32_A1_SADDR)`、`BootLoader_Brance()` → `Boot_Branch()` ⬜ 待落盘（当前 main.c 仍是 LCD/4G 联测版，未调 Boot_Branch；正式形态见《Main重构.md》） |
+| `USER/BOOTV10.uvprojx` | HARDWARE 组 | 新增 `ota_copy.c` 条目（路径 `../HARDWARE/BOOT/ota_copy.c`）✅ 已完成（map 文件证实 ota_copy.o 已入编译） |
+| STMFLASH 阶段联动 | ota_copy.c | `STMFLASH_Read/Write` → `Flash_Read/Flash_Write` ✅ 已落盘（4 处调用改毕，include 改为 flash_layout.h）；gprs_rx.c 1 处随阶段 10 |
 
 ## 附录 3：本次删掉的死代码清单（均无引用，删除不影响逻辑）
 

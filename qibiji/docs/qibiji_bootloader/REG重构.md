@@ -410,11 +410,12 @@ int main(void)
    reg.h 的 `OTA_OFF_*` 偏移 + `Ota_WriteFlag` 等函数；
 3. **阶段 11 BOOT**（《BOOT模块重构.md》届时同步修订）：
    - boot.h 删 `OTA_InfoCB` 族、`OTA_ADDR/OTA_RETRY_*`、`OTA_A1/A2_FLAG`、
-     `ota_info_layout_check`、`ota_layout_check`（分区六条已迁 flash_layout.h、
-     第七条已迁 reg.h）、`OTA_Info` extern → 改为 `#include "reg.h"`；
-     **`g_ota_lcd_*` extern 留在 boot.h 不迁**；
-   - boot.c 删五个标志函数实现与 `OTA_Info` 定义（reg.c 提供）；
-     **`g_ota_lcd_*` 定义与 `#include "display.h"` 保留原位**（LCD 归属未变）；
+     `ota_info_layout_check`、`OTA_Info`/`g_ota_lcd_*` extern → 改为 `#include "reg.h"`
+     ✅ 2026-11-25 去重轮已落盘（分区宏 `ST32_*` 与 `ota_layout_check` 暂留 boot.h，
+     瘦身属《STMFLASH与分区布局重构.md》阶段 11）；
+   - boot.c 删五个标志函数实现与 `OTA_Info` 定义 ✅（reg.c 提供）；
+     `g_ota_lcd_*` 定义亦随去重轮归 reg.c ✅（boot.c 的 `#include "display.h"` 保留，
+     注释仍写 OTA_ERR_* 取自 Display.h——实为 reg.h/Display.h 双份均可解析）；
    - `OtaCopyPlan_CB` 的缓冲长度 `ST32_PAGE_SIZE` 经 `#include "flash_layout.h"` 获得；
 4. **阶段 12 main**：调用点 `AT24CXX_ReadOTAInfo()` 改为 `Reg_ReadOtaInfo()`。
 
