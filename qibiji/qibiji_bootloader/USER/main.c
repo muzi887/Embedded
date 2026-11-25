@@ -6,22 +6,21 @@
 #include "stmflash.h"
 #include "flash_layout.h"
 #include "24cxx.h"
+#include "reg.h"
 
 #define TEST_ADDR_BYTE  16      /* 单字节测试地址（APP 参数区内） */
 #define TEST_ADDR_LEN   24      /* 定长测试起始地址（连续 8 字节，仍在 APP 参数区内） */
 #define TEST_LEN        8       /* 定长测试的字节数 */
 
-static u8 s_save_buf[TEST_LEN];             /* 测试区原值暂存：跑完恢复，不留痕 */
-static u8 s_wbuf[TEST_LEN];         /* 待写测试图案 */
-static u8 s_rbuf[TEST_LEN];         /* 读回数据 */
+static u8  s_block_buf[OTA_INFOCB_SIZE];         /* 状态块整块回读缓冲：验证落盘内容 */
 
 int main(void)
 {
-  
-  u32 i;               /* 页内半字循环计数 */
-  u32 err_cnt;         /* 比对不一致的半字个数，0 = 通过 */
-  u8 save_byte;        /* 单字节测试地址的原值 */
-  u8 chk;              /* AT24CXX_Check 返回值 */
+  u32 flag_save;        /* 测试前 OTA_flag 原值（恢复用） */
+  u8  update_save;      /* 测试前 UPDATE_flag 原值（恢复用） */
+  u32 flag_back;        /* 回读出的 OTA_flag */
+  u8  retry_back;       /* 回读出的自愈计数 */
+  u8  gate_back;        /* 回读出的 UPDATE_flag */
   u32 blink_cnt = 0;   /* 心跳计数：watch 窗口看它递增确认主循环在跑，printf 里同步输出 */
 
   delay_init();          /* SysTick 延时初始化（按 72MHz 系统时钟配节拍） */
@@ -32,43 +31,55 @@ int main(void)
 
   AT24CXX_Init();     /* I²C 引脚就绪 */
 
-  /* 验证 1：上电自检与标志管理 */
-  chk = AT24CXX_Check();
-  if (chk == AT24CXX_OK)          printf("check: OK (marker present)\r\n");
-  else if (chk == AT24CXX_FRESH)  printf("check: FRESH (marker written, seeding is REG's job)\r\n");
-  else                            printf("check: FAIL (eeprom not responding)\r\n");
+  printf("reg test start\r\n");
 
-  /* 验证 2：单字节写读比对（先存原值，跑完恢复） */
-  save_byte = AT24CXX_ReadOneByte(TEST_ADDR_BYTE);
-  if (AT24CXX_WriteOneByte(TEST_ADDR_BYTE, 0xA5) == AT24CXX_OK
-      && AT24CXX_ReadOneByte(TEST_ADDR_BYTE) == 0xA5)
-      printf("byte test PASS\r\n");
-  else
-      printf("byte test FAIL\r\n");
-  AT24CXX_WriteOneByte(TEST_ADDR_BYTE, save_byte);                /* 恢复原值 */
+  /* ① 上电装载：老芯片走 OK 分支打印状态块与 MQTT 键；
+      新芯片会先打 "set default para"（播种）再读出——两种打印都算通过 */
+  Reg_ReadOtaInfo();
 
-  /* 验证 3：定长写读比对（同样先存原值） */
-  AT24CXX_Read(TEST_ADDR_LEN, s_save_buf, TEST_LEN);              /* 存原值 */
-  for (i = 0; i < TEST_LEN; i++) s_wbuf[i] = (u8)(i * 3 + 1);     /* 预填测试图案 */
-  err_cnt = 0;
-  if (AT24CXX_Write(TEST_ADDR_LEN, s_wbuf, TEST_LEN) == AT24CXX_OK)
+  flag_save  = OTA_Info.OTA_flag;     /* 存测试前原值 */
+  update_save = OTA_Info.UPDATE_flag;
+
+  /* ② 标志分字段写读：写 A2 → 整块回读 24C02 校验 → 恢复原值 */
+  if (OtaWriteFlag(OTA_A2_FLAG) == AT24CXX_OK)
   {
-      AT24CXX_Read(TEST_ADDR_LEN, s_rbuf, TEST_LEN);
-      for (i = 0; i < TEST_LEN; i++)
-          if (s_rbuf[i] != s_wbuf[i]) err_cnt++;
-      if (err_cnt == 0) printf("len test PASS (%u bytes)\r\n", (unsigned int)TEST_LEN);
-      else          printf("len test FAIL: err_cnt=%u\r\n", (unsigned int)err_cnt);
+      AT24CXX_Read(OTA_ADDR, s_block_buf, OTA_INFOCB_SIZE);   /* 从 24C02 整块读回（非 RAM 副本） */
+      flag_back = (u32)s_block_buf[0]
+                | ((u32)s_block_buf[1] << 8)
+                | ((u32)s_block_buf[2] << 16)
+                | ((u32)s_block_buf[3] << 24);                /* 按小端拼回 u32 */
+      printf("flag write-back: %08X %s\r\n", (unsigned int)flag_back,
+              (flag_back == OTA_A2_FLAG) ? "PASS" : "FAIL");
+      OtaWriteFlag(flag_save);   /* 恢复测试前标志（可能是 A1，也可能本就挂着 A2 待安装） */
   }
   else
-      printf("len test FAIL: write err_cntor\r\n");
-  AT24CXX_Write(TEST_ADDR_LEN, s_save_buf, TEST_LEN);             /* 恢复原值 */
+  {
+      printf("flag write FAIL\r\n");
+  }
 
+  /* ③ 自愈计数往返：写 2 → 读回应为 2 → 清零复原 */
+  OtaRetryCountSet(2);
+  retry_back = OtaRetryCount();
+  printf("retry roundtrip: %u %s\r\n", (unsigned int)retry_back,
+          (retry_back == 2) ? "PASS" : "FAIL");
+  OtaRetryCountSet(0);
+
+  /* ④ 升级闸往返：置 0 → 回读 24C02 校验 → 恢复原值（不用 paraToEeprom 整块恢复，
+      避免覆盖真实设备的版本记录与 OTA_size） */
+  OtaCloseUpdateGate();
+  AT24CXX_Read(OTA_ADDR + OTA_OFF_UPDATE, &gate_back, 1);
+  printf("gate write-back: %u %s\r\n", (unsigned int)gate_back,
+          (gate_back == 0) ? "PASS" : "FAIL");
+  OTA_Info.UPDATE_flag = update_save;   /* RAM 副本同步恢复 */
+  AT24CXX_Write(OTA_ADDR + OTA_OFF_UPDATE, (u8 *)&OTA_Info.UPDATE_flag, 1);
+
+  printf("reg test done\r\n");
 
   while (1)
   {
     delay_ms(500);            /* 半秒节拍 */
     LED_ERR = !LED_ERR;      /* 位带翻转 LED_ERR：完整周期约 1 秒，灯光心跳 */
     blink_cnt++;             /* 心跳计数递增 */
-    printf("skeleton alive, cnt=%u\r\n", (unsigned int)blink_cnt);   /* 串口心跳：与灯光同拍，肉眼核对两条链路 */
+    printf("reg alive, cnt=%u\r\n", (unsigned int)blink_cnt);   /* 串口心跳：与灯光同拍，肉眼核对两条链路 */
   }
 }

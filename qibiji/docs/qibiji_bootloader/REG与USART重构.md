@@ -1,6 +1,5 @@
-# REG 与 USART 重构（合并文档：先 REG，后 USART）
+# REG 与 USART 重构
 
-> 本文档合并原《REG重构.md》与《USART重构.md》。落盘顺序按「先 REG 再 USART」：
 > ① 先落 **REG**（§1~8）——它只依赖已入库的 24CXX 与现有 usart1 发送路径，验证 main 跑完 REG 即可确认 EEPROM 业务链路；
 > ② 再落 **USART**（§9~16）——回补 usart1 接收路径并新建 usart2，验证 main 是 PA2–PA3 跳线回环。
 > 两部分的 main 依次替换：阶段 5 的 EEPROM main → REG main → USART main，最后换成后续阶段的。
@@ -12,27 +11,28 @@
 > 来源：`qibiji_boot/HARDWARE/REG/reg.c/.h` + `qibiji_boot/HARDWARE/BOOT/boot.c/.h` 中的
 > OTA 状态块族（`OTA_InfoCB`、偏移宏、`OTA_ADDR/OTA_RETRY_*`、布局断言）与五个 EEPROM
 > 标志函数（`OtaWriteFlag / OtaClearInstalledVersion / OtaCloseUpdateGate / OtaRetryCount(Set)`）。
-> REG 是 **24C02 地址布局的属主**：布局总表、OTA 状态块、错误码登记全部归 reg.h。
-> 逻辑等价 + 两处契约修订（见 §1.1，均为阶段 5《EEPROM硬件访问层重构.md》预先约定的联动）。
+> REG 是 **24C02 地址布局的属主**：布局总表与 OTA 状态块归 reg.h。
+> 逻辑等价 + 一处契约修订（见 §1.1，为阶段 5《EEPROM硬件访问层重构.md》预先约定的联动）。
 
 ## 1. 本部分产出清单
 
 | 文件 | 动作 | 说明 |
 |---|---|---|
-| `HARDWARE/REG/reg.h` | 重写 | 迁入 OTA_InfoCB 族与 EEPROM 域断言；OTA_ERR_* 错误码提前归入（见 §2） |
+| `HARDWARE/REG/reg.h` | 重写 | 迁入 OTA_InfoCB 族与 EEPROM 域断言（见 §2） |
 | `HARDWARE/REG/reg.c` | 重写 | `Reg_ReadOtaInfo` 三态分派重写；五个标志函数从 boot.c 迁入；删反向依赖 include（见 §3） |
 | `USER/main.c` | 替换 | 本部分验证代码：装载 + 分字段写读回环（见 §4） |
 | Keil 工程 | 手动加 | HARDWARE 组确认 `reg.c` 在列表（首次加入）；Include Paths 加 `..\HARDWARE\REG`（见 §5） |
 
-### 1.1 两处契约修订（不是缺陷修复，是阶段 5 预先约定的联动）
+### 1.1 契约修订（不是缺陷修复，是阶段 5 预先约定的联动）
 
-1. **自检分派重写**：原 `reg.c:48` 的 `if(AT24CXX_Check())` 按「非 0 即失败」判断——阶段 5 把
-   Check 返回值从 0/1 扩为 0/1/2（`FRESH=2` 表示新芯片已补标志），旧写法会把新芯片误判成故障。
-   新代码按三态分派，且**播种动作 `paraToEeprom()` 从 24CXX 层移回 REG 层调用**
-   （阶段 5 已把播种从 `AT24CXX_Check()` 内部摘除，消除 24CXX→REG 反向依赖）；
-2. **OTA_ERR_* 与 LCD 登记变量归 REG**：原工程定义在 `Display.h`（LCD 模块）与 `boot.c`；
-   但 REG 的 EEPROM 检查是全工程**最早的登记点**，且本阶段时 LCD/BOOT 均未入库。
-   统一归入 reg.h/reg.c（错误码 0~7 与变量值全部原样保留），LCD/BOOT 阶段按此对齐（见 §8）。
+**自检分派重写**：原 `reg.c:48` 的 `if(AT24CXX_Check())` 按「非 0 即失败」判断——阶段 5 把
+Check 返回值从 0/1 扩为 0/1/2（`FRESH=2` 表示新芯片已补标志），旧写法会把新芯片误判成故障。
+新代码按三态分派，且**播种动作 `paraToEeprom()` 从 24CXX 层移回 REG 层调用**
+（阶段 5 已把播种从 `AT24CXX_Check()` 内部摘除，消除 24CXX→REG 反向依赖）。
+
+**LCD 相关内容不进本阶段**（LCD 尚未入库）：OTA_ERR_* 错误码仍归 `Display.h`、
+`g_ota_lcd_err/hold` 登记变量仍归 `boot.c`（与原工程归属一致），待 LCD/BOOT 阶段各自落位；
+本阶段 reg.c 的故障分支只做 RAM 默认值 + printf，不登记 LCD 变量。
 
 ## 2. reg.h（重写，全文）
 
@@ -110,23 +110,6 @@ typedef char ota_info_layout_check[
 typedef char reg_layout_check[
     ((OTA_RETRY_ADDR + 1) <= EE_ADDR) ? 1 : -1];
 
-/* ---- OTA 错误码（LCD 提示用）：登记处统一编号，main 在屏就绪后按码显示 ----
-   原工程定义在 Display.h；因 REG 的 EEPROM 检查是最早的登记点，
-   编号提前到本头文件，LCD 阶段的 Display.h 不再重复定义 */
-#define OTA_ERR_NET      0   /* 网络连接超时：AT 无应答 / 等待上线超时 */
-#define OTA_ERR_TIMEOUT  1   /* 请求超时：等平台回包超时重试超限 */
-#define OTA_ERR_LINK     2   /* 连接中断：升级过程中掉线超限 */
-#define OTA_ERR_DATA     3   /* 数据校验失败：CRC / 长度 / 序号 */
-#define OTA_ERR_IMAGE    4   /* 固件包无效：A2 镜像头非法 / A1、A2 均无可用镜像 */
-#define OTA_ERR_VERIFY   5   /* 写入校验失败：搬运 memcmp 不一致 / 自愈校验失败 */
-#define OTA_ERR_SIZE     6   /* 固件大小错误：OTA_size 非法 */
-#define OTA_ERR_EEPROM   7   /* 存储异常：24C02 自检失败（OTA 被关闭） */
-
-/* LCD 错误提示登记变量：任何模块在 LCD 初始化前发现错误先写这里，
-   main 在屏就绪后统一显示。err = 0 表示无错误 */
-extern u8 g_ota_lcd_err;    /* 待显示的 OTA_ERR_* 错误码；0 = 无错误 */
-extern u8 g_ota_lcd_hold;   /* 1 = 显示后停留 3 秒再尝试进应用；0 = 显示即返回 */
-
 /* OTA 状态块的 RAM 副本：上电由 Reg_ReadOtaInfo 从 24C02 读入（新芯片则播种生成） */
 extern OTA_InfoCB OTA_Info;
 
@@ -150,8 +133,9 @@ void OtaRetryCountSet(u8 v);             /* 写自愈重搬失败计数（1 字�
 /* REG 模块：24C02 参数登记处。
    职责：EEPROM 布局属主（地址总表见 reg.h）；上电把 OTA 状态块与 MQTT 身份
    从 24C02 装载进 RAM（新芯片先播种再装载）；提供状态块分字段读写供 BOOT/GPRS 使用。
-   注意：本文件不再 include boot.h / display.h——反向依赖已随 OTA_InfoCB 族与
-   错误码迁入 reg.h 而消除，依赖方向变为 BOOT/GPRS → REG 单向。 */
+   注意：本文件不再 include boot.h / display.h——OTA 状态块族归 reg.h 后
+   BOOT/GPRS 的反向依赖消除，依赖方向变为 BOOT/GPRS → REG 单向；
+   OTA_ERR_* 错误码与 LCD 登记变量维持原工程归属（Display.h / boot.c），REG 零引用。 */
 
 #include "reg.h"
 #include <stdio.h>      /* printf/sprintf/snprintf：调试输出与字符串组装 */
@@ -159,8 +143,6 @@ void OtaRetryCountSet(u8 v);             /* 写自愈重搬失败计数（1 字�
 
 /* ---- 全局定义（声明见 reg.h） ---- */
 OTA_InfoCB OTA_Info;    /* 状态块 RAM 副本：上电装载，关键变化由分字段写函数同步落盘 */
-u8 g_ota_lcd_err  = 0;  /* 待显示错误码：0 = 无错误，登记点见各使用处 */
-u8 g_ota_lcd_hold = 0;  /* 1 = 屏就绪后显示 3 秒再尝试进应用；0 = 显示即返回 */
 
 char g_mqtt_productKey[MQTT_KEY_STR_LEN] = MQTT_PRODUCTKEY_DEFAULT;   /* 初值取兜底值，EEPROM 槽位有效时被覆盖 */
 char g_mqtt_deviceKey[MQTT_KEY_STR_LEN]  = MQTT_DEVICEKEY_DEFAULT;
@@ -223,9 +205,7 @@ void Reg_ReadOtaInfo(void)
         OTA_Info.OTA_flag    = OTA_A1_FLAG;
         OTA_Info.OTA_size    = 0;
         OTA_Info.UPDATE_flag = 0;
-        g_ota_lcd_err  = OTA_ERR_EEPROM;   /* main 在 LCD 就绪后提示「存储异常」 */
-        g_ota_lcd_hold = 0;                /* 持久性错误：只显示不等待 */
-        sprintf(OTA_Info.OTA_ver, "v0.0.0");
+        sprintf((char *)OTA_Info.OTA_ver, "v0.0.0");   /* 首参转 char*：OTA_ver 是 u8 数组，消除 #167-D 符号性告警 */
         printf("24C02 check fail: OTA disabled, run A1 (OTA_ver = %s)\n", OTA_Info.OTA_ver);
         return;   /* 故障分支到此为止：不读 24C02，MQTT 键保持兜底值 */
     }
@@ -244,7 +224,7 @@ void paraToEeprom(void)
     memset(&OTA_Info, 0, OTA_INFOCB_SIZE);
     OTA_Info.OTA_flag = OTA_A1_FLAG;   /* 标志位默认值：当前 A 区是最新的 */
     OTA_Info.UPDATE_flag = 1;          /* 0 = 无需 OTA，1 = 需要联网 OTA（默认开启） */
-    sprintf(OTA_Info.OTA_ver, "v0.0.0");
+    sprintf((char *)OTA_Info.OTA_ver, "v0.0.0");   /* 首参转 char*：OTA_ver 是 u8 数组，消除 #167-D 符号性告警 */
     printf("set default para\r\n");
     printf("OTA_ver = %s,%x\n", OTA_Info.OTA_ver, OTA_Info.OTA_flag);
     AT24CXX_Write(OTA_ADDR, (u8 *)&OTA_Info, OTA_INFOCB_SIZE);   /* 整块写回 24C02 */
@@ -299,8 +279,10 @@ void OtaRetryCountSet(u8 v)
 | `OtaWriteFlag / OtaClearInstalledVersion / OtaCloseUpdateGate / OtaRetryCount / OtaRetryCountSet` | 从 boot.c 迁入，**名字不变、static 放开** | 只操作 24C02，归 REG 才对位（《BOOT模块重构.md》附录 1 作废，由本部分接替） |
 | `eepromLength` 宏 | 删除 | 全工程零引用（grep 证实） |
 | `#include "boot.h"` | 删除 | OTA_InfoCB 族归 reg.h 后，REG→BOOT 反向依赖消除 |
-| `#include "display.h"` | 删除 | OTA_ERR_* 与 LCD 登记变量已归 reg.h/reg.c |
+| `#include "display.h"` | 删除 | 故障分支不再登记 LCD 变量；错误码维持原归属（Display.h），REG 不再引用 LCD 层 |
 | `#include "delay.h"` | 删除 | 文件内无延时调用 |
+| OTA_ERR_* 8 个错误码、`g_ota_lcd_err/hold` | **不迁入**（留原位） | LCD 尚未入库，维持原工程归属（Display.h / boot.c），LCD/BOOT 阶段各自落位 |
+| 两处 `sprintf(OTA_Info.OTA_ver, ...)` | 首参加 `(char *)` 强制转换 | OTA_ver 是 u8 数组，sprintf 形参是 char*，armcc 报 #167-D（原工程同位置就有此告警）；符号性对纯 ASCII 版本串无影响，转换后行为零变化、告警消除 |
 
 ## 4. 本部分验证 main.c（替换阶段 5 的 main，全文）
 
@@ -332,6 +314,7 @@ int main(void)
     uart1_init(115200);
     LED_Init();
     LED_CLOSE();
+    AT24CXX_Init();     /* I²C 引脚初始化（PB10/PB11）：Reg_ReadOtaInfo 内部只调 Check 不做引脚准备，漏了这行总线读回来全是 0 */
 
     printf("reg test start\r\n");
 
@@ -402,9 +385,11 @@ int main(void)
 2. 串口收到 `reg test start`，随后 **三选一**：
    - 老芯片：`OTA_ver = ...,a1a1a1a1,...` + `mqtt id: pk=..., dk=...`；
    - 新芯片：先 `set default para` 再 `OTA_ver = ...` + `mqtt id: ...`；
-   - 芯片故障：`24C02 check fail: OTA disabled...`（此时 flag/retry/gate 三项仍应 PASS——
-     它们走的是独立写路径，能写说明只是 Check 误报，需另行排查）；
-3. `flag write-back: A2A2A2A2 PASS`、`retry roundtrip: 2 PASS`、`gate write-back: 0 PASS`；
+   - 芯片故障：`24C02 check fail: OTA disabled...`（flag/retry 写路径有独立 ACK 检查，能写说明只是 Check 误报）；
+   - **排查提示**：若 `check fail` 且 `flag write-back: 00000000 FAIL`、`retry roundtrip: 0 FAIL`、
+     `gate write-back: 0 PASS`——回读全 0 + 写全部「成功」，是总线引脚没初始化的典型特征
+     （浮空输入下 SDA 恒读低电平：读回全 0、ACK 判定恒通过）。先确认 main 里
+     `AT24CXX_Init()` 在 `Reg_ReadOtaInfo()` 之前；3. `flag write-back: A2A2A2A2 PASS`、`retry roundtrip: 2 PASS`、`gate write-back: 0 PASS`；
 4. 心跳 `cnt` 每 0.5 秒递增、PD14 约 1 秒一次闪烁；
 5. map 文件确认：`OtaWriteFlag / OtaRetryCount` 等符号已链接；reg.o 不再引用 boot.o/display.o 的符号。
 
@@ -421,16 +406,18 @@ int main(void)
 
 ## 8. 跨阶段边界（REG 部分，对应《模块迁移顺序.md》，已同步修订）
 
-1. **LCD 阶段（阶段 8）Display.h**：OTA_ERR_* 8 个宏**不再定义**（已归 reg.h）；Display.c 若引用错误码
-   改为 include reg.h（LCD 驱动本身零依赖 REG，只是引用常量）；
-2. **阶段 10 GPRS**：`OTA_ERR_NET/TIMEOUT/LINK/DATA` 经 reg.h 获得（GPRS 本就依赖 REG）；
-   写 OTA 状态块字段（OTA_size/ver/flag）用 `OTA_OFF_*` 偏移 + `OtaWriteFlag` 等函数；
+1. **LCD 阶段（阶段 8）Display.h**：OTA_ERR_* 8 个错误码**照原工程留在 Display.h 定义**
+   （本阶段未迁，REG 全程零引用）；`g_ota_lcd_err/hold` 定义也留在 boot.c，随 BOOT 阶段落位；
+2. **阶段 10 GPRS**：`OTA_ERR_NET/TIMEOUT/LINK/DATA` 经 `Display.h` 获得（include display.h，
+   与原工程一致，LCD 阶段 8 已先入库）；写 OTA 状态块字段（OTA_size/ver/flag）用
+   reg.h 的 `OTA_OFF_*` 偏移 + `OtaWriteFlag` 等函数；
 3. **阶段 11 BOOT**（《BOOT模块重构.md》届时同步修订）：
    - boot.h 删 `OTA_InfoCB` 族、`OTA_ADDR/OTA_RETRY_*`、`OTA_A1/A2_FLAG`、
      `ota_info_layout_check`、`ota_layout_check`（分区六条已迁 flash_layout.h、
-     第七条已迁 reg.h）、`g_ota_lcd_*` extern、`OTA_Info` extern → 改为 `#include "reg.h"`；
-   - boot.c 删五个标志函数实现与 `OTA_Info / g_ota_lcd_*` 定义（reg.c 提供），
-     删 `#include "display.h"`（错误码经 reg.h 获得）；
+     第七条已迁 reg.h）、`OTA_Info` extern → 改为 `#include "reg.h"`；
+     **`g_ota_lcd_*` extern 留在 boot.h 不迁**；
+   - boot.c 删五个标志函数实现与 `OTA_Info` 定义（reg.c 提供）；
+     **`g_ota_lcd_*` 定义与 `#include "display.h"` 保留原位**（LCD 归属未变）；
    - `OtaCopyPlan_CB` 的缓冲长度 `ST32_PAGE_SIZE` 经 `#include "flash_layout.h"` 获得；
 4. **阶段 12 main**：调用点 `AT24CXX_ReadOTAInfo()` 改为 `Reg_ReadOtaInfo()`。
 

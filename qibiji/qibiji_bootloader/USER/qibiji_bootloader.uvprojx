@@ -336,7 +336,7 @@
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER
 </Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH</IncludePath>
+              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -734,6 +734,36 @@
               <FileName>stmflash.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\STMFLASH\stmflash.h</FilePath>
+            </File>
+            <File>
+              <FileName>myiic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\IIC\myiic.c</FilePath>
+            </File>
+            <File>
+              <FileName>myiic.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\IIC\myiic.h</FilePath>
+            </File>
+            <File>
+              <FileName>24cxx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\24CXX\24cxx.c</FilePath>
+            </File>
+            <File>
+              <FileName>24cxx.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\24CXX\24cxx.h</FilePath>
+            </File>
+            <File>
+              <FileName>reg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\REG\reg.c</FilePath>
+            </File>
+            <File>
+              <FileName>reg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\REG\reg.h</FilePath>
             </File>
           </Files>
         </Group>
