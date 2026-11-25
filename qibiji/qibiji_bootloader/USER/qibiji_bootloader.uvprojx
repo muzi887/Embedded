@@ -336,7 +336,7 @@
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER
 </Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG;..\HARDWARE\4G</IncludePath>
+              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG;..\HARDWARE\4G;..\HARDWARE\LCD;..\HARDWARE\WDG</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -779,6 +779,46 @@
               <FileName>4G.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\4G\4G.h</FilePath>
+            </File>
+            <File>
+              <FileName>Display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD\Display.c</FilePath>
+            </File>
+            <File>
+              <FileName>Display.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD\Display.h</FilePath>
+            </File>
+            <File>
+              <FileName>Lcd12864.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD\Lcd12864.c</FilePath>
+            </File>
+            <File>
+              <FileName>Lcd12864.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD\Lcd12864.h</FilePath>
+            </File>
+            <File>
+              <FileName>ProgressBar.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\LCD\ProgressBar.c</FilePath>
+            </File>
+            <File>
+              <FileName>ProgressBar.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\LCD\ProgressBar.h</FilePath>
+            </File>
+            <File>
+              <FileName>wdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\WDG\wdg.c</FilePath>
+            </File>
+            <File>
+              <FileName>wdg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\WDG\wdg.h</FilePath>
             </File>
           </Files>
         </Group>

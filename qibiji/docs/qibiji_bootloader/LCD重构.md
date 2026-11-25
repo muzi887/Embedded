@@ -114,9 +114,9 @@ void LCD12864_SetBacklight(u8 on);
  * =========================================================================== */
 #include "Lcd12864.h"
 #include "delay.h"
-#include "wdg.h"        /* WDG_Feed：上电稳定期分片喂狗。wdg.h 属 WDG 阶段产物，
-                           若该阶段尚未入库，先注释本行与 Init 内三处 WDG_Feed()
-                           （验证 main 不开看门狗，无影响），见《LCD重构.md》§10.5 */
+#include "wdg.h"        /* WDG_Feed：上电稳定期分片喂狗。依赖《WDG重构.md》的 wdg.h/wdg.c
+                           先落盘；该阶段尚未入库时，临时注释本行与 Init 内三处 WDG_Feed()，
+                           并同步去掉验证 main 的 WDG_Init/s_WaitFeed（见 §7），见《LCD重构.md》§10.5 */
 
 /* --------------------------- ST7920 常量 --------------------------- */
 #define LCD_FRAME_CMD   0xF8u   /* 起始字节，RS = 0（命令） */
@@ -798,45 +798,80 @@ void ProgressBar_Clear(ProgressBarConfig_t *config)
 }
 ```
 
-## 7. 验证 main（替换 4G 联测 main）
+## 7. 验证 main（4G 联测 + LCD 四幕合并版，实机定稿）
 
-四幕循环演示，覆盖迁移计划对本阶段的验证要求（字符串 / 状态页 / 进度条 / 错误页）。
+**本 main 是 4G 联测与 LCD 四幕的合并版（2026-11-25 实机验证通过后的定稿形态）**：
+开狗 + 4G 心跳打印 + 四幕循环演示，所有长延时分片喂狗，灯光心跳随喂狗走
+（每喂一次翻一次灯 → 灯 ~1Hz 常闪，等待期间也能看出死活）。
+覆盖迁移计划对本阶段的验证要求（字符串 / 状态页 / 进度条 / 错误页）；
 真实验收场景就是阶段 10~12 的三个用面：`Lcd_ShowWaitNet()` 对应联网等待、
 `ProgressBar_Update` 对应固件下载、`Ota_ShowError` 对应引导失败画面。
 
 ```c
-/* USER/main.c —— LCD 阶段验证：四幕循环演示
+/* USER/main.c —— 4G 联测 + LCD 四幕合并验证（实机定稿）
+   开场 wdg test start（窗口 + 复位来源）→ 每轮 lcd round + 4G alive 心跳 →
    第一幕 字符串（Ota_ClearText 清行 + Lcd_ShowWaitNet + LCD12864_ShowString）
    第二幕 OTA 状态页（Ota_ShowConnecting → Ota_ShowRequestVer）
    第三幕 进度条（ProgressBar_Setup + 0→100 步进）
-   第四幕 错误页（Ota_ShowError 轮播两种错误码） */
+   第四幕 错误页（Ota_ShowError 固定展示两种错误码）
+   喂狗策略：所有延时走 s_WaitFeed 分片，每片喂狗 + 翻灯（IWDG 最坏窗口 2.12s，
+   见《WDG重构.md》）；循环顶部另留一处 0.5s + 喂狗用于停喂复位验证 */
 #include "stm32f10x.h"
-#include "sys.h"
+#include "sys.h"        /* NVIC_Configuration、位带宏 */
 #include "delay.h"
-#include "usart.h"
 #include "led.h"
-#include "Display.h"
-#include "ProgressBar.h"
+#include "usart.h"
+#include "stmflash.h"
+#include "flash_layout.h"
+#include "24cxx.h"
+#include "reg.h"
+#include "4G.h"         /* Gprs4G_Init、GPRS_LINK_STATUS、g_gprs_online */
+#include "wdg.h"        /* WDG_Init/WDG_Feed、WDG_WINDOW_MIN_MS、g_wdg_reset_cause */
+#include "Display.h"    /* Ota_* 状态页/错误页、Lcd_ShowWaitNet、OTA_ERR_* */
+#include "ProgressBar.h"    /* ProgressBar_Setup/Update（不靠 Display.h 间接带入） */
 
-static u32 s_loop_cnt = 0;      /* 循环轮次：串口心跳用 */
+static u32 blink_cnt = 0;     /* 心跳计数：每次喂狗翻灯 + 递增（4G alive 打印同步输出） */
+static u32 s_loop_cnt = 0;    /* 演示轮次：主循环存活证据 + 花屏时的进度坐标 */
+
+/* 分片等待：把长延时切成 ≤1s 的片，每片结束喂狗 + 翻灯。
+ * 单段 delay_ms(3000) 必超 IWDG 最坏窗口（2.12s）被复位，长延时一律走本函数；
+ * "等待即喂"是一条不变规则——改时长、加步骤都不用重新心算喂狗间隔。 */
+static void s_WaitFeed(u16 ms)
+{
+    while (ms >= 1000u) { delay_ms(1000); WDG_Feed(); LED_ERR = !LED_ERR; blink_cnt++; ms -= 1000u; }
+    if (ms > 0u)        { delay_ms(ms);   WDG_Feed(); LED_ERR = !LED_ERR; blink_cnt++; }
+}
 
 int main(void)
 {
-    u8 percent;     /* 进度条步进值 */
-    u8 err_kind;    /* 错误页轮播索引 */
+    u8 percent;            /* 进度条步进值 */
 
-    delay_init();               /* SysTick 时基 */
-    NVIC_Configuration();       /* 中断分组 */
-    uart1_init(115200);         /* 调试口 */
+    delay_init();          /* SysTick 时基 */
+    NVIC_Configuration();  /* 中断分组 2：2 位抢占 + 2 位响应 */
+    uart1_init(115200);    /* 调试口 */
+    uart2_init(115200);    /* 4G 口（回环 echo 用） */
+    LED_Init();            /* 四路 LED 引脚初始化 */
+    LED_CLOSE();           /* 全部熄灭，建立干净基准 */
 
-    printf("lcd test start\r\n");
-    LCD12864_Init();            /* 一步到位：GPIO + 1.5s 上电稳定期（内含喂狗）
-                                   + 指令序列 + 清 DDRAM/GDRAM + 背光点亮 */
+    AT24CXX_Init();        /* I²C 引脚就绪（REG 阶段产物，随合并 main 保留） */
+    WDG_Init();            /* 开 IWDG；内部记录并清除上一次复位来源 */
+    printf("wdg test start, window=%ums, reset cause: %u\r\n",
+           (unsigned int)WDG_WINDOW_MIN_MS, (unsigned int)g_wdg_reset_cause);
+
+    Gprs4G_Init();         /* 电平/EXTI 配置 + PA1 复位脉冲：模块从这里点火 */
+    LCD12864_Init();       /* 一步到位：GPIO + 1.5s 上电稳定期（内含 3 处 WDG_Feed）
+                              + 指令序列 + 清 DDRAM/GDRAM + 背光点亮 */
 
     while (1)
     {
         s_loop_cnt++;
         printf("lcd round %u\r\n", (unsigned int)s_loop_cnt);
+
+        delay_ms(500);         /* 半秒节拍：喂狗间隔 0.5s << 最坏窗口 2.12s */
+        WDG_Feed();            /* 【验证复位时注释本行】停喂后约 3.2s（40kHz 标称）复位 */
+        /* 灯光/计数心跳已移交 s_WaitFeed（每喂一次翻一次灯），此处不再翻转 */
+        printf("4G alive, cnt=%u, LINK=%d, online=%u\r\n",
+            (unsigned int)blink_cnt, (int)GPRS_LINK_STATUS, (unsigned int)g_gprs_online);
 
         /* 第一幕：字符串 */
         Ota_ClearText();                        /* 先清四行，去掉上一轮残留 */
@@ -844,42 +879,51 @@ int main(void)
         Lcd_ShowWaitNet();                      /* 第1行：wait net（第3字符位起） */
         LCD12864_ShowString(1, "    LCD OK");   /* 第2行：LCD OK */
         printf("act1 string ok\r\n");
-        delay_ms(3000);
+        s_WaitFeed(3000);
 
         /* 第二幕：OTA 状态页 */
         Ota_ShowConnecting();                   /* 在线升级 / 连接服务器中 */
-        delay_ms(3000);
+        s_WaitFeed(3000);
         Ota_ShowRequestVer();                   /* 连接成功 / 申请最新固件 */
-        delay_ms(3000);
+        s_WaitFeed(3000);
 
-        /* 第三幕：进度条 0 -> 100，步进 5% */
+        /* 第三幕：进度条 0 -> 100，步进 5%（21 步 × 500ms，每步一喂） */
         ProgressBar_Setup();                    /* 清图形层 + 画底框 + 0% */
         for (percent = 0; percent <= 100; percent += 5)
         {
             ProgressBar_Update(percent);
-            delay_ms(500);
+            s_WaitFeed(500);
         }
         printf("act3 progress ok\r\n");
-        delay_ms(2000);
+        s_WaitFeed(2000);
 
-        /* 第四幕：错误页轮播（演示用，正式流程由 BOOT/GPRS 登记、main 显示） */
-        for (err_kind = OTA_ERR_SIZE; err_kind <= OTA_ERR_VERIFY; err_kind++)
-        {
-            Ota_ShowError(err_kind);
-            delay_ms(3000);
-        }
+        /* 第四幕：错误页固定展示两种（SIZE=6 排在 VERIFY=5 之后，升序循环永远进不去，
+           故显式调用；正式流程由 BOOT/GPRS 登记、main 显示具体码） */
+        Ota_ShowError(OTA_ERR_SIZE);            /* 固件大小错误 */
+        s_WaitFeed(3000);
+        Ota_ShowError(OTA_ERR_VERIFY);          /* 写入校验失败 */
+        s_WaitFeed(3000);
     }
 }
 ```
 
-**测试方法**：上电后背光应点亮（LCD12864_Init 末尾开背光；若不亮见背光极性说明 §9.3），
-四幕依次轮播——第 1 幕两行 ASCII、第 2 幕「在线升级/连接服务器中」→「连接成功/申请最新固件」、
-第 3 幕带边框进度条从 0 平滑走到 100% 且数字居中（**画面在底行**，与百分比同行——原实机如此，见 §9.1）、
-第 4 幕「更新出错 + 固件大小错误」→「更新出错 + 写入校验失败」。任一幕花屏/错位，把串口
-`lcd round N` 与屏上现象一起记录。串口每轮输出 `lcd round N` + 各幕完成行，用来区分
-「屏没画对」和「流程没跑到」。
-**注意**：本验证 main 不开看门狗；若你当前工程已开着 IWDG（单轮四幕 >3s），演示会被复位——
-验证期间先不调 `IWDG_Init` 即可（`LCD12864_Init` 里的 `WDG_Feed` 在未开狗时是无害寄存器写）。
+**测试方法**：上电串口先出 `wdg test start, window=2123ms, reset cause: 0`
+（约 2.3s 后——PA1 脉冲 0.5s + LCD 初始化 1.8s），随后每轮依次输出
+`lcd round N` → `4G alive, cnt=…, LINK=…, online=…` → `act1 string ok` →
+（约 20s 静默，act2 + act3 在走）→ `act3 progress ok` →（8s 静默，act4 两张错误页）→ 下一轮。
+**每轮 cnt 恰好 +38**（3+6+21+2+6 次喂狗）——这不是巧合，是喂狗计数的核对值：
+实际打出的增量对不上 38，说明某处延时没走 `s_WaitFeed`，先查裸 delay 再查别的。
+屏上四幕依次轮播（第 3 幕画面在底行，见 §9.1）；任一幕花屏/错位，把串口
+`lcd round N` 与屏上现象一起记录，用来区分「屏没画对」和「流程没跑到」。
+灯（LED_ERR）应全程 ~1Hz 稳定闪烁——等待期间灯停住 = 程序卡死，一眼可辨。
+
+**WDG 联测**（前提：wdg.h/wdg.c 已按《WDG重构.md》落盘入库）：
+
+1. **正常跑**：连续数轮四幕无复位，串口 `reset cause: 0`（本次上电不是看门狗复位）；
+2. **看狗咬人**：把循环顶部 `WDG_Feed()` 注释掉不管用（s_WaitFeed 还在喂）——
+   把 `s_WaitFeed()` 里的 `WDG_Feed()` 也注释掉重新编译，约 2~3s 后板子复位、
+   串口重新打印 `wdg test start` 且 `reset cause: 1`——两步合起来同时验证了
+   `LCD12864_Init` 1.5s 稳定期的分片喂狗与复位来源记录。
 
 ## 8. Keil 配置要点（LCD）
 
@@ -947,7 +991,8 @@ GDRAM Y 坐标 32」与实际渲染不符。
 5. **WDG 依赖（已闭环）**：`Lcd12864.c` include `wdg.h`，`LCD12864_Init` 内 3 处
    `WDG_Feed()`（1.5s 稳定期分三片、每片一喂）——WDG 阶段文档《WDG重构.md》已定稿
    （zxl 换源版，含复位来源记录），wdg.h 落盘后本条依赖自然生效，此前的「临时注释」策略作废；
-   **正式 main 开狗后这 1.5s 期间的喂狗是必需的，不可省**；
+   **正式 main 开狗后这 1.5s 期间的喂狗是必需的，不可省**；LCD 验证 main 也已开狗联测
+   （`WDG_Init` + `s_WaitFeed` 分片喂狗，含复位来源打印，见 §7），不再是「不开狗跑 LCD」的形态；
 6. **依赖闭环**：本模块只依赖已入库的 `sys.h/delay.h`（阶段 1/2 产物）+ `wdg.h`（后续阶段，
    见第 5 条），不依赖 REG/USART/4G，迁移顺序表「Lcd12864 无依赖」成立。
 

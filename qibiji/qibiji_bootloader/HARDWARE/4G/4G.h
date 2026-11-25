@@ -10,7 +10,7 @@
 
 /* 网络在线标志：由 EXTI 中断服务程序随 PC5 电平实时维护，
    消费者是阶段 10 的 GPRS 状态机与阶段 12 的 main（联网判断用） */
-extern u8 gprs_online;
+extern u8 g_gprs_online;
 
 /* 4G 模块初始化：状态脚输入 + EXTI 双沿中断 + PA1 复位脉冲（模块点火） */
 void Gprs4G_Init(void);
