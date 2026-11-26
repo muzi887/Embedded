@@ -336,7 +336,7 @@
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER
 </Define>
               <Undefine></Undefine>
-              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG;..\HARDWARE\4G;..\HARDWARE\LCD;..\HARDWARE\WDG</IncludePath>
+              <IncludePath>..\CORE;..\STM32F10x_FWLib\inc;..\STM32F10x_FWLib\src;..\SYSTEM\delay;..\SYSTEM\sys;..\USER;..\HARDWARE\LED;..\HARDWARE\USART;..\HARDWARE\STMFLASH;..\HARDWARE\IIC;..\HARDWARE\24CXX;..\HARDWARE\REG;..\HARDWARE\4G;..\HARDWARE\LCD;..\HARDWARE\WDG;..\HARDWARE\BOOT</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -695,6 +695,11 @@
               <FileType>5</FileType>
               <FilePath>.\system_stm32f10x.h</FilePath>
             </File>
+            <File>
+              <FileName>main.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\main.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -819,6 +824,21 @@
               <FileName>wdg.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\HARDWARE\WDG\wdg.h</FilePath>
+            </File>
+            <File>
+              <FileName>boot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\BOOT\boot.c</FilePath>
+            </File>
+            <File>
+              <FileName>boot.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\HARDWARE\BOOT\boot.h</FilePath>
+            </File>
+            <File>
+              <FileName>ota_copy.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\BOOT\ota_copy.c</FilePath>
             </File>
           </Files>
         </Group>

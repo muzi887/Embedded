@@ -2,6 +2,7 @@
    10KB 池按 32 字节分块，u16 管理表记录每块所属分配的连续块数；
    分配从表末端向前搜索连续空块。全部内部状态 static，对外只暴露三个 API。 */
 #include "mymalloc.h"
+#include <stddef.h>   /* NULL */
 
 /* ---- 池本体与管理表 ---- */
 __align(4) static u8  s_pool[MEM1_MAX_SIZE];              /* 内存池，4 字节对齐（Keil 扩展） */
@@ -96,17 +97,24 @@ void *mymalloc(u32 size)
 {
     u32 offset = mem_malloc(size);
     if (offset == 0xFFFFFFFF) return NULL;
-    return (void *)((u32)s_pool + offset);
+    return (void *)((u32)s_pool + offset);         /* 偏移 + 池基址 = 真实地址 */
 }
 
 /* 重分配：新块+拷贝+释放旧块；失败返回 NULL 且旧块保留。
-   契约：ptr 非 NULL 且为池内地址（cJSON 用法天然满足：先 allocate 再 reallocate）。
-   注意与标准 realloc 的差异：myrealloc(NULL, n) 不成立（cJSON 不存在该调用形态）。 */
+   契约：ptr 非 NULL 且为池内地址
+   注意与标准 realloc 的差异：myrealloc(NULL, n) 不成立。 */
 void *myrealloc(void *ptr, u32 size)
 {
-    u32 offset = mem_malloc(size);
-    if (offset == 0xFFFFFFFF) return NULL;
-    mymemcpy((void *)((u32)s_pool + offset), ptr, size);
+    u32 offset, old_offset, old_bytes, copy_len;
+    
+    offset = mem_malloc(size);
+    if (offset == 0xFFFFFFFF) return NULL;       /* 无足够连续块：旧块原样保留 */
+
+    old_offset = (u32)ptr - (u32)s_pool;                                     /* 旧块起始偏移 */
+    old_bytes  = (u32)s_map[old_offset / MEM1_BLOCK_SIZE] * MEM1_BLOCK_SIZE; /* 旧块真实字节数 */
+    copy_len   = (size < old_bytes) ? size : old_bytes;                      /* 只搬可读部分，杜绝越界读 */
+
+    mymemcpy((void *)((u32)s_pool + offset), ptr, copy_len);    /* 从 ptr 起把 size 字节逐个搬到新块 */
     myfree(ptr);
     return (void *)((u32)s_pool + offset);
 }
